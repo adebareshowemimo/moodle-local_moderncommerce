@@ -66,6 +66,8 @@ node styles/tools/build-design-system.mjs --check
 
 React and AMD assets are built from the Moodle checkout root with Moodle's Grunt tasks.
 
+The complete maintainer procedure for versioning, validating, packaging, tagging, and publishing releases is in [PUBLISHING.txt](PUBLISHING.txt).
+
 ## Community and support
 
 - Project website: [moderncommerce.dev](https://moderncommerce.dev)
