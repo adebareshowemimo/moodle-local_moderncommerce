@@ -1,0 +1,100 @@
+# ModernCommerce for Moodle
+
+ModernCommerce is an open-source commerce platform built natively for Moodle. It lets training providers sell courses, bundles, programs, and subscriptions without requiring a separate WordPress or ecommerce installation.
+
+ModernCommerce is created and maintained by [Agunfon Interactivity](https://agunfoninteractivity.com). Official implementation, managed services, and commercial support are available through [Course Commerce Pro](https://coursecommercepro.com).
+
+## Features
+
+- Product catalog for courses, bundles, programs, and subscription plans
+- Configurable prices, sale pricing, inventory, categories, tags, and attributes
+- Cart, checkout, orders, invoices, refunds, coupons, and tax handling
+- Stripe, PayPal, Paystack, and Flutterwave payment gateways
+- Signed payment webhooks, payment-event tracking, and diagnostic logs
+- Automatic Moodle enrolment, access entitlements, and prepaid enrolment keys
+- Subscription trials, recurring billing, retries, plan changes, and access synchronization
+- Configurable storefront pages, widgets, branding, and email templates
+- Learner dashboards for courses, certificates, grades, orders, wishlists, and subscriptions
+- Reviews, notifications, abandoned-cart recovery, reports, and audit logs
+- Optional integrations for Course Reminder and Enrolment Notifier add-ons
+
+## Requirements
+
+- Moodle 5.2
+- PHP 8.3 or later
+- Composer 2
+- Moodle cron configured
+- HTTPS for production payment gateways and webhooks
+
+The Moodle component name is `local_moderncommerce`. The first public open-source release is `1.0.0`.
+
+## Installation
+
+1. Place the plugin in `local/moderncommerce` within the Moodle installation.
+2. Install production dependencies from the plugin directory:
+
+   ```bash
+   composer install --no-dev --optimize-autoloader
+   ```
+
+3. Visit Moodle site administration to complete the installation, or run:
+
+   ```bash
+   php admin/cli/upgrade.php --non-interactive
+   ```
+
+4. Configure the plugin under `Site administration > Plugins > Local plugins > Modern Commerce`.
+5. Ensure Moodle cron runs regularly before enabling payments or subscriptions.
+
+For a new installation, seed safe default configuration with:
+
+```bash
+php local/moderncommerce/cli/demo_data.php --install-defaults
+```
+
+Use `--seed` only on demo or staging systems. Never reset or seed sample orders on a production site.
+
+## Development
+
+From the plugin directory:
+
+```bash
+composer install
+composer run mc:check-fast
+node styles/tools/build-design-system.mjs --check
+```
+
+React and AMD assets are built from the Moodle checkout root with Moodle's Grunt tasks.
+
+## Community and support
+
+- Project website: [moderncommerce.dev](https://moderncommerce.dev)
+- Commercial support and managed services: [coursecommercepro.com](https://coursecommercepro.com)
+- General support: `support@agunfoninteractivity.com`
+- Security reports: `support@agunfoninteractivity.com` with the subject `ModernCommerce security report`
+
+Please do not disclose suspected security vulnerabilities in a public issue. Include the affected version, reproduction steps, potential impact, and whether the issue is already public.
+
+Community support is provided on a best-effort basis. Paid response times, installation assistance, migrations, custom integrations, and operational support are provided separately by Course Commerce Pro.
+
+## Contributing
+
+Bug reports and focused pull requests are welcome. Before proposing a large feature, open a discussion describing the use case and intended architecture. Contributions must:
+
+- Follow Moodle coding and security standards
+- Preserve the `local_moderncommerce` component and namespace
+- Keep optional add-ons safely gated when they are not installed
+- Include tests for material behavior changes
+- Be submitted under GPL v3 or later
+
+By contributing, you certify that you have the right to submit the work and agree that it may be distributed under this project's licence.
+
+## Project stewardship
+
+ModernCommerce is an open-source project maintained by Agunfon Interactivity. **ModernCommerce** and **Course Commerce Pro** identify the official project and commercial services. The GPL permits forks and redistribution of the code, but it does not grant permission to imply endorsement by Agunfon Interactivity or to present a fork as an official ModernCommerce release.
+
+## Licence
+
+ModernCommerce is free software licensed under the [GNU General Public License v3 or later](LICENSE).
+
+Copyright © 2025–2026 Adebare Showemimo and contributors. Maintained by Agunfon Interactivity.

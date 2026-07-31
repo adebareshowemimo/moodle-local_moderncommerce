@@ -1,0 +1,55 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moderncommerce/components/alert
+
+    Inline status alert — the mc-alert design-system component (Modern Commerce
+    design system, component #37). Use it for in-page notices: form-submission
+    results, setup warnings, processing hints. For floating, auto-dismissing
+    notifications use local_moderncommerce/components/toast instead.
+
+    Variant tints the surface, border, icon, and title; the body text stays
+    readable. Colour never carries meaning alone — always pass an icon.
+
+    Context variables:
+    * type     - Variant key: success | warning | danger | info | primary | neutral.
+                 Defaults to info.
+    * icon     - Bootstrap icon class without state, e.g. "bi-check-circle". Optional.
+    * title    - Optional bold lead line.
+    * message  - Body text. Ignored when a {{$body
+
+    @copyright  2025 Adebare Showemimo | adebareshowemimo@gmail.com | support@agunfoninteractivity.com
+    @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}} block is supplied by a parent.
+    * role     - ARIA role override. Defaults to "status" (use "alert" for errors).
+
+    Example (context):
+    {
+        "type": "success",
+        "icon": "bi-check-circle",
+        "title": "Payment received",
+        "message": "Order #1042 marked paid."
+    }
+
+}}
+<div class="mc-alert mc-alert--{{^type}}info{{/type}}{{type}}" role="{{^role}}status{{/role}}{{role}}">
+    {{#icon}}<i class="bi {{icon}} mc-alert__icon" aria-hidden="true"></i>{{/icon}}
+    <div class="mc-alert__body">
+        {{#title}}<p class="mc-alert__title">{{title}}</p>{{/title}}
+        {{$body}}{{message}}{{/body}}
+    </div>
+</div>

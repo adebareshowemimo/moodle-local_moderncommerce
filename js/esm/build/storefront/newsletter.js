@@ -1,0 +1,29 @@
+import{useState as R}from"react";import{useEffect as W}from"react";var S=(...e)=>{let s=new Set;return e.forEach(t=>{t&&t.split(/\s+/).filter(Boolean).forEach(o=>{s.add(o)})}),Array.from(s).join(" ")};import{jsx as k}from"react/jsx-runtime";function N({variant:e,size:s,loading:t=!1,loadingLabel:o,buttonState:n,block:a=!1,className:r,children:d,disabled:w,type:g="button","aria-busy":m,...u}){let i=t||m===!0||m==="true";return k("button",{...u,"aria-busy":i?"true":m,className:S("mc-button",a&&"mc-button--block",r),"data-mc-button":e,"data-mc-button-size":s,"data-mc-button-state":i?"loading":n,disabled:w||t,type:g,children:t&&o!==void 0?o:d})}import{useEffect as B,useRef as P,useState as q}from"react";import{jsx as A,jsxs as F}from"react/jsx-runtime";var _="local-moderncommerce-recaptcha-api",H="localModernCommerceRecaptchaLoaded",L=()=>({enabled:!1,sitekey:"",apiurl:"",lang:"",requiredmessage:"",errormessage:""}),O=(e,s)=>window.grecaptcha?.render?Promise.resolve():(window.localModernCommerceRecaptchaPromise||(window.localModernCommerceRecaptchaPromise=new Promise((t,o)=>{window.localModernCommerceRecaptchaLoaded=()=>t();let n=document.getElementById(_);if(n){n.addEventListener("load",()=>t(),{once:!0}),n.addEventListener("error",()=>o(new Error("reCAPTCHA failed to load.")),{once:!0});return}let a=new URL(e,window.location.href);a.searchParams.set("onload",H),a.searchParams.set("render","explicit"),s&&a.searchParams.set("hl",s);let r=document.createElement("script");r.id=_,r.src=a.toString(),r.async=!0,r.defer=!0,r.onerror=()=>o(new Error("reCAPTCHA failed to load.")),document.head.appendChild(r)})),window.localModernCommerceRecaptchaPromise),x=e=>{let s=new FormData(e).get("g-recaptcha-response");return typeof s=="string"?s.trim():""},v=e=>{e.querySelectorAll("[data-mc-recaptcha-widget-id]").forEach(s=>{let t=Number(s.dataset.mcRecaptchaWidgetId);Number.isFinite(t)&&window.grecaptcha?.reset(t)})};function C({config:e,className:s=""}){let t=P(null),o=P(null),[n,a]=q("");return B(()=>{if(!e.enabled||!e.sitekey||!e.apiurl||!t.current)return;let r=!1;return a(""),O(e.apiurl,e.lang).then(()=>{r||!t.current||o.current!==null||!window.grecaptcha?.render||(o.current=window.grecaptcha.render(t.current,{sitekey:e.sitekey}),t.current.dataset.mcRecaptchaWidgetId=String(o.current))}).catch(()=>a(e.errormessage)),()=>{r=!0}},[e.enabled,e.sitekey,e.apiurl,e.lang,e.errormessage]),e.enabled?F("div",{className:s||void 0,children:[A("div",{ref:t}),n&&A("p",{className:"mc-recaptcha-error",children:n})]}):null}import{jsx as c,jsxs as T}from"react/jsx-runtime";var I=async(e,s,t)=>{let o=new URLSearchParams({sesskey:M.cfg.sesskey,info:e}),n=await fetch(`${M.cfg.wwwroot}/lib/ajax/service.php?${o.toString()}`,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify([{index:0,methodname:e,args:s}])});if(!n.ok)throw new Error(`${n.status} ${n.statusText}`);let a=await n.json(),r=Array.isArray(a)?a[0]:a;if(!r)throw new Error("Empty Moodle service response.");if(r.error)throw new Error(r.exception?.message??t);return r.data??r},D=/^[^@\s]+@[^@\s]+\.[^@\s]+$/;function $({method:e,heading:s,description:t,placeholder:o,buttonlabel:n,successmessage:a,recaptcha:r=L(),labels:d,style:w}){let[g,m]=R(""),[u,i]=R("idle"),[h,l]=R("");return c("section",{className:"mw-news",style:w,children:T("div",{className:"mw-news__inner",children:[s&&c("h2",{className:"mw-news__heading",children:s}),t&&c("p",{className:"mw-news__desc",children:t}),u==="done"?T("p",{className:"mw-news__success",children:[c("i",{className:"bi bi-check-circle-fill","aria-hidden":"true"})," ",h]}):T("form",{className:"mw-news__form",onSubmit:async f=>{f.preventDefault();let b=f.currentTarget,y=g.trim();if(!y){i("error"),l(d.emailrequired);return}if(!D.test(y)){i("error"),l(d.invalidemail);return}let E=r.enabled?x(b):"";if(r.enabled&&!E){i("error"),l(r.requiredmessage);return}i("busy"),l("");try{let p=await I(e,{email:y,source:"storefront",recaptcharesponse:E},d.servicerequestfailed);p.success?(i("done"),l(p.message||a),m("")):(i("error"),l(p.message),v(b))}catch(p){i("error"),l(p.message),v(b)}},children:[c("input",{type:"email",className:"mw-news__input",placeholder:o,"aria-label":o,value:g,onChange:f=>m(f.currentTarget.value)}),c(C,{config:r,className:"mw-news__captcha"}),c(N,{type:"submit",className:"mw-news__btn",variant:"soft",loading:u==="busy",loadingLabel:d.subscribing,children:n})]}),u==="error"&&h&&c("p",{className:"mw-news__error",children:h})]})})}export{$ as default};
+/**
+ * Runtime design-system helpers for Modern Commerce React surfaces.
+ *
+ * @module     local_moderncommerce/design_system
+ * @copyright  2025 Adebare Showemimo | adebareshowemimo@gmail.com | support@agunfoninteractivity.com | www.agunfoninteractivity.com
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+/**
+ * Reusable Modern Commerce button primitive for React screens.
+ *
+ * @module     local_moderncommerce/button
+ * @copyright  2025 Adebare Showemimo | adebareshowemimo@gmail.com | support@agunfoninteractivity.com | www.agunfoninteractivity.com
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+/**
+ * React wrapper for Moodle's configured Google reCAPTCHA v2 widget.
+ *
+ * @module     local_moderncommerce/storefront/recaptcha
+ * @copyright  2026 Adebare Showemimo | adebareshowemimo@gmail.com | support@agunfoninteractivity.com | www.agunfoninteractivity.com
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+/**
+ * Newsletter / lead-capture widget for the Modern Commerce storefront.
+ *
+ * @module     local_moderncommerce/storefront/newsletter
+ * @copyright  2025 Adebare Showemimo | adebareshowemimo@gmail.com | support@agunfoninteractivity.com | www.agunfoninteractivity.com
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */

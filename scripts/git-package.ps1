@@ -1,0 +1,151 @@
+[CmdletBinding()]
+param(
+    [string]$Version = '',
+    [switch]$Force
+)
+
+$ErrorActionPreference = 'Stop'
+
+$pluginroot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$versionfile = Join-Path $pluginroot 'version.php'
+
+function Get-ReleaseRoot {
+    $localparent = Split-Path -Parent $pluginroot
+    $publicparent = Split-Path -Parent $localparent
+    if (
+        (Split-Path -Leaf $pluginroot) -eq 'moderncommerce' -and
+        (Split-Path -Leaf $localparent) -eq 'local' -and
+        (Split-Path -Leaf $publicparent) -eq 'public'
+    ) {
+        return (Resolve-Path (Join-Path $pluginroot '..\..\..')).Path
+    }
+
+    return $pluginroot
+}
+
+function Get-ReleaseVersion {
+    $content = Get-Content -Raw -Path $versionfile
+    if ($content -match '\$plugin->release\s*=\s*[''"]([^''"]+)[''"]\s*;') {
+        return $Matches[1]
+    }
+
+    throw 'Unable to read $plugin->release from version.php.'
+}
+
+if ($Version.Trim() -eq '') {
+    $Version = Get-ReleaseVersion
+}
+
+$releaseroot = Get-ReleaseRoot
+$releasedir = Join-Path $releaseroot 'releases'
+New-Item -ItemType Directory -Force -Path $releasedir | Out-Null
+
+if (-not (Get-Command composer -ErrorAction SilentlyContinue)) {
+    throw "Required command 'composer' was not found on PATH."
+}
+
+$docsroot = Join-Path $pluginroot 'docs'
+$docscheck = Join-Path $pluginroot 'scripts/check-docs.mjs'
+if ((Test-Path $docsroot) -and (Test-Path $docscheck)) {
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        throw "Required command 'node' was not found on PATH."
+    }
+
+    Write-Host '==> Documentation check'
+    Push-Location $pluginroot
+    try {
+        & node 'scripts/check-docs.mjs'
+        if ($LASTEXITCODE -ne 0) {
+            throw "Documentation check failed with exit code $LASTEXITCODE."
+        }
+    } finally {
+        Pop-Location
+    }
+} else {
+    Write-Host '==> Documentation check skipped; docs folder is not present.'
+}
+
+$zip = Join-Path $releasedir "moderncommerce-v$Version.zip"
+if ((Test-Path $zip) -and -not $Force) {
+    throw "Release ZIP already exists: $zip. Re-run with -Force to overwrite it."
+}
+if (Test-Path $zip) {
+    Remove-Item -LiteralPath $zip -Force
+}
+
+$temproot = Join-Path $env:TEMP ('moderncommerce-release-' + [guid]::NewGuid().ToString('N'))
+$tempplugin = Join-Path $temproot 'moderncommerce'
+New-Item -ItemType Directory -Force -Path $tempplugin | Out-Null
+
+try {
+    $excludednames = @(
+        '.git',
+        '.githooks',
+        '.github',
+        '.gitattributes',
+        '.gitignore',
+        'docs',
+        'mc-buttons.md',
+        'releases',
+        'node_modules',
+        'site',
+        'vendor',
+        '.env',
+        '.env.local',
+        '.phpunit.result.cache'
+    )
+
+    Get-ChildItem -LiteralPath $pluginroot -Force |
+        Where-Object { $_.Name -notin $excludednames } |
+        ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $tempplugin -Recurse -Force
+        }
+
+    Write-Host '==> Composer production dependencies'
+    Push-Location $tempplugin
+    try {
+        & composer install --no-dev --optimize-autoloader --no-interaction
+        if ($LASTEXITCODE -ne 0) {
+            throw "Composer install failed with exit code $LASTEXITCODE."
+        }
+    } finally {
+        Pop-Location
+    }
+
+    $autoload = Join-Path $tempplugin 'vendor/autoload.php'
+    if (-not (Test-Path $autoload)) {
+        throw 'Release ZIP cannot be built without vendor/autoload.php.'
+    }
+
+    Compress-Archive -Path $tempplugin -DestinationPath $zip -Force
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
+    try {
+        $entrynames = @($archive.Entries |
+            Where-Object { $_.FullName -ne '' } |
+            ForEach-Object { $_.FullName.Replace('\', '/') })
+        $topdirs = @($entrynames |
+            ForEach-Object { ($_ -split '/')[0] } |
+            Sort-Object -Unique)
+        if ($topdirs.Count -ne 1 -or $topdirs[0] -ne 'moderncommerce') {
+            throw 'Release ZIP must contain exactly one top-level moderncommerce/ directory.'
+        }
+        if (-not ($entrynames | Where-Object { $_ -eq 'moderncommerce/version.php' })) {
+            throw 'Release ZIP is missing moderncommerce/version.php.'
+        }
+        if (-not ($entrynames | Where-Object { $_ -eq 'moderncommerce/vendor/autoload.php' })) {
+            throw 'Release ZIP is missing moderncommerce/vendor/autoload.php.'
+        }
+    } finally {
+        $archive.Dispose()
+    }
+} finally {
+    if (Test-Path $temproot) {
+        Remove-Item -LiteralPath $temproot -Recurse -Force
+    }
+}
+
+$file = Get-Item $zip
+Write-Host "Release ZIP written: $($file.FullName)"
+Write-Host "Size: $($file.Length) bytes"

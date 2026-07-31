@@ -1,0 +1,46 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moderncommerce/components/empty_state
+
+    Reusable empty state component. Icon, title, description, optional CTA.
+
+    Context variables:
+    * icon        - Bootstrap icon class (e.g. "bi-inbox"). Default: bi-inbox
+    * title       - Title string
+    * description - Description string (optional)
+    * actionurl   - CTA link URL (optional)
+    * actionlabel - CTA link label (optional)
+
+
+    @copyright  2025 Adebare Showemimo | adebareshowemimo@gmail.com | support@agunfoninteractivity.com
+    @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+<div class="mc-empty">
+    <span class="mc-empty__icon">
+        <i class="bi {{#icon}}{{icon}}{{/icon}}{{^icon}}bi-inbox{{/icon}}" aria-hidden="true"></i>
+    </span>
+    {{#title}}
+    <p class="mc-empty__title">{{title}}</p>
+    {{/title}}
+    {{#description}}
+    <p class="mc-empty__desc">{{description}}</p>
+    {{/description}}
+    {{#actionurl}}
+    <a href="{{actionurl}}" class="mc-button btn-mc-primary" data-mc-button="primary">{{actionlabel}}</a>
+    {{/actionurl}}
+</div>

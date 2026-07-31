@@ -1,0 +1,38 @@
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle. If not, see <http://www.gnu.org/licenses/>.
+//
+// Modern Commerce styles.
+//
+// @package    local_moderncommerce
+// @copyright  2025 Adebare Showemimo | adebareshowemimo@gmail.com | support@agunfoninteractivity.com
+// @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+@use "thirdparty/bootstrap-icons/bootstrap-icons";
+@use "foundation";
+@use "runtime/layout";
+@use "runtime/components";
+@use "runtime/responsive";
+@use "runtime/compatibility";
+@use "shared-components";
+@use "runtime/apps";
+@use "runtime/typography";
+
+/*
+ * Modern Commerce core design-system SCSS entry.
+ *
+ * This file emits the token layer, Bootstrap Icons, runtime layout helpers,
+ * shared mc-* component vocabulary, app utilities, and typography defaults.
+ * Route/page-specific surfaces compile into styles/bundles/*.css and are
+ * selected by classes/hook/callbacks.php from one central loader.
+ */

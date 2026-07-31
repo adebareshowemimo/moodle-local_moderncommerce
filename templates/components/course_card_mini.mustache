@@ -1,0 +1,45 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_moderncommerce/components/course_card_mini
+
+    Compact horizontal course row for bundle details and order summaries.
+
+    Context variables:
+    * name     - Course name
+    * imageurl - Course image URL
+    * hasimage - bool
+    * price    - Formatted price string (optional)
+    * url      - Course URL (optional)
+    * hasurl   - bool
+
+
+    @copyright  2025 Adebare Showemimo | adebareshowemimo@gmail.com | support@agunfoninteractivity.com
+    @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+{{#hasurl}}<a href="{{url}}" class="mc-course-mini">{{/hasurl}}
+{{^hasurl}}<div class="mc-course-mini">{{/hasurl}}
+    {{#hasimage}}
+    <img src="{{imageurl}}" alt="" class="mc-course-mini__thumb" width="48" height="36" loading="lazy">
+    {{/hasimage}}
+    {{^hasimage}}
+    <div class="mc-course-mini__thumb" aria-hidden="true"></div>
+    {{/hasimage}}
+    <span class="mc-course-mini__title">{{name}}</span>
+    {{#price}}<span class="mc-course-mini__price">{{price}}</span>{{/price}}
+{{#hasurl}}</a>{{/hasurl}}
+{{^hasurl}}</div>{{/hasurl}}

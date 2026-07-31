@@ -1,0 +1,230 @@
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle. If not, see <http://www.gnu.org/licenses/>.
+//
+// Modern Commerce styles.
+//
+// @package    local_moderncommerce
+// @copyright  2025 Adebare Showemimo | adebareshowemimo@gmail.com | support@agunfoninteractivity.com
+// @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+// Extracted from ../styles.css during the SCSS source consolidation phase.
+
+/* ============================================================
+   LEARNER SHELL
+   ============================================================ */
+
+.mc-learner-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: var(--mc-page-bg);
+    font-family: var(--mc-font);
+    color: var(--mc-text);
+}
+
+.mc-learner-topnav {
+    background: var(--mc-surface);
+    border-bottom: 1px solid var(--mc-border);
+    padding: 0 1.5rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.mc-learner-brand {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--mc-primary);
+    text-decoration: none;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.mc-learner-brand:hover {
+    color: var(--mc-primary-hover);
+    text-decoration: none;
+}
+
+.mc-learner-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.mc-learner-nav-links::-webkit-scrollbar { display: none; }
+
+.mc-learner-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.3125rem 0.625rem;
+    border-radius: var(--mc-radius-sm);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--mc-text-muted);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+}
+
+.mc-learner-nav-link:hover {
+    color: var(--mc-text);
+    text-decoration: none;
+}
+
+.mc-learner-nav-link.active {
+    color: var(--mc-primary);
+    border-bottom-color: var(--mc-primary);
+    font-weight: 600;
+}
+
+/* Legacy purchased courses page. */
+.mc-mycourses-page .mc-course-card {
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.mc-mycourses-page .mc-course-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
+}
+
+.mc-mycourses-page .mc-course-image {
+    height: 160px;
+    object-fit: cover;
+    transition: opacity .2s ease;
+}
+
+.mc-mycourses-page .mc-course-card:hover .mc-course-image {
+    opacity: .9;
+}
+
+.mc-mycourses-page .mc-course-summary {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.mc-mycourses-page .mc-course-progress {
+    height: 6px;
+}
+
+.mc-mycourses-page .nav-pills .nav-link {
+    padding: .5rem 1rem;
+    border-radius: 50rem;
+}
+
+.mc-mycourses-page .nav-pills .nav-link:not(.active) {
+    color: #6c757d;
+}
+
+.mc-mycourses-page .mc-empty-state {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.mc-learner-content {
+    flex: 1;
+    padding: 1.5rem;
+    max-width: 1140px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+
+/* ============================================================
+   LEARNER PROGRESS / COURSES
+   ============================================================ */
+
+.mc-learner-course-card {
+    background: var(--mc-surface);
+    border: 1px solid var(--mc-border);
+    border-radius: var(--mc-radius);
+    overflow: hidden;
+    display: flex;
+    gap: 0.875rem;
+    padding: 0.875rem;
+    align-items: flex-start;
+    text-decoration: none;
+    color: var(--mc-text);
+    transition: border-color 0.15s ease;
+    margin-bottom: 0.5rem;
+}
+
+.mc-learner-course-card:hover {
+    border-color: var(--mc-primary-border);
+    text-decoration: none;
+    color: var(--mc-text);
+}
+
+.mc-learner-course-card__thumb {
+    width: 72px;
+    height: 54px;
+    border-radius: var(--mc-radius-sm);
+    object-fit: cover;
+    background: var(--mc-surface-alt);
+    border: 1px solid var(--mc-border);
+    flex-shrink: 0;
+}
+
+.mc-learner-course-card__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.mc-learner-course-card__title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--mc-text);
+    margin-bottom: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mc-learner-course-card__meta {
+    font-size: 0.75rem;
+    color: var(--mc-text-muted);
+    margin-bottom: 0.375rem;
+}
+
+.mc-progress-bar-wrap {
+    height: 4px;
+    background: var(--mc-border);
+    border-radius: var(--mc-radius-pill);
+    overflow: hidden;
+    margin-top: 0.375rem;
+}
+
+.mc-progress-bar-fill {
+    height: 100%;
+    background: var(--mc-primary);
+    border-radius: var(--mc-radius-pill);
+    transition: width 0.4s ease;
+}
+
+.mc-progress-bar-fill--complete {
+    background: var(--mc-success);
+}
