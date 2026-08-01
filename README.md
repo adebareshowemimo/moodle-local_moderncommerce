@@ -2,7 +2,7 @@
 
 ModernCommerce is an open-source commerce platform built natively for Moodle. It lets training providers sell courses, bundles, programs, and subscriptions without requiring a separate WordPress or ecommerce installation.
 
-ModernCommerce was created by Adebare Showemimo and is maintained by [Agunfon Interactivity LLC, USA](https://agunfoninteractivity.com). Official implementation, managed services, and commercial support are available through [Course Commerce Pro](https://coursecommercepro.com).
+ModernCommerce was created by Adebare Showemimo and is maintained by [Agunfon Interactivity LLC, USA](https://agunfoninteractivity.com). Official implementation, managed services, and commercial support are available through [ModernCommerce support](https://moderncommerce.dev/support).
 
 ## Features
 
@@ -70,14 +70,14 @@ The complete maintainer procedure for versioning, validating, packaging, tagging
 
 ## Community and support
 
-- Project website: [moderncommerce.dev](https://moderncommerce.dev)
-- Commercial support and managed services: [coursecommercepro.com](https://coursecommercepro.com)
+- Project website and documentation: [moderncommerce.dev](https://moderncommerce.dev/)
+- Implementation, managed services, and commercial support: [moderncommerce.dev/support](https://moderncommerce.dev/support)
 - General support: `support@agunfoninteractivity.com`
 - Security reports: `support@agunfoninteractivity.com` with the subject `ModernCommerce security report`
 
 Please do not disclose suspected security vulnerabilities in a public issue. Include the affected version, reproduction steps, potential impact, and whether the issue is already public.
 
-Community support is provided on a best-effort basis. Paid response times, installation assistance, migrations, custom integrations, and operational support are provided separately by Course Commerce Pro.
+Community support is provided on a best-effort basis. Paid response times, installation assistance, migrations, custom integrations, and operational support are available separately through [ModernCommerce support](https://moderncommerce.dev/support).
 
 ## Contributing
 
@@ -93,7 +93,7 @@ By contributing, you certify that you have the right to submit the work and agre
 
 ## Project stewardship
 
-ModernCommerce is an open-source project maintained by Agunfon Interactivity LLC, USA. **ModernCommerce** and **Course Commerce Pro** identify the official project and commercial services. The GPL permits forks and redistribution of the code, but it does not grant permission to imply endorsement by Agunfon Interactivity LLC, USA or to present a fork as an official ModernCommerce release.
+ModernCommerce is an open-source project maintained by Agunfon Interactivity LLC, USA. **ModernCommerce** identifies the official project and product. Commercial services are provided by Agunfon Interactivity LLC, USA through [moderncommerce.dev](https://moderncommerce.dev/). The GPL permits forks and redistribution of the code, but it does not grant permission to imply endorsement by Agunfon Interactivity LLC, USA or to present a fork as an official ModernCommerce release.
 
 ## Licence
 
