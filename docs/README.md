@@ -23,6 +23,7 @@ Modern Commerce is a Moodle 5.2 local plugin for running an ecommerce storefront
 
 - [Products and pricing](products-and-pricing.md)
 - [Orders, invoices, refunds, and reports](orders-and-reports.md)
+- [Dashboard widgets](dashboard-widgets.md)
 - [Coupons and enrolment keys](coupons-and-keys.md)
 - [Storefront pages and widgets](storefront.md)
 - [Subscriptions](subscriptions.md)
@@ -44,6 +45,7 @@ Modern Commerce is a Moodle 5.2 local plugin for running an ecommerce storefront
 - [Scheduled tasks reference](reference/scheduled-tasks.md)
 - [Web service reference](reference/web-services.md)
 - [Storefront widget reference](reference/widgets.md)
+- [Dashboard widget reference](dashboard-widgets.md)
 - [Database reference](reference/database.md)
 
 ## Documentation Standards
@@ -59,4 +61,4 @@ Modern Commerce documentation follows these rules:
 
 ## Version
 
-This documentation targets Modern Commerce `2.1.1` on Moodle `5.2`.
+This documentation targets Modern Commerce `2.1.6` on Moodle `5.2`.

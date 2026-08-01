@@ -16,6 +16,7 @@ ModernCommerce was created by Adebare Showemimo and is maintained by [Agunfon In
 - Configurable storefront pages, widgets, branding, and email templates
 - Learner dashboards for courses, certificates, grades, orders, wishlists, and subscriptions
 - Reviews, notifications, abandoned-cart recovery, reports, and audit logs
+- Configurable analytics dashboard with 4 KPI tiles and 18 insight widgets
 - Optional integrations for Course Reminder and Enrolment Notifier add-ons
 
 ## Requirements

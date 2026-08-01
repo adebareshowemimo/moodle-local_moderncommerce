@@ -31,6 +31,8 @@ Modern Commerce separates cart, order, invoice, payment, refund, fulfillment, en
 
 ## Reporting
 
+The admin dashboard contains **22 configurable widgets**: four KPI tiles and 18 analytics or table widgets. See [Dashboard widgets](dashboard-widgets.md) for the exact count, calculation, date-range behavior, and purpose of every widget.
+
 Reporting tables include:
 
 - `local_moderncommerce_report_daily`
