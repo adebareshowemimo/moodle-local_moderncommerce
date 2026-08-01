@@ -68,6 +68,8 @@ React and AMD assets are built from the Moodle checkout root with Moodle's Grunt
 
 The complete maintainer procedure for versioning, validating, packaging, tagging, and publishing releases is in [PUBLISHING.txt](PUBLISHING.txt).
 
+Routine repository, dependency, security, testing, documentation, and operational maintenance is documented in [MAINTAINING.md](MAINTAINING.md).
+
 ## Community and support
 
 - Project website and documentation: [moderncommerce.dev](https://moderncommerce.dev/)

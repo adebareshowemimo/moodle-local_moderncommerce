@@ -4,8 +4,8 @@ MODERNCOMMERCE PUBLISHING RUNBOOK
 Purpose
 -------
 
-This runbook defines how Agunfon Interactivity develops, validates, versions,
-packages, publishes, and maintains official ModernCommerce releases.
+This runbook defines how Agunfon Interactivity LLC, USA develops, validates,
+versions, packages, publishes, and maintains official ModernCommerce releases.
 
 Canonical locations
 -------------------
@@ -17,7 +17,7 @@ Project website:
 https://moderncommerce.dev
 
 Commercial services:
-https://coursecommercepro.com
+https://moderncommerce.dev/support
 
 Moodle component:
 local_moderncommerce
@@ -268,7 +268,7 @@ Post-release checks
 2. Confirm GitHub Actions is green for the release commit.
 3. Verify the SHA-256 checksum of the downloaded asset.
 4. Confirm the Moodle Plugins Directory entry links to the public repository.
-5. Update moderncommerce.dev and Course Commerce Pro announcements.
+5. Update moderncommerce.dev release and support announcements.
 6. Monitor public issues, payment/webhook regressions, and upgrade reports.
 7. Keep the release commit and tag immutable.
 

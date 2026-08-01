@@ -4,6 +4,7 @@ moodledata/
 *_dataroot/
 *.md
 !README.md
+!MAINTAINING.md
 /docs/
 internaldocs/
 
