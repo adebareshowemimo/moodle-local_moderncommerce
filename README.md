@@ -16,7 +16,7 @@ ModernCommerce was created by Adebare Showemimo and is maintained by [Agunfon In
 - Configurable storefront pages, widgets, branding, and email templates
 - Learner dashboards for courses, certificates, grades, orders, wishlists, and subscriptions
 - Reviews, notifications, abandoned-cart recovery, reports, and audit logs
-- Configurable analytics dashboard with 4 KPI tiles and 18 insight widgets
+- [22 configurable admin-dashboard widgets](docs/dashboard-widgets.md): 4 KPI tiles and 18 analytics or table widgets
 - Optional integrations for Course Reminder and Enrolment Notifier add-ons
 
 ## Requirements
@@ -54,6 +54,13 @@ php local/moderncommerce/cli/demo_data.php --install-defaults
 ```
 
 Use `--seed` only on demo or staging systems. Never reset or seed sample orders on a production site.
+
+## Documentation
+
+- [Documentation index](docs/README.md)
+- [Dashboard widgets: count, purpose, calculations, and customization](docs/dashboard-widgets.md)
+- [Orders, invoices, refunds, and reports](docs/orders-and-reports.md)
+- [Storefront widget reference](docs/reference/widgets.md)
 
 ## Development
 
