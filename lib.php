@@ -1,5 +1,5 @@
 <?php
-// This file is part of Moodle - http://moodle.org/
+// This file is part of Moodle and is licensed under the
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -1049,8 +1049,8 @@ function local_moderncommerce_webhooks_react_props(bool $includesettings = true)
  * Build the Core-vs-extended-add-ons capability comparison table.
  *
  * Shared by the admin add-ons page and the public pricing page. Core features
- * ship in the one-time Modern Commerce licence; add-on features are sold
- * separately as optional extensions.
+ * ship in the open-source Modern Commerce core; premium add-on features are
+ * available separately as optional extensions.
  *
  * @return array Array of groups: [['grouptitle' => string, 'features' => [['label', 'corecheck', 'addoncheck']]]].
  */
@@ -1099,7 +1099,7 @@ function local_moderncommerce_addons_comparison(): array {
         foreach ($features as [$featurekey, $iscore]) {
             $rows[] = [
                 'label' => get_string($featurekey, 'local_moderncommerce'),
-                // Core features ship in the one-time licence; add-on features are sold separately.
+                // Core features ship as open-source software; premium add-on features are sold separately.
                 'corecheck' => $iscore,
                 'addoncheck' => !$iscore,
             ];

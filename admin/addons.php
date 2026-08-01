@@ -1,5 +1,5 @@
 <?php
-// This file is part of Moodle - http://moodle.org/
+// This file is part of Moodle and is licensed under the
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Modern Commerce add-on catalog.
@@ -90,7 +90,7 @@ function local_moderncommerce_addons_definitions(): array {
                 'local_ccp_enrolmentnotifier',
                 'local_modernenrolnotifier',
             ],
-            'geturl' => local_moderncommerce_addons_catalog_url('enrolment-notifier'),
+            'geturl' => 'https://marketplace.moodle.com/plugins/76',
             'openurls' => [
                 'local_ccp_enrolmentnotifier' => '/local/ccp_enrolmentnotifier/admin/index.php',
                 'local_modernenrolnotifier' => '/local/moderncommerce/admin/enrolment_notifier.php',
@@ -108,7 +108,7 @@ function local_moderncommerce_addons_definitions(): array {
                 'local_ccp_coursereminder',
                 'local_moderncoursereminder',
             ],
-            'geturl' => local_moderncommerce_addons_catalog_url('course-reminders'),
+            'geturl' => 'https://marketplace.moodle.com/plugins/68',
             'openurls' => [
                 'local_ccp_coursereminder' => '/local/ccp_coursereminder/admin/index.php',
                 'local_moderncoursereminder' => '/local/moderncommerce/admin/course_reminders.php',

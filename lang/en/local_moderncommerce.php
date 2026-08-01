@@ -1,5 +1,5 @@
 <?php
-// This file is part of Moodle - http://moodle.org/
+// This file is part of Moodle and is licensed under the
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * English language pack for Modern Commerce.
@@ -222,8 +222,8 @@ $string['addonscomponent'] = 'Component';
 $string['addonsdependency'] = 'Requires';
 $string['addonsget'] = 'Get add-on';
 $string['addonsinstalledsummary'] = '{$a->installed} of {$a->total} add-ons installed';
-$string['addonsintrobody'] = 'Your Modern Commerce licence includes the full commerce core plus a year of updates and support. The add-ons below are optional extensions for stores that are scaling — automation, recurring revenue and multi-channel messaging.';
-$string['addonsintrotitle'] = 'Your licence, plus optional add-ons';
+$string['addonsintrobody'] = 'Modern Commerce core is free and open-source software licensed under the GNU General Public License, version 3 or later. The premium add-ons below are optional extensions for stores that need additional automation and messaging features.';
+$string['addonsintrotitle'] = 'Open-source core, optional premium add-ons';
 $string['addonsopen'] = 'Open';
 $string['addonspremiumsummary'] = '{$a->premium} of {$a->total} add-ons are premium';
 $string['addonsrequirement'] = 'Requirement';
@@ -686,8 +686,8 @@ $string['close'] = 'Close';
 $string['closed'] = 'Closed';
 $string['cmp_coladdon'] = 'Extended add-ons';
 $string['cmp_coladdonnote'] = 'Sold separately';
-$string['cmp_colcore'] = 'Core licence';
-$string['cmp_colcorenote'] = 'One-time purchase · 1 year support';
+$string['cmp_colcore'] = 'Open-source core';
+$string['cmp_colcorenote'] = 'Free · GNU GPL v3 or later';
 $string['cmp_colfeature'] = 'Capability';
 $string['cmp_f_audit'] = 'Audit log';
 $string['cmp_f_autoenrol'] = 'Automatic enrolment on payment';
@@ -713,15 +713,15 @@ $string['cmp_f_reviews'] = 'Course reviews & ratings';
 $string['cmp_f_subemails'] = 'Subscription lifecycle emails';
 $string['cmp_f_subs'] = 'Subscriptions & recurring billing';
 $string['cmp_f_tax'] = 'Tax configuration';
-$string['cmp_footnote'] = 'Your one-time Modern Commerce licence covers everything needed to list a course, take payment, enrol the buyer and issue a receipt — plus a year of updates and support. Extended add-ons are optional purchases for stores that are scaling.';
+$string['cmp_footnote'] = 'Modern Commerce core is free and open source under the GNU GPL v3 or later. It includes everything needed to list a course, take payment, enrol the buyer and issue a receipt. Premium add-ons are optional purchases.';
 $string['cmp_grp_insight'] = 'Reporting & insight';
 $string['cmp_grp_learner'] = 'Learner experience';
 $string['cmp_grp_money'] = 'Money, orders & compliance';
 $string['cmp_grp_scale'] = 'Automation, recurring & scale';
 $string['cmp_grp_sell'] = 'Selling & storefront';
 $string['cmp_included'] = 'Included';
-$string['cmp_subtitle'] = 'One licence, one payment — the complete course-commerce platform. Add extended modules later, only when your store has grown into them.';
-$string['cmp_title'] = 'Everything included in your licence';
+$string['cmp_subtitle'] = 'Start with the complete open-source course-commerce platform. Add optional premium modules only when you need them.';
+$string['cmp_title'] = 'Included in the open-source core';
 $string['col_subject'] = 'Subject';
 $string['comment'] = 'Comment';
 $string['commentrequired'] = 'Review comment is required.';

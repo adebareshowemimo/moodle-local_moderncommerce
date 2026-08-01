@@ -29,6 +29,7 @@
         "mc:demo-install": "php cli/demo_data.php --install-defaults",
         "mc:demo-reset": "php cli/demo_data.php --reset-empty --yes",
         "mc:demo-seed": "php cli/demo_data.php --seed",
+        "mc:docs-check": "node scripts/check-docs.mjs",
         "mc:icon-audit": "node styles/tools/audit-bootstrap-icons.mjs",
         "mc:package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/git-package.ps1 -Force",
         "mc:perf-report": "node scripts/performance-report.mjs",

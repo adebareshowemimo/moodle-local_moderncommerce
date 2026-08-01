@@ -45,8 +45,7 @@ if (-not (Get-Command composer -ErrorAction SilentlyContinue)) {
 }
 
 $docsroot = Join-Path $pluginroot 'docs'
-$docscheck = Join-Path $pluginroot 'scripts/check-docs.mjs'
-if ((Test-Path $docsroot) -and (Test-Path $docscheck)) {
+if (Test-Path $docsroot) {
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
         throw "Required command 'node' was not found on PATH."
     }
@@ -82,10 +81,7 @@ try {
         '.git',
         '.githooks',
         '.github',
-        '.gitattributes',
         '.gitignore',
-        'docs',
-        'mc-buttons.md',
         'releases',
         'node_modules',
         'site',
@@ -117,6 +113,15 @@ try {
         throw 'Release ZIP cannot be built without vendor/autoload.php.'
     }
 
+    $license = Join-Path $tempplugin 'LICENSE'
+    if (-not (Test-Path $license)) {
+        throw 'Release ZIP cannot be built without the plugin root LICENSE file.'
+    }
+    $licensecontent = Get-Content -Raw -LiteralPath $license
+    if ($licensecontent -notmatch 'GNU GENERAL PUBLIC LICENSE') {
+        throw 'Release ZIP must contain the GNU General Public License.'
+    }
+
     Compress-Archive -Path $tempplugin -DestinationPath $zip -Force
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -134,8 +139,14 @@ try {
         if (-not ($entrynames | Where-Object { $_ -eq 'moderncommerce/version.php' })) {
             throw 'Release ZIP is missing moderncommerce/version.php.'
         }
+        if (-not ($entrynames | Where-Object { $_ -eq 'moderncommerce/LICENSE' })) {
+            throw 'Release ZIP is missing moderncommerce/LICENSE.'
+        }
         if (-not ($entrynames | Where-Object { $_ -eq 'moderncommerce/vendor/autoload.php' })) {
             throw 'Release ZIP is missing moderncommerce/vendor/autoload.php.'
+        }
+        if (-not ($entrynames | Where-Object { $_ -like 'moderncommerce/docs/*.md' })) {
+            throw 'Release ZIP is missing moderncommerce/docs/*.md documentation files.'
         }
     } finally {
         $archive.Dispose()

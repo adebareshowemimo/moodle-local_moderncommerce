@@ -2,10 +2,6 @@
 config.php
 moodledata/
 *_dataroot/
-*.md
-!README.md
-!MAINTAINING.md
-/docs/
 internaldocs/
 
 # IDE files

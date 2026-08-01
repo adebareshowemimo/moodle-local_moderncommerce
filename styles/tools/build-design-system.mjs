@@ -1,19 +1,10 @@
 #!/usr/bin/env node
 /**
- * This file is part of Moodle - http://moodle.org/
+ * This file is part of Moodle and is licensed under the
+ * GNU General Public License, version 3 or later.
  *
- * Moodle is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Moodle is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Moodle. If not, see <http://www.gnu.org/licenses/>.
+ * You may redistribute and modify it under the terms of the GPL.
+ * See the plugin root LICENSE file for complete terms.
  *
  * Modern Commerce design-system compiler.
  *
@@ -28,27 +19,20 @@ import sass from "sass";
 
 const root = process.cwd();
 const checkOnly = process.argv.includes("--check");
+const pluginRootCandidate = path.join(root, "public/local/moderncommerce");
 const moderncommerceRoot = fs.existsSync(path.join(root, "version.php"))
+    && fs.existsSync(path.join(root, "styles/scss"))
     ? root
-    : path.join(root, "public/local/moderncommerce");
+    : pluginRootCandidate;
 const scssRoot = path.join(moderncommerceRoot, "styles/scss");
 const stylesRoot = path.join(moderncommerceRoot, "styles");
 const bundlesRoot = path.join(stylesRoot, "bundles");
 const moodleHeader = `/**
- * This file is part of Moodle - http://moodle.org/
+ * This file is part of Moodle and is licensed under the
+ * GNU General Public License, version 3 or later.
  *
- * Moodle is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Moodle is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+ * You may redistribute and modify it under the terms of the GPL.
+ * See the plugin root LICENSE file for complete terms.
  *
  * Compiled Modern Commerce styles.
  *

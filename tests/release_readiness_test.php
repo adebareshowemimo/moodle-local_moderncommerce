@@ -1,5 +1,5 @@
 <?php
-// This file is part of Moodle - http://moodle.org/
+// This file is part of Moodle and is licensed under the
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Release readiness tests for local_moderncommerce.
@@ -59,6 +59,22 @@ final class release_readiness_test extends advanced_testcase {
         );
 
         $this->assertSame('>=8.3', $composer['require']['php']);
+    }
+
+    /**
+     * Open-source licence metadata and packaged notices agree.
+     */
+    public function test_open_source_licence_metadata_is_complete(): void {
+        global $CFG;
+
+        $pluginroot = $CFG->dirroot . '/local/moderncommerce';
+        $composer = json_decode(file_get_contents($pluginroot . '/composer.json'), true);
+        $licence = file_get_contents($pluginroot . '/LICENSE');
+
+        $this->assertSame('GPL-3.0-or-later', $composer['license']);
+        $this->assertStringContainsString('GNU GENERAL PUBLIC LICENSE', $licence);
+        $this->assertStringContainsString('Public License v3.0 or later', $licence);
+        $this->assertFileExists($pluginroot . '/thirdpartylibs.xml');
     }
 
     /**

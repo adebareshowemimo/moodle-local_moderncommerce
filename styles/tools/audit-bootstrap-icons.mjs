@@ -1,19 +1,10 @@
 #!/usr/bin/env node
 /**
- * This file is part of Moodle - http://moodle.org/
+ * This file is part of Moodle and is licensed under the
+ * GNU General Public License, version 3 or later.
  *
- * Moodle is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Moodle is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Moodle. If not, see <http://www.gnu.org/licenses/>.
+ * You may redistribute and modify it under the terms of the GPL.
+ * See the plugin root LICENSE file for complete terms.
  *
  * Modern Commerce Bootstrap Icons audit.
  *
@@ -26,9 +17,7 @@ import path from "node:path";
 import process from "node:process";
 
 const root = process.cwd();
-const pluginRoot = fs.existsSync(path.join(root, "version.php"))
-    ? root
-    : path.join(root, "public/local/moderncommerce");
+const pluginRoot = path.join(root, "public/local/moderncommerce");
 const iconScss = path.join(pluginRoot, "styles/scss/thirdparty/bootstrap-icons/_bootstrap-icons.scss");
 const fontDir = path.join(pluginRoot, "styles/scss/thirdparty/bootstrap-icons/fonts");
 const json = process.argv.includes("--json");
