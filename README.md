@@ -72,6 +72,8 @@ The complete maintainer procedure for versioning, validating, packaging, tagging
 
 - Project website and documentation: [moderncommerce.dev](https://moderncommerce.dev/)
 - Implementation, managed services, and commercial support: [moderncommerce.dev/support](https://moderncommerce.dev/support)
+- Maintainer website: [agunfoninteractivity.com](https://agunfoninteractivity.com/)
+- Contact Agunfon Interactivity: [agunfoninteractivity.com/contact](https://agunfoninteractivity.com/contact)
 - General support: `support@agunfoninteractivity.com`
 - Security reports: `support@agunfoninteractivity.com` with the subject `ModernCommerce security report`
 
