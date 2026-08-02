@@ -2,7 +2,15 @@
 
 Modern Commerce has one primary CLI for installing defaults, seeding demo data, auditing table coverage, refreshing demo data, and resetting to empty.
 
-Run commands from the Moodle root.
+Run commands from the Moodle web root—the directory that contains `admin/`, `course/`, and `local/`. In a split checkout where the web root is named `public`, either change into `public` first or include `public/` in the script path.
+
+```bash
+# From the Moodle web root.
+php local/moderncommerce/cli/demo_data.php --help
+
+# From the checkout root when Moodle is under public/.
+php public/local/moderncommerce/cli/demo_data.php --help
+```
 
 ## Install Defaults
 
@@ -12,23 +20,77 @@ Use this on a new site before real configuration:
 php local/moderncommerce/cli/demo_data.php --install-defaults
 ```
 
-This seeds safe defaults such as storefront widgets, email templates, and gateway records.
+This creates or synchronizes built-in gateway records, Modern Commerce role presets, email templates, subscription email templates, the email shell, and storefront widgets. It does not create fake Moodle courses, products, customers, or orders, so it is the appropriate mode for a production installation.
 
 ## Full Demo Seed
 
-Use this on development or staging sites:
+Use this only on development, staging, sales-demo, or disposable test sites:
 
 ```bash
 php local/moderncommerce/cli/demo_data.php --seed
 ```
 
-Optional counts:
+With no count options, the command requests 12 Moodle categories, 25 Moodle courses, one product per course, 120 orders, 12 coupons, 24 enrolment keys, and four reviews per course. It also creates bundles, prices, product metadata, subscription plans and features, lifecycle records, storefront content, reports, and demo role accounts.
+
+### Bash, Linux, macOS, and Git Bash
+
+Use a backslash (`\`) as the final character on each continued line:
 
 ```bash
-php local/moderncommerce/cli/demo_data.php --seed --categories=12 --courses=25 --orders=120 --coupons=12 --keys=24 --reviews=4
+php local/moderncommerce/cli/demo_data.php --seed \
+  --categories=12 \
+  --courses=25 \
+  --orders=120 \
+  --coupons=12 \
+  --keys=24 \
+  --reviews=4
 ```
 
-The demo seed can create Moodle course categories, Moodle courses, Modern Commerce products, bundles, coupons, enrolment keys, reviews, orders, subscription plans, feature mappings, storefront content, and supporting lifecycle records.
+Do not use PowerShell backticks in Bash. If Bash prints `--categories=12: command not found`, the first command may still have completed with default values, but the option lines were executed as separate commands.
+
+### Windows PowerShell
+
+Use a backtick (`` ` ``) as the final character on each continued line:
+
+```powershell
+php local/moderncommerce/cli/demo_data.php --seed `
+  --categories=12 `
+  --courses=25 `
+  --orders=120 `
+  --coupons=12 `
+  --keys=24 `
+  --reviews=4
+```
+
+Do not place spaces after a Bash backslash or PowerShell backtick. Alternatively, put the entire command on one line.
+
+### Seed options
+
+| Option | Default | Purpose |
+| --- | ---: | --- |
+| `--userid=N` | First site administrator | Owner for user-scoped sample records. |
+| `--categories=N` | `12` | Number of `MCDEMO-CAT-*` Moodle course categories. |
+| `--courses=N` | `25` | Number of `MCDEMO-COURSE-*` Moodle courses. |
+| `--products=N` | `0` | Product count; `0` creates one product per demo course. |
+| `--orders=N` | `120` | Number of orders with varied lifecycle states. |
+| `--coupons=N` | `12` | Number of sample coupon definitions. |
+| `--keys=N` | `24` | Number of sample enrolment keys. |
+| `--reviews=N` | `4` | Requested reviews per course; `0` disables reviews. Actual reviews are limited by the number of usable Moodle users. |
+
+The full seed also creates ten marked role-preview users. Their usernames and shared demo password are documented in [Demo role logins](demo-role-logins.md).
+
+### Reading the result
+
+A successful run prints these groups:
+
+- **Install defaults**: gateways, role presets, email templates, and storefront widgets.
+- **Catalog/order sample**: Moodle categories and courses, products, bundles, coupons, keys, reviews, and orders.
+- **Subscription matrix**: plans, features, and enabled mappings.
+- **Supplemental lifecycle groups**: checkout, marketing, contact, notification, subscription, and report records.
+- **Demo role accounts**: created or updated role-preview users.
+- **Table coverage audit**: row counts for every Modern Commerce table and a list of empty tables.
+
+An empty optional table does not by itself mean the seed failed. For example, the review-reaction table can remain empty when there are not enough distinct reviewers to generate reactions. Treat a non-zero process exit code, a PHP exception, or an explicit `cli_error` message as a failure.
 
 ## Audit Data Coverage
 
@@ -40,13 +102,25 @@ Use this after install or after demo seeding to see which Modern Commerce tables
 
 ## Refresh Demo Data
 
-This deletes existing Modern Commerce table data and seeded Moodle demo courses, then seeds again:
+This deletes existing Modern Commerce table data and `MCDEMO-*` Moodle courses/categories, then seeds again:
 
 ```bash
 php local/moderncommerce/cli/demo_data.php --refresh --yes
 ```
 
-Use only on development or staging sites.
+You can pass the same count options used by `--seed`:
+
+```bash
+php local/moderncommerce/cli/demo_data.php --refresh --yes \
+  --categories=12 \
+  --courses=25 \
+  --orders=120 \
+  --coupons=12 \
+  --keys=24 \
+  --reviews=4
+```
+
+Use `--refresh` when you need the requested counts applied to a clean demo dataset. Use it only on development or staging sites.
 
 ## Reset to Empty
 
@@ -56,7 +130,23 @@ This clears Modern Commerce table data and seeded Moodle demo courses:
 php local/moderncommerce/cli/demo_data.php --reset-empty --yes
 ```
 
-Do not run this against production unless you deliberately want to remove Modern Commerce data.
+This is destructive. Do not run it against production unless you deliberately intend to remove all Modern Commerce table data. It does not delete the Moodle role definitions.
+
+## Demo Role Accounts Only
+
+Create or update the marked role-preview users without seeding the full catalog:
+
+```bash
+php local/moderncommerce/cli/demo_data.php --seed-role-users
+```
+
+Remove only those marked users:
+
+```bash
+php local/moderncommerce/cli/demo_data.php --remove-role-users --yes
+```
+
+See [Demo role logins](demo-role-logins.md) for usernames, credentials, and the role-access summary.
 
 ## Related Seed Commands
 

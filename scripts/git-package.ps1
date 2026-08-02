@@ -122,14 +122,50 @@ try {
         throw 'Release ZIP must contain the GNU General Public License.'
     }
 
-    Compress-Archive -Path $tempplugin -DestinationPath $zip -Force
-
+    Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zipstream = [System.IO.File]::Open(
+        $zip,
+        [System.IO.FileMode]::CreateNew,
+        [System.IO.FileAccess]::Write,
+        [System.IO.FileShare]::None
+    )
+    $ziparchive = [System.IO.Compression.ZipArchive]::new(
+        $zipstream,
+        [System.IO.Compression.ZipArchiveMode]::Create
+    )
+    try {
+        Get-ChildItem -LiteralPath $temproot -Recurse -File |
+            ForEach-Object {
+                $entryname = $_.FullName.Substring($temproot.Length).TrimStart('\', '/').Replace('\', '/')
+                $entry = $ziparchive.CreateEntry(
+                    $entryname,
+                    [System.IO.Compression.CompressionLevel]::Optimal
+                )
+                $inputstream = [System.IO.File]::OpenRead($_.FullName)
+                $entrystream = $entry.Open()
+                try {
+                    $inputstream.CopyTo($entrystream)
+                } finally {
+                    $entrystream.Dispose()
+                    $inputstream.Dispose()
+                }
+            }
+    } finally {
+        $ziparchive.Dispose()
+        $zipstream.Dispose()
+    }
+
     $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
     try {
         $entrynames = @($archive.Entries |
             Where-Object { $_.FullName -ne '' } |
             ForEach-Object { $_.FullName.Replace('\', '/') })
+        $invalidseparators = @($archive.Entries |
+            Where-Object { $_.FullName.Contains('\') })
+        if ($invalidseparators.Count -gt 0) {
+            throw 'Release ZIP entries must use portable forward-slash path separators.'
+        }
         $topdirs = @($entrynames |
             ForEach-Object { ($_ -split '/')[0] } |
             Sort-Object -Unique)
