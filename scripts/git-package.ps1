@@ -75,6 +75,8 @@ if (Test-Path $zip) {
 $temproot = Join-Path $env:TEMP ('moderncommerce-release-' + [guid]::NewGuid().ToString('N'))
 $tempplugin = Join-Path $temproot 'moderncommerce'
 New-Item -ItemType Directory -Force -Path $tempplugin | Out-Null
+$temproot = (Resolve-Path -LiteralPath $temproot).Path
+$tempplugin = (Resolve-Path -LiteralPath $tempplugin).Path
 
 try {
     $excludednames = @(
