@@ -140,11 +140,15 @@ try {
         Get-ChildItem -LiteralPath $temproot -Recurse -File |
             ForEach-Object {
                 $normalizedpath = $_.FullName.Replace('\', '/')
-                $normalizedbase = $tempplugin.Replace('\', '/').TrimEnd('/') + '/'
-                if (-not $normalizedpath.StartsWith($normalizedbase, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $pluginmarker = '/moderncommerce/'
+                $markerindex = $normalizedpath.IndexOf(
+                    $pluginmarker,
+                    [System.StringComparison]::OrdinalIgnoreCase
+                )
+                if ($markerindex -lt 0) {
                     throw "Release source file is outside the staged plugin directory: $normalizedpath"
                 }
-                $relativepath = $normalizedpath.Substring($normalizedbase.Length)
+                $relativepath = $normalizedpath.Substring($markerindex + $pluginmarker.Length)
                 $entryname = 'moderncommerce/' + $relativepath
                 $entry = $ziparchive.CreateEntry(
                     $entryname,
