@@ -137,7 +137,8 @@ try {
     try {
         Get-ChildItem -LiteralPath $temproot -Recurse -File |
             ForEach-Object {
-                $entryname = $_.FullName.Substring($temproot.Length).TrimStart('\', '/').Replace('\', '/')
+                $relativepath = $_.FullName.Substring($tempplugin.Length).TrimStart([char[]]'\/').Replace('\', '/')
+                $entryname = 'moderncommerce/' + $relativepath
                 $entry = $ziparchive.CreateEntry(
                     $entryname,
                     [System.IO.Compression.CompressionLevel]::Optimal
