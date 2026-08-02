@@ -112,7 +112,7 @@ class get_storefront_page extends external_api {
      * @param context_system $context System context.
      */
     private static function validate_public_context(context_system $context): void {
-        global $CFG, $PAGE;
+        global $PAGE;
 
         if (isloggedin() && !isguestuser()) {
             self::validate_context($context);
@@ -120,9 +120,12 @@ class get_storefront_page extends external_api {
             return;
         }
 
+        // This endpoint is the read-only data source for the public storefront.
+        // Do not depend on the site's guest-role capability assignment here: that
+        // assignment may be missing on upgraded sites and Moodle then reports the
+        // public AJAX request as login-required. Editing and all write endpoints
+        // remain protected by login and the managestorefront capability.
         $PAGE->set_context($context);
-        $guestuserid = !empty($CFG->siteguest) ? (int)$CFG->siteguest : 0;
-        require_capability('local/moderncommerce:viewcatalog', $context, $guestuserid);
     }
 
     /**
