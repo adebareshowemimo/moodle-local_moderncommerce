@@ -26,8 +26,8 @@ defined('MOODLE_INTERNAL') || die();
 
 if ($hassiteconfig) {
     // Create the root-level category only if it doesn't already exist.
-    if (!$ADMIN->locate('moderncommercepro')) {
-        $ADMIN->add('root', new admin_category('moderncommercepro', get_string('pluginname', 'local_moderncommerce')), 'badges');
+    if (!$ADMIN->locate('coursecommerce')) {
+        $ADMIN->add('root', new admin_category('coursecommerce', get_string('pluginname', 'local_moderncommerce')), 'badges');
     }
 
     // Add an h4 heading page labeled "Modern Commerce" within the tab.
@@ -41,7 +41,7 @@ if ($hassiteconfig) {
         get_string('pluginname', 'local_moderncommerce'),
         ''
     ));
-    $ADMIN->add('moderncommercepro', $moderncommerceheading);
+    $ADMIN->add('coursecommerce', $moderncommerceheading);
 
     // Settings page.
     $settings = new admin_settingpage('local_moderncommerce_settings', get_string('settings', 'local_moderncommerce'));
@@ -468,7 +468,7 @@ if ($hassiteconfig) {
         ));
     }
 
-    $ADMIN->add('moderncommercepro', $settings);
+    $ADMIN->add('coursecommerce', $settings);
 
     // Catalog display settings are configured per-widget from the storefront side panel
     // (/local/moderncommerce/index.php in edit mode), not from a store-wide admin page.
@@ -527,10 +527,10 @@ if ($hassiteconfig) {
         ]
     ));
 
-    $ADMIN->add('moderncommercepro', $navsettings);
+    $ADMIN->add('coursecommerce', $navsettings);
 
     // Dashboard.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_dashboard',
         get_string('dashboard', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/index.php'),
@@ -538,7 +538,7 @@ if ($hassiteconfig) {
     ));
 
     // Add-on catalog.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_addons',
         get_string('addons', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/addons.php'),
@@ -546,7 +546,7 @@ if ($hassiteconfig) {
     ));
 
     // Commerce Settings.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_admin_settings',
         get_string('commercesettings', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/settings.php'),
@@ -554,7 +554,7 @@ if ($hassiteconfig) {
     ));
 
     // Manage orders.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_orders',
         get_string('manageorders', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/orders.php'),
@@ -562,7 +562,7 @@ if ($hassiteconfig) {
     ));
 
     // Manage courses (was pricing).
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_pricing',
         get_string('managecourses', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/pricing.php'),
@@ -570,7 +570,7 @@ if ($hassiteconfig) {
     ));
 
     // Manage product categories.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_categories',
         get_string('managecategories', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/categories.php'),
@@ -578,7 +578,7 @@ if ($hassiteconfig) {
     ));
 
     // Manage coupons.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_coupons',
         get_string('managecoupons', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/coupons.php'),
@@ -586,7 +586,7 @@ if ($hassiteconfig) {
     ));
 
     // Manage payment gateways.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_gateways',
         get_string('paymentgateways', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/gateways.php'),
@@ -594,7 +594,7 @@ if ($hassiteconfig) {
     ));
 
     // Manage bundles.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_bundles',
         get_string('managebundles', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/bundles.php'),
@@ -602,7 +602,7 @@ if ($hassiteconfig) {
     ));
 
     // Manage course reviews.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_reviews',
         get_string('coursereviews', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/course_reviews.php'),
@@ -610,7 +610,7 @@ if ($hassiteconfig) {
     ));
 
     // Manage enrollment keys.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_keys',
         get_string('managekeys', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/keys.php'),
@@ -618,7 +618,7 @@ if ($hassiteconfig) {
     ));
 
     // Manage bundle enrollment keys.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_bundlekeys',
         get_string('managebundlekeys', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/bundle_keys.php'),
@@ -626,7 +626,7 @@ if ($hassiteconfig) {
     ));
 
     // Manage invoices.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_invoices',
         get_string('invoices', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/invoices.php'),
@@ -634,7 +634,7 @@ if ($hassiteconfig) {
     ));
 
     // Reports.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_reports',
         get_string('reports', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/reports.php'),
@@ -642,7 +642,7 @@ if ($hassiteconfig) {
     ));
 
     // Webhook configuration.
-    $ADMIN->add('moderncommercepro', new admin_externalpage(
+    $ADMIN->add('coursecommerce', new admin_externalpage(
         'local_moderncommerce_webhooks',
         get_string('webhooks', 'local_moderncommerce'),
         new moodle_url('/local/moderncommerce/admin/webhooks.php'),
@@ -791,5 +791,5 @@ if ($hassiteconfig) {
         ));
     }
 
-    $ADMIN->add('moderncommercepro', $subscriptionsettings);
+    $ADMIN->add('coursecommerce', $subscriptionsettings);
 }
