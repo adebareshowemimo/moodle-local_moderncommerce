@@ -79,7 +79,7 @@ if ($hassiteconfig) {
             'local_moderncommerce/primary_currency',
             get_string('primarycurrency', 'local_moderncommerce'),
             get_string('primarycurrency_desc', 'local_moderncommerce'),
-            'NGN',
+            'USD',
             $currencyoptions
         ));
 

@@ -107,7 +107,7 @@ final class release_readiness_test extends advanced_testcase {
             'payment_max_retries' => 99,
         ]);
 
-        $this->assertSame('NGN', $settings['primary_currency']);
+        $this->assertSame('USD', $settings['primary_currency']);
         $this->assertSame('before', $settings['currency_position']);
         $this->assertSame(6, $settings['decimal_places']);
         $this->assertSame(',', $settings['decimal_separator']);

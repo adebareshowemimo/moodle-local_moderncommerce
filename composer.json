@@ -19,7 +19,8 @@
     },
     "config": {
         "vendor-dir": "vendor",
-        "optimize-autoloader": true
+        "optimize-autoloader": true,
+        "process-timeout": 900
     },
     "scripts": {
         "mc:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/git-check.ps1",

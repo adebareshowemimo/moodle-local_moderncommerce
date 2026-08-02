@@ -1029,7 +1029,7 @@ class admin_external extends external_api {
             'subtotal' => '15,000.00',
             'discount' => '500.00',
             'tax' => '499.00',
-            'currency' => 'NGN',
+            'currency' => 'USD',
             'payment_method' => 'Stripe',
             'plan_name' => 'Pro Plan',
             'billing_cycle' => 'monthly',

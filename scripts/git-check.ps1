@@ -49,7 +49,10 @@ function Invoke-PhpLint {
     try {
         $errors = @()
         Get-ChildItem -Recurse -Filter *.php -File |
-            Where-Object { $_.FullName -notmatch '\\vendor\\' } |
+            Where-Object {
+                $_.FullName -notmatch '\\vendor\\' -and
+                $_.FullName -notmatch '\\.codex-[^\\]+\\'
+            } |
             ForEach-Object {
                 $output = & php -l $_.FullName 2>&1
                 if ($LASTEXITCODE -ne 0) {
@@ -118,6 +121,7 @@ function Invoke-LegacyButtonGuard {
     $ignoredroots = @(
         'vendor/',
         'node_modules/',
+        '.codex-',
         'tests/',
         'releases/',
         'amd/build/',
@@ -185,7 +189,13 @@ try {
         -Name 'Moodle PHPCS' `
         -WorkingDirectory $pluginroot `
         -File 'phpcs' `
-        -Arguments @('--standard=moodle', '--extensions=php', '--ignore=vendor', '--report=summary', '.')
+        -Arguments @(
+            '--standard=moodle',
+            '--extensions=php',
+            '--ignore=*/vendor/*,*/node_modules/*,*/.codex-*/*',
+            '--report=summary',
+            '.'
+        )
 } catch {
     if (-not $PhpcsReportOnly) {
         throw

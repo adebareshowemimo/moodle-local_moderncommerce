@@ -28,7 +28,7 @@ class commerce_settings_service {
     private const COMPONENT = 'local_moderncommerce';
 
     /** @var string Default single active currency. */
-    private const DEFAULT_CURRENCY = 'NGN';
+    private const DEFAULT_CURRENCY = 'USD';
 
     /** @var string[] Allowed checkout field visibility values. */
     private const FIELD_VISIBILITY = ['hidden', 'optional', 'required'];

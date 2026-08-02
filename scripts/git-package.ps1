@@ -92,7 +92,7 @@ try {
     )
 
     Get-ChildItem -LiteralPath $pluginroot -Force |
-        Where-Object { $_.Name -notin $excludednames } |
+        Where-Object { $_.Name -notin $excludednames -and $_.Name -notlike '.codex-*' } |
         ForEach-Object {
             Copy-Item -LiteralPath $_.FullName -Destination $tempplugin -Recurse -Force
         }

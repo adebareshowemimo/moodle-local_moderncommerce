@@ -36,7 +36,7 @@ Use this tab before creating production prices. Currency formatting affects prod
 
 | Setting | What it controls |
 | --- | --- |
-| Primary currency | The store currency used for prices and payments. Default is `NGN`. Supported codes include `NGN`, `USD`, `EUR`, `GBP`, `ZAR`, `GHS`, `KES`, `UGX`, `TZS`, `XOF`, `XAF`, `EGP`, `MAD`, `CAD`, `AUD`, `INR`, `CNY`, `JPY`, `BRL`, `CHF`, and `SGD`. |
+| Primary currency | The store currency used for prices and payments. Default is `USD`. Supported codes include `NGN`, `USD`, `EUR`, `GBP`, `ZAR`, `GHS`, `KES`, `UGX`, `TZS`, `XOF`, `XAF`, `EGP`, `MAD`, `CAD`, `AUD`, `INR`, `CNY`, `JPY`, `BRL`, `CHF`, and `SGD`. |
 | Currency position | Whether the currency symbol/code appears before or after the amount. Default is `before`. |
 | Decimal places | Number of decimal digits to show. Valid range is `0` to `6`; default is `2`. |
 | Thousand separator | Character used between thousands. Default is comma. Only the first character is used. |

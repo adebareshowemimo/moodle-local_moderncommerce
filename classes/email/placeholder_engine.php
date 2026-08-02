@@ -62,7 +62,7 @@ class placeholder_engine {
                 '{subtotal}' => 'Subtotal before tax/discount',
                 '{discount}' => 'Discount amount',
                 '{tax}' => 'Tax amount',
-                '{currency}' => 'Currency code (NGN, USD, etc.)',
+                '{currency}' => 'Currency code (USD, EUR, etc.)',
                 '{payment_method}' => 'Payment method used (Stripe, PayPal, etc.)',
             ],
             'order_extra' => [

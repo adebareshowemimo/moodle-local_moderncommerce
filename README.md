@@ -16,7 +16,7 @@ ModernCommerce was created by Adebare Showemimo and is maintained by [Agunfon In
 - Configurable storefront pages, widgets, branding, and email templates
 - Learner dashboards for courses, certificates, grades, orders, wishlists, and subscriptions
 - Reviews, notifications, abandoned-cart recovery, reports, and audit logs
-- [22 configurable admin-dashboard widgets](docs/dashboard-widgets.md): 4 KPI tiles and 18 analytics or table widgets
+- [22 configurable admin-dashboard widgets](https://github.com/adebareshowemimo/moodle-local_moderncommerce/blob/main/docs/dashboard-widgets.md): 4 KPI tiles and 18 analytics or table widgets
 - Optional integrations for Course Reminder and Enrolment Notifier add-ons
 
 ## Requirements
@@ -83,6 +83,7 @@ Routine repository, dependency, security, testing, documentation, and operationa
 
 - Project website and documentation: [moderncommerce.dev](https://moderncommerce.dev/)
 - Implementation, managed services, and commercial support: [moderncommerce.dev/support](https://moderncommerce.dev/support)
+- Voluntary open-source project support: [moderncommerce.dev/support-development](https://moderncommerce.dev/support-development) or [support ModernCommerce on Ko-fi](https://ko-fi.com/moderncommerce)
 - Maintainer website: [agunfoninteractivity.com](https://agunfoninteractivity.com/)
 - Contact Agunfon Interactivity: [agunfoninteractivity.com/contact](https://agunfoninteractivity.com/contact)
 - General support: `support@agunfoninteractivity.com`
@@ -91,6 +92,8 @@ Routine repository, dependency, security, testing, documentation, and operationa
 Please do not disclose suspected security vulnerabilities in a public issue. Include the affected version, reproduction steps, potential impact, and whether the issue is already public.
 
 Community support is provided on a best-effort basis. Paid response times, installation assistance, migrations, custom integrations, and operational support are available separately through [ModernCommerce support](https://moderncommerce.dev/support).
+
+Ko-fi support is voluntary. It does not purchase technical support, professional services, roadmap priority, governance rights, or a tax-deductible charitable contribution.
 
 ## Contributing
 

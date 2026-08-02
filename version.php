@@ -25,10 +25,10 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_moderncommerce';
-$plugin->version   = 2026072301;
+$plugin->version   = 2026080100;
 $plugin->requires  = 2026042000;
 // Moodle 5.2+.
 $plugin->supported = [502, 502];
 // Tested against Moodle 5.2.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '2.1.6';
+$plugin->release   = '2.1.7';
