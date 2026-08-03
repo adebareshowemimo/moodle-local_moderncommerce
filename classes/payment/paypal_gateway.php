@@ -647,6 +647,9 @@ class paypal_gateway implements gateway_interface, gateway_return_interface {
      * @return array Decoded response.
      */
     private function post_paypal_json(string $path, array $payload): array {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
         $token = $this->request_access_token();
         if ($token === '') {
             throw new \moodle_exception('gatewaynotconfigured', 'local_moderncommerce', '', $this->get_name());
@@ -687,6 +690,9 @@ class paypal_gateway implements gateway_interface, gateway_return_interface {
      * @return string Access token or empty string.
      */
     private function request_access_token(): string {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
         $config = $this->get_config();
         $clientid = (string)($config['client_id'] ?? '');
         $secret = (string)($config['secret_key'] ?? '');

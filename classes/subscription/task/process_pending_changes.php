@@ -22,7 +22,7 @@ use local_moderncommerce\subscription\services\upgrade_service;
  * Process pending plan changes (downgrades scheduled for end of billing period).
  *
  * @package    local_moderncommerce
- * @copyright  2026 Course Commerce Pro
+ * @copyright  2026 Modern Commerce
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class process_pending_changes extends \core\task\scheduled_task {

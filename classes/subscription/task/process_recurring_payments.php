@@ -220,6 +220,9 @@ class process_recurring_payments extends \core\task\scheduled_task {
      * @return bool Success.
      */
     private function charge_via_paypal(object $subscription): bool {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
         // PayPal subscriptions are managed by PayPal.
         // This checks the subscription status rather than charging directly.
 

@@ -28,6 +28,7 @@ vendor/
 
 # Release packages
 releases/
+site/
 
 # Temporary files
 *.tmp

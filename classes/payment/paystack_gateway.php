@@ -437,6 +437,9 @@ class paystack_gateway implements gateway_interface, gateway_return_interface {
      * @return array Response data
      */
     protected function make_request($method, $endpoint, $data = []) {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
         $config = $this->get_config();
 
         if (empty($config['secret_key'])) {

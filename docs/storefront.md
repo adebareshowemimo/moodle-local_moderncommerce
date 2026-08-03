@@ -64,6 +64,45 @@ If the **Modern Commerce storefront** option is not visible after installing or 
 - `/local/moderncommerce/icons_bootstrap.php` - curated icon browser
 - `/local/moderncommerce/styleguide.php` - design-system styleguide
 
+## Store Pages Administration
+
+Open **Modern Commerce > Store pages** or visit `/local/moderncommerce/admin/pages.php`. The route requires the system capability `local/moderncommerce:managestorefront`.
+
+The page manages these buyer-facing routes:
+
+| Page | Public route | Availability |
+| --- | --- | --- |
+| Catalog | `/local/moderncommerce/index.php` | Required; cannot be disabled |
+| About | `/local/moderncommerce/about.php` | Optional |
+| Support | `/local/moderncommerce/support.php` | Optional |
+| Terms | `/local/moderncommerce/terms.php` | Optional |
+| Privacy | `/local/moderncommerce/privacy.php` | Optional |
+| Refund policy | `/local/moderncommerce/refund-policy.php` | Optional |
+
+Optional pages are enabled by default until a manager explicitly disables them. A disabled optional page returns Moodle's page-not-found response to ordinary visitors. A user with `local/moderncommerce:managestorefront` can still open it for review.
+
+The actions on each row are:
+
+- **Visibility switch**: enable or disable an optional page. The catalog is always required.
+- **Manage widgets**: open the layout drawer for that page.
+- **Preview**: open the public page.
+
+The screen also links to `/local/moderncommerce/admin/global.php`, where global widgets are managed for all storefront pages. The page table displays each configured title and summary, but it does not directly edit those text values.
+
+### Layout Drawer
+
+The **Manage widgets** drawer loads the page's assigned widgets and applicable global widgets. Widgets are grouped by render zone. A manager can move a widget up or down within its zone, show or hide it, and save the revised order and visibility.
+
+Saving re-sequences widgets inside each zone. It does not create a widget, move it to another zone, or edit widget content. Use storefront edit mode or the widget gallery for those operations.
+
+If no widgets are assigned, seed the standard defaults with:
+
+```bash
+php local/moderncommerce/cli/demo_data.php --install-defaults
+```
+
+Before enabling an optional page publicly, preview it on desktop and mobile, verify global elements, test links and forms, and confirm policy or contact content is complete.
+
 ## Widget System
 
 Storefront widgets are stored in:

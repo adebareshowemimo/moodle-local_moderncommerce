@@ -22,7 +22,7 @@ use local_moderncommerce\subscription\api\plan_api;
  * Upgrade service - Handles subscription plan changes with proration.
  *
  * @package    local_moderncommerce
- * @copyright  2026 Course Commerce Pro
+ * @copyright  2026 Modern Commerce
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class upgrade_service {

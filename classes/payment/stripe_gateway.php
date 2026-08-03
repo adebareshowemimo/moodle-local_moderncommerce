@@ -618,6 +618,9 @@ class stripe_gateway implements gateway_interface, gateway_return_interface {
      * @return array Response data
      */
     protected function make_request($method, $endpoint, $data = []) {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
         $config = $this->get_config();
         $apikey = $config['secret_key'];
 

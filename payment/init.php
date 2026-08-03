@@ -90,7 +90,7 @@ try {
     }
 
     redirect($redirecturl);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     debugging('Payment init error for ' . $gatewayid . ' order ' . $orderid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
     redirect(
         $learnerappurl('orders/' . (int)$orderid),
