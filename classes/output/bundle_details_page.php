@@ -154,7 +154,8 @@ class bundle_details_page implements renderable, templatable {
 
         // Category.
         $category = $DB->get_record('course_categories', ['id' => $course->category]);
-        $categoryname = $category ? format_string($category->name) : '';
+        // React escapes on render, so hand it unescaped text or "&" arrives as "&amp;".
+        $categoryname = $category ? format_string($category->name, true, ['escape' => false]) : '';
 
         // Meta data.
         $coursemeta = meta_service::get_course_meta($course->id);
@@ -190,7 +191,7 @@ class bundle_details_page implements renderable, templatable {
             'courseviewurl' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
             'imageurl' => $imageurl,
             'hasimage' => !empty($imageurl),
-            'name' => format_string($course->fullname),
+            'name' => format_string($course->fullname, true, ['escape' => false]),
             'summary' => $summary,
             'categoryname' => $categoryname,
             'duration' => $duration,
@@ -237,7 +238,7 @@ class bundle_details_page implements renderable, templatable {
 
         $data = [
             'bundleid' => $this->bundle->id,
-            'name' => format_string($this->bundle->name),
+            'name' => format_string($this->bundle->name, true, ['escape' => false]),
             'isprogram' => !empty($this->bundle->isprogram),
             'typelabel' => !empty($this->bundle->isprogram)
                 ? get_string('program', 'local_moderncommerce')
@@ -266,7 +267,7 @@ class bundle_details_page implements renderable, templatable {
         ];
         $data['bundle'] = [
             'id' => (int)$this->bundle->id,
-            'name' => format_string($this->bundle->name),
+            'name' => format_string($this->bundle->name, true, ['escape' => false]),
             'description' => !empty($this->bundle->description)
                 ? format_text($this->bundle->description, FORMAT_PLAIN)
                 : '',

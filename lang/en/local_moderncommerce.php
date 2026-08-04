@@ -407,6 +407,7 @@ $string['bundleaddedtocart'] = 'Bundle added to cart.';
 $string['bundlealreadyincart'] = 'This bundle is already in your cart.';
 $string['bundlealreadypurchased'] = 'You already have access to this bundle.';
 $string['bundlearchived'] = 'Bundle archived.';
+$string['bundlecurriculum'] = 'Bundle curriculum';
 $string['bundledetails'] = 'Bundle Details';
 $string['bundleenrollmentkeys'] = 'Bundle Enrollment Keys';
 $string['bundleenrollmentkeysdesc'] = 'Redeem a bundle key to unlock all included learning.';
