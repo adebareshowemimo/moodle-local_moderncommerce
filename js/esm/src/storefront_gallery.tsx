@@ -1189,6 +1189,12 @@ export default function StorefrontGallery(props: Props) {
     const styleConfigValue = (key: string, fallback: unknown = ""): unknown =>
         currentStyleState?.styleconfig[key] ?? fallback;
 
+    // The testimonial block is on unless it has been explicitly switched off (stored as 1/0).
+    const videoHeroQuoteVisible = (): boolean => {
+        const value = videoHeroPatchValue("showquote");
+        return !(value === false || value === 0 || value === "0" || value === "false");
+    };
+
     const currentBreadcrumbStyle = (): string =>
         String(currentStyleState?.settingspatch.style ?? currentWidgetData.style ?? "");
 
@@ -1520,6 +1526,13 @@ export default function StorefrontGallery(props: Props) {
             case "infocard":
                 return (
                     <>
+                        <label className="mcg-switch" key="showquote">
+                            <span>{l(labels, "videohero_showquote")}</span>
+                            <input type="checkbox" checked={videoHeroQuoteVisible()}
+                                onChange={(event) => updateSettingsPatch("showquote",
+                                    event.currentTarget.checked ? 1 : 0)} />
+                            <i aria-hidden="true" />
+                        </label>
                         {renderControl(
                             "infocardbgcolor",
                             l(labels, "videohero_infocardbgcolor"),

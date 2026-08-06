@@ -725,6 +725,7 @@ class public_page {
             'videohero_secondarybuttoncolor' => $gallerystring('widgetgallery_videohero_secondarybuttoncolor'),
             'videohero_secondarybuttontextcolor' => $gallerystring('widgetgallery_videohero_secondarybuttontextcolor'),
             'videohero_sectionbgcolor' => $gallerystring('widgetgallery_videohero_sectionbgcolor'),
+            'videohero_showquote' => $gallerystring('widgetgallery_videohero_showquote'),
             'videohero_sourcenone' => $gallerystring('widgetgallery_videohero_sourcenone'),
             'videohero_sourceupload' => $gallerystring('widgetgallery_videohero_sourceupload'),
             'videohero_sourceurl' => $gallerystring('widgetgallery_videohero_sourceurl'),

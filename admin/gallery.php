@@ -193,6 +193,7 @@ $gallerylabels = [
     'videohero_secondarybuttoncolor' => $gallerystring('widgetgallery_videohero_secondarybuttoncolor'),
     'videohero_secondarybuttontextcolor' => $gallerystring('widgetgallery_videohero_secondarybuttontextcolor'),
     'videohero_sectionbgcolor' => $gallerystring('widgetgallery_videohero_sectionbgcolor'),
+    'videohero_showquote' => $gallerystring('widgetgallery_videohero_showquote'),
     'videohero_spacingbottom' => $gallerystring('widgetgallery_videohero_spacingbottom'),
     'videohero_spacingtop' => $gallerystring('widgetgallery_videohero_spacingtop'),
     'videohero_textcolor' => $gallerystring('widgetgallery_videohero_textcolor'),

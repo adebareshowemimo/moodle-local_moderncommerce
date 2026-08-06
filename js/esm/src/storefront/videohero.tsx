@@ -29,8 +29,13 @@ export type VideoHeroData = {
     infocardbgcolor?: string; infoiconbgcolor?: string; infoiconcolor?: string;
     infoheadingcolor?: string; infoheadingfontsize?: string | number; infotextcolor?: string;
     video: Video; infoitems: InfoItem[]; quote: {text: string; author: string; hasauthor: boolean};
+    showquote?: boolean | number | string;
     labels: {playvideo: string};
 };
+
+// The gallery patches settings client-side as 1/0, so accept both booleans and numeric flags.
+const isOff = (value: unknown): boolean =>
+    value === false || value === 0 || value === "0" || value === "false";
 
 const ArrowRight = () => (
     <svg className="bi" width="1em" height="1em" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"
@@ -64,6 +69,13 @@ export default function VideoHero({data, title}: {data: VideoHeroData; title?: s
         ["--mc-vh-info-heading-font-size" as string]: infoHeadingFontSize > 0 ? `${infoHeadingFontSize}px` : undefined,
         ["--mc-vh-info-text-color" as string]: data.infotextcolor || undefined,
     } as CSSProperties;
+
+    const showQuote = !isOff(data.showquote) && data.quote.text !== "";
+    // With the quote hidden the info boxes own the whole card, so split it into equal
+    // Bootstrap-style columns: 3 boxes => 4+4+4, 4 boxes => 3+3+3+3.
+    const infoCols = data.infoitems.length;
+    const infoCardClass = "mc-vh__infocard"
+        + (!showQuote && infoCols >= 2 && infoCols <= 4 ? ` mc-vh__infocard--cols-${infoCols}` : "");
 
     const play = () => { if (v.haspanelvideo) { setPlaying(true); } };
     const boxStyle: CSSProperties = v.hasposter ? {backgroundImage: `url('${v.posterurl}')`} : {};
@@ -129,9 +141,9 @@ export default function VideoHero({data, title}: {data: VideoHeroData; title?: s
                 </div>
             </section>
 
-            {(data.infoitems.length > 0 || data.quote.text) && (
+            {(data.infoitems.length > 0 || showQuote) && (
                 <div className="mc-vh__infowrap">
-                    <div className="mc-vh__infocard">
+                    <div className={infoCardClass}>
                         {data.infoitems.map((item, i) => (
                             <div className="mc-vh__infocol" key={i}>
                                 {item.hasicon && (
@@ -145,7 +157,7 @@ export default function VideoHero({data, title}: {data: VideoHeroData; title?: s
                                 </div>
                             </div>
                         ))}
-                        {data.quote.text && (
+                        {showQuote && (
                             <div className="mc-vh__quote">
                                 <p className="mc-vh__quotetext">
                                     <i className="bi bi-quote mc-vh__accent mc-vh__quoteicon" aria-hidden="true" />

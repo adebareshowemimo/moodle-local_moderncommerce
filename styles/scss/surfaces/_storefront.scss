@@ -2375,6 +2375,11 @@
 }
 .mc-vh__infocol { display: flex; align-items: center; gap: .85rem; flex: 1 1 200px; }
 .mc-vh__infocol:not(:last-child) { border-right: 1px solid rgba(0, 0, 0, .08); padding-right: 1.5rem; }
+/* Quote hidden: the info boxes split the card into equal Bootstrap-style columns
+   (2 => 6+6, 3 => 4+4+4, 4 => 3+3+3+3), allowing for the 1.5rem flex gap. */
+.mc-vh__infocard--cols-2 > .mc-vh__infocol { flex: 0 0 calc((100% - 1.5rem) / 2); max-width: calc((100% - 1.5rem) / 2); }
+.mc-vh__infocard--cols-3 > .mc-vh__infocol { flex: 0 0 calc((100% - 3rem) / 3); max-width: calc((100% - 3rem) / 3); }
+.mc-vh__infocard--cols-4 > .mc-vh__infocol { flex: 0 0 calc((100% - 4.5rem) / 4); max-width: calc((100% - 4.5rem) / 4); }
 .mc-vh__infoicon {
     width: 50px;
     height: 50px;
@@ -2411,6 +2416,9 @@
     }
     .mc-vh__infowrap { margin-top: 1.25rem; }
     .mc-vh__infocol:not(:last-child) { border-right: 0; padding-right: 0; }
+    .mc-vh__infocard--cols-2 > .mc-vh__infocol,
+    .mc-vh__infocard--cols-3 > .mc-vh__infocol,
+    .mc-vh__infocard--cols-4 > .mc-vh__infocol { flex: 1 1 200px; max-width: 100%; }
     .mc-vh__quote { border-left: 0; padding-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) {

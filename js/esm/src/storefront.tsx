@@ -715,6 +715,7 @@ export const safePresetFieldNames = [
     "heropanelbordercolor", "heropaneltextcolor", "heropanelaccentcolor",
     "heropanelvaluecolor", "heropanelvaluefontsize",
     "primarybuttoncolor", "primarybuttontextcolor", "secondarybuttoncolor", "secondarybuttontextcolor",
+    "showquote",
     "infocardbgcolor", "infoiconbgcolor", "infoiconcolor", "infoheadingcolor", "infoheadingfontsize",
     "infotextcolor", "headingfontsize", "timerbgcolor", "timernumbercolor", "timernumberfontsize",
     "timerlabelcolor", "timerlabelfontsize", "buttoncolor", "buttontextcolor", "buttonfontsize",
@@ -3798,6 +3799,8 @@ export default function Storefront(props: Props) {
                 return (
                     <>
                         {renderEditorSchemaField("infoitems", "Info card boxes", "list")}
+                        {renderEditorSchemaField("showquote",
+                            labels.videohero_showquote ?? "Show testimonial quote", "checkbox")}
                         {renderEditorSchemaField("quote_text", "Testimonial quote", "textarea")}
                         {renderEditorSchemaField("quote_author", "Testimonial author")}
                         {renderVideoHeroValueColourControl("infocardbgcolor",

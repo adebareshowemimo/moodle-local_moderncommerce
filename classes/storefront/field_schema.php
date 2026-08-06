@@ -374,10 +374,13 @@ class field_schema {
                         ['name' => 'text', 'label' => 'Text', 'type' => 'text', 'default' => ''],
                     ],
                 ],
+                ['name' => 'showquote', 'label' => 'Show testimonial quote', 'type' => 'checkbox', 'default' => true],
                 ['name' => 'quote_text', 'label' => 'Testimonial quote', 'type' => 'textarea',
-                    'default' => 'Our mission is to make premium learning easy to discover, purchase, and start.'],
+                    'default' => 'Our mission is to make premium learning easy to discover, purchase, and start.',
+                    'showwhen' => ['field' => 'showquote', 'truthy' => true]],
                 ['name' => 'quote_author', 'label' => 'Testimonial author', 'type' => 'text',
-                    'default' => 'Modern Commerce'],
+                    'default' => 'Modern Commerce',
+                    'showwhen' => ['field' => 'showquote', 'truthy' => true]],
             ],
             'mediastorycarousel' => [
                 [

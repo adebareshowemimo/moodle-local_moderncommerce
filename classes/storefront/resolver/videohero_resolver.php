@@ -93,6 +93,7 @@ class videohero_resolver implements widget_resolver {
             'infotextcolor' => branding::runtime_colour((string) ($s['infotextcolor'] ?? ''), '', []),
             'video' => $this->resolve_video($s),
             'infoitems' => $this->resolve_infoitems($s, $ctx),
+            'showquote' => (bool) ($s['showquote'] ?? true),
             'quote' => $this->resolve_quote($s, $ctx),
             'labels' => [
                 'playvideo' => get_string('p1_storefront_playvideo', 'local_moderncommerce'),
