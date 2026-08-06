@@ -22,6 +22,23 @@ php local/moderncommerce/cli/demo_data.php --install-defaults
 
 This creates or synchronizes built-in gateway records, Modern Commerce role presets, email templates, subscription email templates, the email shell, and storefront widgets. It does not create fake Moodle courses, products, customers, or orders, so it is the appropriate mode for a production installation.
 
+## Open the Site on the Storefront
+
+Installing the plugin does not change where Moodle sends visitors. To make the storefront the page people land on at the site root, set both of these under **Site administration > Appearance > Navigation** (`/admin/settings.php?section=navigation`):
+
+1. Tick **Enable Home** (`enablemyhome`). Required, and **off by default** on a fresh Moodle 5.x site.
+2. Set **Start page for users** (`defaulthomepage`) to **Modern Commerce storefront**.
+
+```bash
+php admin/cli/cfg.php --name=enablemyhome --set=1
+php admin/cli/cfg.php --name=defaulthomepage --set=/local/moderncommerce/index.php
+php admin/cli/purge_caches.php
+```
+
+Skipping **Enable Home** is the usual cause of a site that opens the storefront for logged-in users but shows the login page to everyone else: Moodle core redirects anonymous visitors away from the site root before the storefront redirect is reached. Verify the site root in both a logged-out and a logged-in session after saving.
+
+See [Storefront Pages and Widgets](storefront.md) for the anonymous-access requirements that go with this (`forcelogin`, the visitor role capability, and per-widget audience).
+
 ## Full Demo Seed
 
 Use this only on development, staging, sales-demo, or disposable test sites:

@@ -41,20 +41,49 @@ Server-side validation is still required even when the widget renders in the bro
 
 ## Use the Storefront as the Moodle Home Page
 
-Modern Commerce registers `/local/moderncommerce/index.php` as a selectable Moodle default homepage. Use this when the site should open directly into the commerce storefront instead of Moodle's standard front page.
+Modern Commerce registers `/local/moderncommerce/index.php` as a selectable Moodle start page. Use this when the site should open directly into the commerce storefront instead of Moodle's standard front page.
 
-Set it from Moodle administration:
+Both required settings live on the same page: **Site administration > Appearance > Navigation** (`/admin/settings.php?section=navigation`).
 
-1. Go to **Site administration**.
-2. Search for **Default home page**.
-3. Open the setting usually shown as **Default home page for users**.
-4. Select **Modern Commerce storefront**.
-5. Save changes.
-6. Test the site root URL, for example `https://example.com/`, in both logged-out and logged-in sessions.
+### Required steps
 
-When this option is selected, Modern Commerce also redirects anonymous front-page requests from Moodle's root page to `/local/moderncommerce/index.php`. This keeps public visitors on the storefront even though Moodle core normally applies the default homepage setting more directly to logged-in users.
+1. Tick **Enable Home** (`enablemyhome`). This step is required and the setting is **off by default** on a fresh Moodle 5.x site.
+2. Set **Start page for users** (`defaulthomepage`, labelled *Default home page for users* on earlier Moodle releases) to **Modern Commerce storefront**.
+3. Save changes.
+4. Purge caches if the storefront option is not listed in the dropdown.
+5. Test the site root URL, for example `https://example.com/`, in both a logged-out and a logged-in session.
 
-If the **Modern Commerce storefront** option is not visible after installing or upgrading the plugin, purge Moodle caches and reload the setting page. Do not edit Moodle core `index.php` or add a theme-level redirect for this; use the registered default homepage option so Moodle navigation and login redirects continue to behave predictably.
+The same configuration from the command line:
+
+```bash
+php admin/cli/cfg.php --name=enablemyhome --set=1
+php admin/cli/cfg.php --name=defaulthomepage --set=/local/moderncommerce/index.php
+php admin/cli/purge_caches.php
+```
+
+### Why Enable Home is required
+
+Moodle core `index.php` redirects anonymous visitors straight to the login page whenever `enablemyhome` is empty, and it does so before the branch that forwards visitors to a URL start page. Logged-in users are still routed to the storefront by core, so a missed step shows up as a site that opens the store for signed-in users and the login page for everybody else.
+
+### What Modern Commerce does once the setting is applied
+
+- Core resolves the start page to a URL rather than one of its built-in pages, and routes logged-in users to the storefront.
+- Modern Commerce redirects anonymous front-page requests, which core leaves on the site home. The listener is `\local_moderncommerce\hook\callbacks::redirect_frontpage_to_catalog`, registered on `\core\hook\output\before_http_headers` in `db/hooks.php`.
+- The dropdown option itself is contributed by `\local_moderncommerce\hook\callbacks::extend_default_homepage` on `\core_user\hook\extend_default_homepage`. Hook registrations are cached, so purge caches after installing or upgrading the plugin.
+
+### Also required for anonymous visitors
+
+The storefront is public by design, but three site-level conditions must hold or visitors are still sent to the login page or reach a storefront with missing sections.
+
+| Requirement | Where | Notes |
+| --- | --- | --- |
+| **Force users to log in** off (`forcelogin`) | Site administration > General > Security > Site security settings | When enabled, every page requires a session and no public storefront is possible. |
+| Visitor role holds `local/moderncommerce:viewcatalog` | **Role for visitors** in Site administration > Users > Permissions > User policies, then that role's definition | The `guest` archetype receives this capability at install. |
+| Widget **audience** set to `all` or `guest` | Storefront edit mode, per widget | A widget restricted to logged-in users stays hidden from anonymous visitors even when the page loads. |
+
+Optionally enable **Open to search engines** (`opentowebcrawlers`, in Site security settings) so the storefront can be indexed.
+
+Do not edit Moodle core `index.php` and do not add a theme-level redirect for this. Use the registered start page option so Moodle navigation, login redirects, and continue links keep behaving predictably.
 
 ## Admin Routes
 
