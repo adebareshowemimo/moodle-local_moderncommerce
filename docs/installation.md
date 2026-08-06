@@ -47,6 +47,21 @@ Set at least:
 - notification sender/support details
 - storefront/navigation labels
 
+## Make the Storefront the Site Start Page
+
+Optional, but required if the site root should open the store instead of Moodle's front page. Both settings are on **Site administration > Appearance > Navigation** (`/admin/settings.php?section=navigation`):
+
+1. Tick **Enable Home** (`enablemyhome`). Required, and **off by default** on a fresh Moodle 5.x site. Without it, Moodle core sends anonymous visitors from the site root to the login page before the storefront redirect runs.
+2. Set **Start page for users** (`defaulthomepage`) to **Modern Commerce storefront**.
+
+```bash
+php admin/cli/cfg.php --name=enablemyhome --set=1
+php admin/cli/cfg.php --name=defaulthomepage --set=/local/moderncommerce/index.php
+php admin/cli/purge_caches.php
+```
+
+Also confirm the storefront is reachable without a session: **Force users to log in** (`forcelogin`) off, and the visitor role holding `local/moderncommerce:viewcatalog`. Full detail is in [Storefront Pages and Widgets](storefront.md).
+
 ## Configure Cron
 
 Modern Commerce uses scheduled tasks for cart cleanup, key expiration, abandoned cart recovery, reports, notification queue processing, and subscriptions.

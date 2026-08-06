@@ -96,6 +96,20 @@ If emails are not sending:
 php local/moderncommerce/cli/test_emails.php --userid=2
 ```
 
+## Site Root Does Not Open the Storefront
+
+Two settings are required, both under **Site administration > Appearance > Navigation** (`/admin/settings.php?section=navigation`):
+
+- **Enable Home** (`enablemyhome`) ticked. Off by default on a fresh Moodle 5.x site.
+- **Start page for users** (`defaulthomepage`) set to **Modern Commerce storefront**.
+
+```bash
+php admin/cli/cfg.php --name=enablemyhome
+php admin/cli/cfg.php --name=defaulthomepage
+```
+
+Expect `1` and `/local/moderncommerce/index.php`. While `enablemyhome` is empty, Moodle core redirects anonymous visitors away from the site root before it reaches the branch that forwards to a URL start page, so the store opens for logged-in users but shows the login page to everyone else. If the **Modern Commerce storefront** option is missing from the dropdown, purge caches: hook registrations are cached. See [Storefront Pages and Widgets](storefront.md).
+
 ## Styling and Cached Assets
 
 If CSS or storefront widgets look stale:
