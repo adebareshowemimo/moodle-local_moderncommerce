@@ -608,10 +608,14 @@ const passesVisibilityRule = (rule: GalleryVisibilityRule, value: unknown): bool
     return true;
 };
 
+// Style controls are always scalar. Some safe keys (e.g. "columns") are a number on one
+// widget but a repeater of raw rows on another (the footer's link columns), and patching the
+// raw rows back over the resolved data breaks the renderer — so keep scalars only.
 const pickVisualSettings = (widget: WidgetInstance): Record<string, unknown> => {
     const settings = parseJson<Record<string, unknown>>(widget.settings, {});
     const data = parseJson<Record<string, unknown>>(widget.data, {});
-    return Object.fromEntries(Object.entries({...data, ...settings}).filter(([key]) => safeKeySet.has(key)));
+    return Object.fromEntries(Object.entries({...data, ...settings}).filter(([key, value]) =>
+        safeKeySet.has(key) && (typeof value === "string" || typeof value === "number" || typeof value === "boolean")));
 };
 
 const compactPresetObject = (
