@@ -14,10 +14,12 @@
 
 import {useEffect, useState} from "react";
 import type {Dispatch} from "react";
-import {badgeClass, callMoodleService, clampProgress, formatCount, Labels} from "./learner_common";
+import {callMoodleService, clampProgress, formatCount, Labels} from "./learner_common";
 import {mcClasses, useModernCommerceClassSync} from "./design_system";
 import ModernLearnerLayout, {type LearnerLayoutContext} from "./learner_layout";
 import {LearnerStatStrip, LearnerStatTile} from "./learner_stat_tiles";
+import LearnerCourseRow from "./learner_course_row";
+import {McTablePagination} from "./table_components";
 
 type Course = {
     id: number;
@@ -145,73 +147,6 @@ function LoadingState({labels}: {labels: Labels}) {
     );
 }
 
-function CourseCard({
-    course,
-    labels,
-}: {
-    course: Course;
-    labels: Labels;
-}) {
-    const progress = clampProgress(course.progress);
-
-    return (
-        <a className={mcClasses("mc-learner-course-card")} href={course.courseurl}>
-            {course.hasimage ? (
-                <img
-                    src={course.imageurl}
-                    alt=""
-                    className={mcClasses("mc-learner-course-card__thumb")}
-                    width={72}
-                    height={54}
-                    loading="lazy"
-                />
-            ) : (
-                <span className={mcClasses("mc-learner-course-card__thumb d-flex align-items-center justify-content-center")}>
-                    <i className="bi bi-play-circle text-muted" aria-hidden="true" />
-                </span>
-            )}
-            <span className={mcClasses("mc-learner-course-card__body")}>
-                <span className="d-flex align-items-start justify-content-between gap-2">
-                    <span className={mcClasses("mc-learner-course-card__title")}>{course.name}</span>
-                    <span className={mcClasses(`mc-badge mc-badge--${course.completed ? "success" : badgeClass("neutral")}`)}>
-                        {course.statuslabel}
-                    </span>
-                </span>
-                <span className={mcClasses("mc-learner-course-card__meta d-flex flex-wrap gap-2")}>
-                    {course.categoryname && <span>{course.categoryname}</span>}
-                    {course.modulecount > 0 && (
-                        <span>{formatCount(course.modulecount)} {labels.includedcourses}</span>
-                    )}
-                    {course.sourcelabel && <span>{course.sourcelabel}</span>}
-                </span>
-                <span className="d-flex align-items-center justify-content-between gap-2">
-                    <span className={mcClasses("mc-progress-bar-wrap flex-grow-1")}>
-                        <span
-                            className={mcClasses(
-                                "mc-progress-bar-fill",
-                                course.completed && "mc-progress-bar-fill--complete"
-                            )}
-                            style={{width: `${progress}%`}}
-                        />
-                    </span>
-                    <span className={mcClasses("mc-cell-muted small")}>{course.progresslabel}</span>
-                </span>
-                <span className={mcClasses("mc-cell-muted small d-block mt-2")}>
-                    <i className="bi bi-calendar-check me-1" aria-hidden="true" />
-                    {labels.enrolled}: {course.enrolleddatelabel}
-                    {course.lastaccesslabel && (
-                        <>
-                            <span className="mx-2">|</span>
-                            <i className="bi bi-clock-history me-1" aria-hidden="true" />
-                            {course.lastaccesslabel}
-                        </>
-                    )}
-                </span>
-                <span className="visually-hidden">{labels.takecourse}</span>
-            </span>
-        </a>
-    );
-}
 
 function Pagination({
     data,
@@ -227,31 +162,16 @@ function Pagination({
     }
 
     return (
-        <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mt-3">
-            <span className={mcClasses("mc-cell-muted small")}>
-                {formatCount(data.page + 1)} {labels.of} {formatCount(data.totalpages)}
-            </span>
-            <div className="btn-group" role="group" aria-label={labels.mycourses}>
-                <button
-                    type="button"
-                    className={mcClasses("mc-button btn-mc-secondary py-1 px-2")}
-                    disabled={!data.hasprevious}
-                    onClick={() => onPage(Math.max(0, data.page - 1))}
-                    aria-label={labels.previouspage}
-                >
-                    <i className="bi bi-chevron-left" aria-hidden="true" />
-                </button>
-                <button
-                    type="button"
-                    className={mcClasses("mc-button btn-mc-secondary py-1 px-2")}
-                    disabled={!data.hasnext}
-                    onClick={() => onPage(data.page + 1)}
-                    aria-label={labels.nextpage}
-                >
-                    <i className="bi bi-chevron-right" aria-hidden="true" />
-                </button>
-            </div>
-        </div>
+        <McTablePagination
+            className="px-3 py-3"
+            previousLabel={label(labels, "previous", "Previous")}
+            nextLabel={label(labels, "next", "Next")}
+            pageLabel={`${formatCount(data.page + 1)} ${labels.of} ${formatCount(data.totalpages)}`}
+            previousDisabled={!data.hasprevious}
+            nextDisabled={!data.hasnext}
+            onPrevious={() => onPage(Math.max(0, data.page - 1))}
+            onNext={() => onPage(data.page + 1)}
+        />
     );
 }
 
@@ -437,10 +357,12 @@ export default function LearnerCourses({
                     <div className={mcClasses("mc-card-header")}>
                         <h2 className={mcClasses("mc-card-title")}>{formatCount(data.total)} {labels.course}</h2>
                     </div>
-                    <div className={mcClasses("mc-card-body")}>
-                        {courses.map((course) => (
-                            <CourseCard key={course.id} course={course} labels={labels} />
-                        ))}
+                    <div className={mcClasses("mc-card-body p-0")}>
+                        <div role="list" aria-label={label(labels, "mycourses", "My courses")}>
+                            {courses.map((course) => (
+                                <LearnerCourseRow key={course.id} course={course} labels={labels} />
+                            ))}
+                        </div>
                         <Pagination data={data} labels={labels} onPage={(page) => updateFilters({page})} />
                     </div>
                 </div>

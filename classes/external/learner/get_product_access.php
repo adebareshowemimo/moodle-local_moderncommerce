@@ -291,7 +291,11 @@ class get_product_access extends external_api {
             'enrolleddate' => self::enrolled_date($userid, $courseid),
             'enrolleddatelabel' => self::enrolled_date_label($userid, $courseid),
             'lastaccess' => $lastaccess,
-            'lastaccesslabel' => $lastaccess > 0 ? userdate($lastaccess, get_string('strftimedatetimeshort')) : get_string('never'),
+            // Date only, matching enrolleddatelabel: a clock time in a course card is
+            // noise the learner cannot act on.
+            'lastaccesslabel' => $lastaccess > 0
+                ? userdate($lastaccess, get_string('strftimedateshort'))
+                : get_string('never'),
             'source' => 'product',
             'sourcelabel' => self::product_type_label($producttype),
             'producttype' => $producttype,

@@ -124,6 +124,8 @@ function Invoke-LegacyButtonGuard {
         '.codex-',
         'tests/',
         'releases/',
+        'site/',
+        'videos/',
         'amd/build/',
         'js/esm/build/'
     )
@@ -141,6 +143,9 @@ function Invoke-LegacyButtonGuard {
                 $relative = $_.FullName.Substring($pluginroot.Length).TrimStart('\', '/').Replace('\', '/')
                 $extension = $_.Extension.ToLowerInvariant()
                 if ($extensions -notcontains $extension) {
+                    return $false
+                }
+                if ($relative -match '(^|/)(vendor|node_modules)/') {
                     return $false
                 }
                 if ($allowedfiles -contains $relative -or $ignoredfiles -contains $relative) {

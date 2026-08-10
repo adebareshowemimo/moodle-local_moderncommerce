@@ -49,6 +49,7 @@ export type LearnerLayoutContext = {
     stats?: LearnerLayoutStats;
     features?: LearnerLayoutFeatures;
     avatar?: LearnerLayoutAvatar;
+    cartcount?: number;
     labels?: Labels;
 };
 
@@ -63,7 +64,6 @@ export type LearnerNavKey =
     | "access"
     | "certificates"
     | "redeem"
-    | "bundlekeys"
     | "cart"
     | "checkout"
     | "calendar"
@@ -81,6 +81,8 @@ type ModernLearnerLayoutProps = {
     stats?: LearnerLayoutStats;
     avatarEditor?: LearnerAvatarEditor;
     actions?: ReactNode;
+    /** Live cart size; overrides the server-seeded count so the badge tracks edits. */
+    cartCount?: number;
     children: ReactNode;
 };
 
@@ -103,6 +105,7 @@ type NavItem = {
     labelText: string;
     icon: string;
     href: string;
+    badge?: number;
 };
 
 const label = (labels: Labels, key: string): string => labels[key] || key;
@@ -154,8 +157,10 @@ const defaultProfile = (labels: Labels): LearnerLayoutUser => ({
     initials: "LC",
 });
 
-const navItems = (labels: Labels, layout?: LearnerLayoutContext): NavItem[] => {
+const navItems = (labels: Labels, layout?: LearnerLayoutContext, cartCountOverride?: number): NavItem[] => {
     const subscriptionsEnabled = layout?.features?.subscriptions !== false;
+    // Live count when the current screen knows it, otherwise the server-seeded value.
+    const cartCount = cartCountOverride ?? layout?.cartcount ?? 0;
     const items: NavItem[] = [
         {
             key: "dashboard",
@@ -211,23 +216,15 @@ const navItems = (labels: Labels, layout?: LearnerLayoutContext): NavItem[] => {
             icon: "bi-key",
             href: learnerAppUrl("redeem"),
         },
-        {
-            key: "bundlekeys",
-            labelText: label(labels, "bundleenrollmentkeys"),
-            icon: "bi-layers",
-            href: learnerAppUrl("bundlekeys"),
-        },
+        // Checkout is a step in the cart flow, not a destination: it is only reachable
+        // with a non-empty cart, so it is surfaced by the cart's CTA rather than as a
+        // standing nav item. The #/checkout route still works and highlights Cart.
         {
             key: "cart",
             labelText: label(labels, "cart"),
             icon: "bi-bag",
             href: learnerAppUrl("cart"),
-        },
-        {
-            key: "checkout",
-            labelText: label(labels, "checkout"),
-            icon: "bi-shield-check",
-            href: learnerAppUrl("checkout"),
+            badge: cartCount > 0 ? cartCount : undefined,
         },
         {
             key: "calendar",
@@ -394,12 +391,14 @@ function ProfileSidebar({
     layout,
     profile,
     avatarEditor,
+    cartCount,
 }: {
     activeNav: LearnerNavKey;
     labels: Labels;
     layout?: LearnerLayoutContext;
     profile: LearnerLayoutUser;
     avatarEditor?: LearnerAvatarEditor;
+    cartCount?: number;
 }) {
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const avatarButtonLabel = label(labels, "changeprofileimage");
@@ -456,17 +455,31 @@ function ProfileSidebar({
             </div>
 
             <nav className={mcClasses("mc-modern-side-nav")} aria-label={label(labels, "learnernavigation")}>
-                {navItems(labels, layout).map((item) => (
-                    <a
-                        className={mcClasses("mc-modern-side-nav__link", item.key === activeNav && "active")}
-                        href={item.href}
-                        aria-current={item.key === activeNav ? "page" : undefined}
-                        key={item.key}
-                    >
-                        <i className={`bi ${item.icon}`} aria-hidden="true" />
-                        <span>{item.labelText}</span>
-                    </a>
-                ))}
+                {navItems(labels, layout, cartCount).map((item) => {
+                    // Checkout has no nav item of its own; it is a step within the cart
+                    // flow, so the Cart item stays highlighted while checking out.
+                    const isActive = item.key === activeNav || (item.key === "cart" && activeNav === "checkout");
+
+                    return (
+                        <a
+                            className={mcClasses("mc-modern-side-nav__link", isActive && "active")}
+                            href={item.href}
+                            aria-current={isActive ? "page" : undefined}
+                            key={item.key}
+                        >
+                            <i className={`bi ${item.icon}`} aria-hidden="true" />
+                            <span>{item.labelText}</span>
+                            {item.badge !== undefined && (
+                                <span
+                                    className={mcClasses("mc-modern-side-nav__badge")}
+                                    aria-label={`${item.badge} ${label(labels, "cartitems")}`}
+                                >
+                                    {item.badge > 99 ? "99+" : item.badge}
+                                </span>
+                            )}
+                        </a>
+                    );
+                })}
             </nav>
             {effectiveEditor && isAvatarModalOpen && (
                 <AvatarEditorModal
@@ -623,6 +636,7 @@ export default function ModernLearnerLayout({
     profile,
     avatarEditor,
     actions,
+    cartCount,
     children,
 }: ModernLearnerLayoutProps) {
     const resolvedLabels = learnerLabels(labels, layout);
@@ -638,6 +652,7 @@ export default function ModernLearnerLayout({
                     layout={layout}
                     profile={resolvedProfile}
                     avatarEditor={avatarEditor}
+                    cartCount={cartCount}
                 />
                 <main className={mcClasses("mc-modern-learner-main")}>
                     {actions && <div className={mcClasses("mc-modern-page-actions")}>{actions}</div>}

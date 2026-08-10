@@ -50,6 +50,7 @@ type McTablePaginationProps = {
     nextDisabled?: boolean;
     onPrevious: () => void;
     onNext: () => void;
+    className?: string;
 };
 
 export type McTableActionMenuItem = {
@@ -164,32 +165,49 @@ export function McTablePagination({
     nextDisabled = false,
     onPrevious,
     onNext,
+    className,
 }: McTablePaginationProps) {
+    // Position first, controls right: the reader's question is "where am I" before
+    // "how do I move", and it keeps the buttons in one place down a stack of tables.
     return (
-        <div className={mcClasses("mc-product-pagination")}>
-            <button
-                className={mcClasses("mc-button mc-btn-soft")}
-                disabled={previousDisabled}
-                onClick={onPrevious}
-                type="button"
-            >
-                {previousLabel}
-            </button>
-            {pageLabel !== undefined && (
-                <span className={mcClasses("mc-cell-muted small")}>
+        <nav
+            className={mcClasses("mc-pagination", className)}
+            aria-label={typeof pageLabel === "string" ? pageLabel : undefined}
+        >
+            {/* Position shows whenever a caller supplies either a label or the numbers;
+                callers passing only page/totalPages still get "1 / 20" rather than a
+                silently empty slot. The empty span keeps the controls right-aligned. */}
+            {pageLabel !== undefined || (page !== undefined && totalPages !== undefined) ? (
+                <span className={mcClasses("mc-pagination-info")}>
                     {pageLabel}
-                    {page !== undefined && totalPages !== undefined && <> {page} / {totalPages}</>}
+                    {page !== undefined && totalPages !== undefined && (
+                        <>{pageLabel !== undefined ? " " : ""}{page} / {totalPages}</>
+                    )}
                 </span>
+            ) : (
+                <span />
             )}
-            <button
-                className={mcClasses("mc-button mc-btn-soft")}
-                disabled={nextDisabled}
-                onClick={onNext}
-                type="button"
-            >
-                {nextLabel}
-            </button>
-        </div>
+            <span className={mcClasses("mc-pagination-pages")}>
+                <button
+                    className={mcClasses("mc-pagination-btn")}
+                    disabled={previousDisabled}
+                    onClick={onPrevious}
+                    type="button"
+                >
+                    <i className="bi bi-chevron-left" aria-hidden="true" />
+                    {previousLabel}
+                </button>
+                <button
+                    className={mcClasses("mc-pagination-btn")}
+                    disabled={nextDisabled}
+                    onClick={onNext}
+                    type="button"
+                >
+                    {nextLabel}
+                    <i className="bi bi-chevron-right" aria-hidden="true" />
+                </button>
+            </span>
+        </nav>
     );
 }
 

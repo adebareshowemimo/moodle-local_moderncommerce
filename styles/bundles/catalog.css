@@ -1042,19 +1042,22 @@ body.mc-public-catalog-page .mc-course-card-detailsrow .mc-course-card-details {
   gap: 1rem;
 }
 
-.mc-pagination-nav {
+/* Scoped to the legacy catalog template's own container. These rules predate the shared
+   McTablePagination and would otherwise override it wherever both load, which is how the
+   storefront's catalogue widget ended up 1px larger than every other paginated screen. */
+.mc-catalog-pagination .mc-pagination-nav {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.mc-pagination-pages {
+.mc-catalog-pagination .mc-pagination-pages {
   display: flex;
   align-items: center;
   gap: 0.25rem;
 }
 
-.mc-pagination-btn {
+.mc-catalog-pagination .mc-pagination-btn {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   border: 1px solid var(--mc-border);
@@ -1067,17 +1070,17 @@ body.mc-public-catalog-page .mc-course-card-detailsrow .mc-course-card-details {
   gap: 0.5rem;
 }
 
-.mc-pagination-btn:hover:not(:disabled) {
+.mc-catalog-pagination .mc-pagination-btn:hover:not(:disabled) {
   background: var(--mc-bg-muted);
 }
 
-.mc-pagination-btn:disabled {
+.mc-catalog-pagination .mc-pagination-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.mc-pagination-prev,
-.mc-pagination-next {
+.mc-catalog-pagination .mc-pagination-prev,
+.mc-catalog-pagination .mc-pagination-next {
   font-weight: 500;
 }
 
@@ -1524,12 +1527,22 @@ body.mc-public-catalog-page .mc-catalog-type-tab:hover {
 
 body.mc-public-catalog-page .mc-catalog-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
   align-items: stretch;
   grid-auto-rows: 1fr;
 }
 
+@media (max-width: 1023px) {
+  body.mc-public-catalog-page .mc-catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 639px) {
+  body.mc-public-catalog-page .mc-catalog-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 body.mc-public-catalog-page .mc-course-card {
   min-width: 0;
   border: 1px solid var(--mc-border);
@@ -2345,10 +2358,20 @@ body.mc-public-catalog-page .mc-catalog-section .mc-catalog-filter-toggle {
 }
 
 .local-moderncommerce-storefront .mw-widget--catalog .mc-catalog-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
 }
 
+@media (max-width: 1023px) {
+  .local-moderncommerce-storefront .mw-widget--catalog .mc-catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 639px) {
+  .local-moderncommerce-storefront .mw-widget--catalog .mc-catalog-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .local-moderncommerce-storefront .mw-widget--catalog .mc-course-card-footer {
   gap: 0.75rem;
   flex-wrap: wrap;

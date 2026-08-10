@@ -26,7 +26,7 @@ require(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/local/moderncommerce/lib.php');
 
 use local_moderncommerce\output\learner_shell;
-use local_moderncommerce\output\public_page;
+
 $existingorderid = optional_param('orderid', 0, PARAM_INT);
 $directcourseid = optional_param('courseid', 0, PARAM_INT);
 $directbundleid = optional_param('bundleid', 0, PARAM_INT);
@@ -161,32 +161,7 @@ local_moderncommerce_set_breadcrumb(
 );
 
 $shell = learner_shell::create('checkout');
-$publiclinks = [];
-$publiclinkmap = [
-    'terms' => [
-        'label' => get_string('terms', 'local_moderncommerce'),
-        'route' => '/local/moderncommerce/terms.php',
-    ],
-    'privacy' => [
-        'label' => get_string('privacy', 'local_moderncommerce'),
-        'route' => '/local/moderncommerce/privacy.php',
-    ],
-    'refund-policy' => [
-        'label' => get_string('refundpolicy', 'local_moderncommerce'),
-        'route' => '/local/moderncommerce/refund-policy.php',
-    ],
-    'support' => [
-        'label' => get_string('support', 'local_moderncommerce'),
-        'route' => '/local/moderncommerce/support.php',
-    ],
-];
-foreach ($publiclinkmap as $key => $link) {
-    if (public_page::is_enabled($key)) {
-        $publiclinks[] = [
-            'key' => $key, 'label' => $link['label'], 'url' => (new moodle_url($link['route']))->out(false),
-        ];
-    }
-}
+$publiclinks = local_moderncommerce_public_links();
 
 $reactconfig = json_encode([
     'component' => '@moodle/lms/local_moderncommerce/checkout',

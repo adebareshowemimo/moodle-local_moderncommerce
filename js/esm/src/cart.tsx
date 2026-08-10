@@ -413,6 +413,7 @@ export default function Cart({
             subtitle={labels.checkoutdesc || labels.cartandcheckout || labels.securepayment}
             labels={labels}
             layout={layout}
+            cartCount={data.itemcount}
             actions={(
                 <a href={data.urls.catalog} className={mcClasses("mc-button btn-mc-secondary")}>
                     <i className="bi bi-arrow-left" aria-hidden="true" />

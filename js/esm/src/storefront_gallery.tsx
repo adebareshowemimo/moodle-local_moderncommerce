@@ -155,7 +155,9 @@ const textValue = (value: unknown): string => typeof value === "string" ? value 
 
 const widgetKey = (widget: WidgetInstance): string => `${widget.type}:${widget.id}`;
 const safeKeySet = new Set(safePresetFieldNames);
-const universalStyleKeySet = new Set(universalStyleFields.map((field) => field.key));
+// Widened to Set<string>: universalStyleFields is `as const`, so the inferred key union
+// would reject the plain string keys this set is used to membership-test.
+const universalStyleKeySet = new Set<string>(universalStyleFields.map((field) => field.key));
 const breadcrumbSettingItems: Array<{key: BreadcrumbSettingItem; label: string; icon: string}> = [
     {key: "breadcrumb", label: "Breadcrumb", icon: "bi-signpost-split"},
     {key: "title", label: "Title", icon: "bi-type-h1"},

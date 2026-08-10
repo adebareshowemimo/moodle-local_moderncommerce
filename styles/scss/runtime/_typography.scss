@@ -72,8 +72,7 @@
     .mc-alert__body,
     .mc-bundle-hero p,
     .mc-course-hero p,
-    .mc-course-card-instructor,
-    .mc-learner-course-card__meta
+    .mc-course-card-instructor
 ) {
     color: var(--mc-body-color);
     font-size: var(--mc-fs-body);
@@ -184,7 +183,6 @@
 
 .path-local-moderncommerce :where(
     .mc-course-card-title,
-    .mc-learner-course-card__title,
     .mc-product-listing-product a,
     .mc-timeline-item__label,
     .mc-price__main,

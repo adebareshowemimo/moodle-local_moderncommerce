@@ -83,7 +83,7 @@ type LearnerProductAccessProps = {
     activeNav?: LearnerNavKey;
 };
 
-const label = (labels: Labels, key: string): string => labels[key] || key;
+const label = (labels: Labels, key: string, fallback = ""): string => labels[key] || fallback || key;
 
 const courseActionLabel = (course: Course, labels: Labels): string => {
     if (course.completed) {

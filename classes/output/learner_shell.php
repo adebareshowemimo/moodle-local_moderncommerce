@@ -266,6 +266,23 @@ class learner_shell {
         return $initials !== '' ? $initials : '?';
     }
     /**
+     * Number of items in the current user's active cart.
+     *
+     * Drives the sidebar cart badge. Guests have no cart, so they always read zero.
+     *
+     * @return int
+     */
+    public static function get_cart_count(): int {
+        global $USER;
+
+        if (!isloggedin() || isguestuser()) {
+            return 0;
+        }
+
+        return \local_moderncommerce\api\cart_api::get_cart_count((int) $USER->id);
+    }
+
+    /**
      * Get user stats for the sidebar.
      *
      * @return array
@@ -325,6 +342,9 @@ class learner_shell {
             'features' => [
                 'subscriptions' => self::subscriptions_available(),
             ],
+            // Seeds the sidebar cart badge so it is correct on first paint rather than
+            // flashing in once the cart request resolves.
+            'cartcount' => self::get_cart_count(),
             'avatar' => [
                 'savemethod' => 'local_moderncommerce_save_learner_profile_picture',
             ],
@@ -333,6 +353,7 @@ class learner_shell {
                 'bundleenrollmentkeys' => get_string('bundleenrollmentkeys', 'local_moderncommerce'),
                 'calendar' => get_string('calendar', 'local_moderncommerce'),
                 'cart' => get_string('cart', 'local_moderncommerce'),
+                'cartitems' => get_string('cartitems', 'local_moderncommerce'),
                 'checkout' => get_string('checkout', 'local_moderncommerce'),
                 'courselibrary' => get_string('courselibrary', 'local_moderncommerce'),
                 'dashboard' => get_string('dashboard', 'local_moderncommerce'),

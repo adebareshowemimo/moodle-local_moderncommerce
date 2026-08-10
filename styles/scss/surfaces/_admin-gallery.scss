@@ -630,7 +630,9 @@
 }
 
 .mcg-preview-shell--catalog .mw-widget--catalog .mc-catalog-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+    // auto-fill (not auto-fit) keeps the empty tracks, so a single preview card
+    // stays card-sized instead of stretching across the preview shell.
+    grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
     gap: 1rem;
 }
 

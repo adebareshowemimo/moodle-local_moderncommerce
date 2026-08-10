@@ -152,7 +152,7 @@ type BasicFormState = {
     description: string;
 };
 
-const label = (labels: Labels, key: string): string => labels[key] || key;
+const label = (labels: Labels, key: string, fallback = ""): string => labels[key] || fallback || key;
 
 const initials = (fullname: string): string => fullname
     .trim()

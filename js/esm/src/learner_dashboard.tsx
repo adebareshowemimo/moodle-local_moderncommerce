@@ -24,6 +24,7 @@ import ModernLearnerLayout, {
     welcomeTitle,
 } from "./learner_layout";
 import LearnerListRow from "./learner_list_row";
+import LearnerCourseRow from "./learner_course_row";
 
 type UserData = {
     fullname: string;
@@ -159,11 +160,8 @@ const certificatesUrl = (): string => learnerAppHashUrl("certificates");
 
 const redeemUrl = (): string => learnerAppHashUrl("redeem");
 
-const redeemBundleUrl = (): string => learnerAppHashUrl("bundlekeys");
-
 const cartUrl = (): string => learnerAppHashUrl("cart");
 
-const checkoutUrl = (): string => learnerAppHashUrl("checkout");
 
 const calendarUrl = (): string => learnerAppHashUrl("calendar");
 
@@ -406,13 +404,6 @@ function ModernCommerceTools({
             variant: "warning" as const,
         },
         {
-            icon: "bi-layers",
-            labelText: label(labels, "bundlekeys"),
-            href: redeemBundleUrl(),
-            value: label(labels, "bundles"),
-            variant: "warning" as const,
-        },
-        {
             icon: "bi-patch-check-fill",
             labelText: label(labels, "mycertificates"),
             href: certificatesUrl(),
@@ -457,9 +448,11 @@ function ModernCommerceTools({
                         )}
                     </span>
                 </div>
-                <a className={mcClasses("mc-button mc-btn-soft mc-modern-feature-hub__action")} href={checkoutUrl()}>
+                {/* Points at the cart, not #/checkout: checkout is only reachable with a
+                    non-empty cart, so linking it directly is a dead end when empty. */}
+                <a className={mcClasses("mc-button mc-btn-soft mc-modern-feature-hub__action")} href={cartUrl()}>
                     <i className="bi bi-bag-check" aria-hidden="true" />
-                    {label(labels, "checkout")}
+                    {label(labels, "cart")}
                 </a>
             </div>
             <div className={mcClasses("mc-stat-strip mc-dashboard-stat-strip mc-dashboard-stat-strip--tools")}>
@@ -696,48 +689,6 @@ function CourseCard({
     );
 }
 
-function CourseListRow({
-    course,
-    labels,
-}: {
-    course: Course;
-    labels: Labels;
-}) {
-    const progress = clampProgress(course.progress);
-    const buttonLabel = courseActionLabel(course, labels);
-
-    return (
-        <LearnerListRow
-            thumbnail={course.hasimage ? course.imageurl : undefined}
-            thumbnailHref={course.courseurl}
-            thumbnailAlt={course.name}
-            titleAs="h3"
-            title={course.name}
-            titleHref={course.courseurl}
-            meta={course.categoryname
-                ? <span className={mcClasses("mc-cell-muted small")}>{course.categoryname}</span>
-                : undefined}
-            body={(
-                <div className={mcClasses("mc-modern-course-progress mt-1")}>
-                    <progress value={progress} max={100}>{progress}%</progress>
-                    <span>{course.progresslabel}</span>
-                </div>
-            )}
-            actions={(
-                <>
-                    <span className={mcClasses("mc-cell-muted small d-inline-flex align-items-center gap-1")}>
-                        <i className="bi bi-clock-fill" aria-hidden="true" />
-                        {course.lastaccesslabel || course.statuslabel}
-                    </span>
-                    <a className={mcClasses("mc-button btn-mc-primary")} href={course.courseurl}>
-                        <i className="bi bi-play-circle-fill" aria-hidden="true" />
-                        {buttonLabel}
-                    </a>
-                </>
-            )}
-        />
-    );
-}
 
 function ContinueLearning({
     courses,
@@ -811,9 +762,9 @@ function ContinueLearning({
                         ))}
                     </div>
                 ) : (
-                    <div className={mcClasses("mc-learner-list-rows")} id={courseListId}>
+                    <div className={mcClasses("mc-learner-course-rows")} id={courseListId} role="list">
                         {visibleCourses.map((course) => (
-                            <CourseListRow course={course} labels={labels} key={course.id} />
+                            <LearnerCourseRow course={course} labels={labels} key={course.id} />
                         ))}
                     </div>
                 )

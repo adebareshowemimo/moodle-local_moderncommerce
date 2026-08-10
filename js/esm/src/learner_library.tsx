@@ -20,6 +20,7 @@ import {McButton} from "./button";
 import ModernLearnerLayout, {type LearnerLayoutContext} from "./learner_layout";
 import LearnerListRow from "./learner_list_row";
 import {LearnerStatStrip, LearnerStatTile} from "./learner_stat_tiles";
+import {McTablePagination} from "./table_components";
 
 type CatalogItem = {
     id: number;
@@ -729,32 +730,37 @@ export default function LearnerLibrary({
                                         {label(labels, "catalog_clear_filters")}
                                     </button>
                                 </div>
-                                <div className="btn-group" role="group" aria-label={label(labels, "view")}>
+                                {/* Same control as the dashboard's course view switch: the
+                                    inactive side stays light so the selected view reads at
+                                    a glance, rather than two identical dark buttons. */}
+                                <div
+                                    className={mcClasses("mc-modern-view-toggle")}
+                                    role="group"
+                                    aria-label={label(labels, "courseviewtoggle", "Course view")}
+                                >
                                     <button
+                                        className={mcClasses("mc-button", viewMode === "grid" && "active")}
+                                        data-mc-button={viewMode === "grid" ? "primary" : "light"}
+                                        data-mc-button-size="icon"
                                         type="button"
-                                        className={mcClasses(
-                                            "mc-button btn-mc-secondary py-1 px-2",
-                                            viewMode === "grid" && "active"
-                                        )}
+                                        aria-label={label(labels, "viewgrid")}
                                         aria-pressed={viewMode === "grid"}
-                                        onClick={() => setViewMode("grid")}
                                         title={label(labels, "viewgrid")}
+                                        onClick={() => setViewMode("grid")}
                                     >
-                                        <i className="bi bi-grid-3x3-gap" aria-hidden="true" />
-                                        <span className="visually-hidden">{label(labels, "viewgrid")}</span>
+                                        <i className="bi bi-grid-3x3-gap-fill" aria-hidden="true" />
                                     </button>
                                     <button
+                                        className={mcClasses("mc-button", viewMode === "list" && "active")}
+                                        data-mc-button={viewMode === "list" ? "primary" : "light"}
+                                        data-mc-button-size="icon"
                                         type="button"
-                                        className={mcClasses(
-                                            "mc-button btn-mc-secondary py-1 px-2",
-                                            viewMode === "list" && "active"
-                                        )}
+                                        aria-label={label(labels, "viewlist")}
                                         aria-pressed={viewMode === "list"}
-                                        onClick={() => setViewMode("list")}
                                         title={label(labels, "viewlist")}
+                                        onClick={() => setViewMode("list")}
                                     >
-                                        <i className="bi bi-list" aria-hidden="true" />
-                                        <span className="visually-hidden">{label(labels, "viewlist")}</span>
+                                        <i className="bi bi-list-ul" aria-hidden="true" />
                                     </button>
                                 </div>
                             </div>
@@ -810,30 +816,19 @@ export default function LearnerLibrary({
                 )}
 
                 {data && data.totalpages > 1 && (
-                    <nav className={mcClasses("mc-catalog-pagination")} aria-label={label(labels, "catalog_page")}>
-                        <button
-                            type="button"
-                            className={mcClasses("mc-button mc-btn-soft")}
-                            disabled={!canPrevious || loading}
-                            onClick={() => applyFilters({page: data.page - 1})}
-                        >
-                            {label(labels, "catalog_previous")}
-                        </button>
-                        <span className="mx-3">
-                            {formatMoodleLabel(label(labels, "catalog_page_x_of_y"), {
-                                page: formatCount(data.page + 1),
-                                total: formatCount(data.totalpages),
-                            })}
-                        </span>
-                        <button
-                            type="button"
-                            className={mcClasses("mc-button mc-btn-soft")}
-                            disabled={!canNext || loading}
-                            onClick={() => applyFilters({page: data.page + 1})}
-                        >
-                            {label(labels, "catalog_next")}
-                        </button>
-                    </nav>
+                    <McTablePagination
+                        className="mt-3"
+                        previousLabel={label(labels, "catalog_previous")}
+                        nextLabel={label(labels, "catalog_next")}
+                        pageLabel={formatMoodleLabel(label(labels, "catalog_page_x_of_y"), {
+                            page: formatCount(data.page + 1),
+                            total: formatCount(data.totalpages),
+                        })}
+                        previousDisabled={!canPrevious || loading}
+                        nextDisabled={!canNext || loading}
+                        onPrevious={() => applyFilters({page: data.page - 1})}
+                        onNext={() => applyFilters({page: data.page + 1})}
+                    />
                 )}
             </div>
         </ModernLearnerLayout>

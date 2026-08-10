@@ -900,6 +900,49 @@ function local_moderncommerce_get_dashboard_nav_node($page) {
 }
 
 /**
+ * Build the list of enabled public policy links shown at the point of payment.
+ *
+ * Terms, privacy, refund policy and support are legally meaningful at checkout, so
+ * both the standalone checkout page and the learner app's in-app checkout render the
+ * same set. Only pages the site has enabled are returned.
+ *
+ * @return array List of ['key' => string, 'label' => string, 'url' => string].
+ */
+function local_moderncommerce_public_links(): array {
+    $linkmap = [
+        'terms' => [
+            'label' => get_string('terms', 'local_moderncommerce'),
+            'route' => '/local/moderncommerce/terms.php',
+        ],
+        'privacy' => [
+            'label' => get_string('privacy', 'local_moderncommerce'),
+            'route' => '/local/moderncommerce/privacy.php',
+        ],
+        'refund-policy' => [
+            'label' => get_string('refundpolicy', 'local_moderncommerce'),
+            'route' => '/local/moderncommerce/refund-policy.php',
+        ],
+        'support' => [
+            'label' => get_string('support', 'local_moderncommerce'),
+            'route' => '/local/moderncommerce/support.php',
+        ],
+    ];
+
+    $links = [];
+    foreach ($linkmap as $key => $link) {
+        if (\local_moderncommerce\output\public_page::is_enabled($key)) {
+            $links[] = [
+                'key' => $key,
+                'label' => $link['label'],
+                'url' => (new moodle_url($link['route']))->out(false),
+            ];
+        }
+    }
+
+    return $links;
+}
+
+/**
  * Build the React props (method names, ledger URLs, and labels) for the payment
  * gateways admin app. Shared by the standalone gateways page and the unified
  * settings console so both render the identical Gateways UI.

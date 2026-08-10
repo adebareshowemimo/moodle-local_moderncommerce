@@ -19,6 +19,10 @@ import {mcClasses, useModernCommerceClassSync} from "./design_system";
 import ModernLearnerLayout, {type LearnerLayoutContext} from "./learner_layout";
 import SubscriptionAccessSections, {type SubscriptionAccess} from "./subscription_access_sections";
 import {LearnerStatStrip, LearnerStatTile} from "./learner_stat_tiles";
+import {McButton} from "./button";
+import {confirmDialog} from "./modal";
+
+const label = (labels: Labels, key: string, fallback = ""): string => labels[key] || fallback || key;
 
 type Subscription = {
     id: number;
@@ -99,9 +103,46 @@ type AccessResponse = {
     bundles: SubscriptionAccess["bundles"];
 };
 
+type PlanOption = {
+    id: number;
+    name: string;
+    description: string;
+    displayprice: string;
+    billingcyclelabel: string;
+    features: string[];
+    iscurrent: boolean;
+    isupgrade: boolean;
+    isdowngrade: boolean;
+    islateral: boolean;
+    ispending: boolean;
+    changecost: number;
+    displaychangecost: string;
+    requirespayment: boolean;
+    immediate: boolean;
+    effectivedatelabel: string;
+};
+
+type PlanOptionsResponse = {
+    success: boolean;
+    hassubscription: boolean;
+    currentplanid: number;
+    currentplanname: string;
+    canchange: boolean;
+    message: string;
+    plans: PlanOption[];
+};
+
+type ChangeResponse = {
+    success: boolean;
+    message: string;
+    checkouturl: string;
+};
+
 type LearnerSubscriptionProps = {
     methodName: string;
     accessMethodName?: string;
+    plansMethodName?: string;
+    changeMethodName?: string;
     subscriptionId: number;
     planId: number;
     labels: Labels;
@@ -310,10 +351,24 @@ function QuickActions({
     actions,
     urls,
     labels,
+    interactive,
+    busy,
+    onChangePlan,
+    onRenew,
+    onCancel,
+    onResume,
+    cancelScheduled,
 }: {
     actions: Actions;
     urls: SubscriptionResponse["urls"];
     labels: Labels;
+    interactive: boolean;
+    busy: boolean;
+    onChangePlan: () => void;
+    onRenew: () => void;
+    onCancel: () => void;
+    onResume: () => void;
+    cancelScheduled: boolean;
 }) {
     return (
         <div className={mcClasses("mc-card h-100 mc-subscription-actions-panel")}>
@@ -329,23 +384,157 @@ function QuickActions({
                     <i className="bi bi-receipt" aria-hidden="true" />
                     {labels.orders}
                 </a>
-                {actions.canchangeplan && (
-                    <a className={mcClasses("mc-button btn-mc-secondary")} href={urls.changeplan}>
+                {/* These were links to the page the learner is already on. They now drive
+                    the plans tab and the change endpoint directly. */}
+                {actions.canchangeplan && interactive && (
+                    <button
+                        className={mcClasses("mc-button btn-mc-secondary")}
+                        onClick={onChangePlan}
+                        type="button"
+                    >
                         <i className="bi bi-arrow-left-right" aria-hidden="true" />
                         {labels.changeplan}
-                    </a>
+                    </button>
                 )}
-                {actions.canrenew && (
-                    <a className={mcClasses("mc-button btn-mc-secondary")} href={urls.renew}>
+                {actions.canrenew && interactive && (
+                    <McButton
+                        className={mcClasses("btn-mc-secondary")}
+                        disabled={busy}
+                        loading={busy}
+                        onClick={onRenew}
+                        type="button"
+                    >
                         <i className="bi bi-arrow-clockwise" aria-hidden="true" />
                         {labels.renewsubscription}
-                    </a>
+                    </McButton>
                 )}
-                {actions.cancancel && (
-                    <a className={mcClasses("mc-button btn-mc-secondary")} href={urls.cancel}>
+                {cancelScheduled ? (
+                    <McButton
+                        className={mcClasses("btn-mc-secondary")}
+                        disabled={busy}
+                        loading={busy}
+                        onClick={onResume}
+                        type="button"
+                    >
+                        <i className="bi bi-arrow-counterclockwise" aria-hidden="true" />
+                        {label(labels, "resumesubscription", "Resume subscription")}
+                    </McButton>
+                ) : actions.cancancel && interactive && (
+                    <McButton
+                        className={mcClasses("btn-mc-secondary")}
+                        disabled={busy}
+                        loading={busy}
+                        onClick={onCancel}
+                        type="button"
+                    >
                         <i className="bi bi-slash-circle" aria-hidden="true" />
                         {labels.cancel}
-                    </a>
+                    </McButton>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function PlanOptionRow({
+    plan,
+    labels,
+    busy,
+    disabled,
+    onChoose,
+    onCancelChange,
+}: {
+    plan: PlanOption;
+    labels: Labels;
+    busy: boolean;
+    disabled: boolean;
+    onChoose: () => void;
+    onCancelChange: () => void;
+}) {
+    // The action names the direction, because upgrade and downgrade behave differently:
+    // an upgrade applies now and may need payment, a downgrade waits for period end.
+    const actionLabel = plan.isupgrade
+        ? label(labels, "upgrade", "Upgrade")
+        : plan.isdowngrade
+            ? label(labels, "downgrade", "Downgrade")
+            : label(labels, "choose", "Choose");
+
+    return (
+        <div
+            className={mcClasses(
+                "mc-plan-option",
+                plan.iscurrent && "mc-plan-option--current",
+                plan.ispending && "mc-plan-option--pending"
+            )}
+        >
+            <div className={mcClasses("mc-plan-option__main")}>
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <h3 className={mcClasses("mc-plan-option__name")}>{plan.name}</h3>
+                    {plan.iscurrent && (
+                        <span className={mcClasses("mc-badge mc-badge--success")}>
+                            {label(labels, "currentplan", "Current plan")}
+                        </span>
+                    )}
+                    {plan.ispending && (
+                        <span className={mcClasses("mc-badge mc-badge--warning")}>
+                            {label(labels, "planchangepending", "Scheduled")}
+                        </span>
+                    )}
+                </div>
+                {plan.description && (
+                    <p className={mcClasses("mc-plan-option__desc")}>{plan.description}</p>
+                )}
+                {plan.features.length > 0 && (
+                    <ul className={mcClasses("mc-plan-option__features")}>
+                        {plan.features.map((feature) => (
+                            <li key={feature}>
+                                <i className="bi bi-check2" aria-hidden="true" /> {feature}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+
+            <div className={mcClasses("mc-plan-option__price")}>
+                <strong>{plan.displayprice}</strong>
+                <span className={mcClasses("mc-cell-muted small")}>{plan.billingcyclelabel}</span>
+            </div>
+
+            <div className={mcClasses("mc-plan-option__action")}>
+                {plan.iscurrent ? (
+                    <span className={mcClasses("mc-cell-muted small")}>&mdash;</span>
+                ) : plan.ispending ? (
+                    <McButton
+                        className={mcClasses("btn-mc-secondary")}
+                        disabled={busy || disabled}
+                        loading={busy}
+                        onClick={onCancelChange}
+                        type="button"
+                    >
+                        {label(labels, "canceldowngrade", "Cancel scheduled change")}
+                    </McButton>
+                ) : (
+                    <>
+                        <McButton
+                            className={mcClasses(plan.isupgrade ? "btn-mc-primary" : "btn-mc-secondary")}
+                            disabled={busy || disabled}
+                            loading={busy}
+                            onClick={onChoose}
+                            type="button"
+                        >
+                            {actionLabel}
+                        </McButton>
+                        {/* State the consequence before the learner commits. */}
+                        <span className={mcClasses("mc-plan-option__note mc-cell-muted small")}>
+                            {plan.requirespayment && plan.changecost > 0
+                                ? `${label(labels, "duetoday", "Due today")}: ${plan.displaychangecost}`
+                                : plan.immediate
+                                    ? label(labels, "immediately", "Applies immediately")
+                                    : plan.effectivedatelabel
+                                        ? `${label(labels, "from", "From")} ${plan.effectivedatelabel}`
+                                        : ""}
+                        </span>
+                    </>
                 )}
             </div>
         </div>
@@ -355,6 +544,8 @@ function QuickActions({
 export default function LearnerSubscription({
     methodName,
     accessMethodName,
+    plansMethodName,
+    changeMethodName,
     subscriptionId,
     planId,
     labels,
@@ -365,6 +556,11 @@ export default function LearnerSubscription({
     const [access, setAccess] = useState<SubscriptionAccess | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [tab, setTab] = useState<"overview" | "plans">("overview");
+    const [planOptions, setPlanOptions] = useState<PlanOptionsResponse | null>(null);
+    const [busyPlanId, setBusyPlanId] = useState(0);
+    const [notice, setNotice] = useState("");
+    const [reloadKey, setReloadKey] = useState(0);
 
     useEffect(() => {
         let cancelled = false;
@@ -393,7 +589,59 @@ export default function LearnerSubscription({
         return () => {
             cancelled = true;
         };
-    }, [methodName, planId, subscriptionId]);
+    }, [methodName, planId, subscriptionId, reloadKey]);
+
+    // Plan options load once the learner opens the tab, and reload after any change so
+    // the classifications (upgrade/downgrade/scheduled) reflect the new current plan.
+    useEffect(() => {
+        if (!plansMethodName || tab !== "plans") {
+            return;
+        }
+        let cancelled = false;
+
+        callMoodleService<PlanOptionsResponse>(plansMethodName, {})
+            .then((result) => {
+                if (!cancelled) {
+                    setPlanOptions(result);
+                }
+                return result;
+            })
+            .catch((caught: Error) => {
+                if (!cancelled) {
+                    setError(caught.message);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [plansMethodName, tab, reloadKey]);
+
+    const runAction = (action: string, targetPlanId = 0) => {
+        if (!changeMethodName || busyPlanId !== 0) {
+            return;
+        }
+        setBusyPlanId(targetPlanId || -1);
+        setNotice("");
+        setError("");
+
+        callMoodleService<ChangeResponse>(changeMethodName, {action, planid: targetPlanId})
+            .then((result) => {
+                if (result.checkouturl) {
+                    window.location.href = result.checkouturl;
+                    return result;
+                }
+                if (!result.success) {
+                    setError(result.message);
+                    return result;
+                }
+                setNotice(result.message);
+                setReloadKey((key) => key + 1);
+                return result;
+            })
+            .catch((caught: Error) => setError(caught.message))
+            .finally(() => setBusyPlanId(0));
+    };
 
     useEffect(() => {
         if (!accessMethodName) {
@@ -475,8 +723,75 @@ export default function LearnerSubscription({
         </div>
     );
 
+    const plansEnabled = Boolean(plansMethodName && changeMethodName);
+
     return renderLayout(
         <div className={mcClasses("mc-learner-subscription")}>
+            {plansEnabled && (
+                <div className={mcClasses("mc-subscription-tabs")} role="tablist">
+                    <button
+                        className={mcClasses("mc-subscription-tab", tab === "overview" && "active")}
+                        onClick={() => setTab("overview")}
+                        role="tab"
+                        aria-selected={tab === "overview"}
+                        type="button"
+                    >
+                        {label(labels, "overview", "Overview")}
+                    </button>
+                    <button
+                        className={mcClasses("mc-subscription-tab", tab === "plans" && "active")}
+                        onClick={() => setTab("plans")}
+                        role="tab"
+                        aria-selected={tab === "plans"}
+                        type="button"
+                    >
+                        {label(labels, "availableplans", "Available plans")}
+                    </button>
+                </div>
+            )}
+
+            {notice && (
+                <div className={mcClasses("mc-alert mc-alert--success")} role="status">
+                    <i className="bi bi-check-circle mc-alert__icon" aria-hidden="true" />
+                    <div className={mcClasses("mc-alert__body")}>{notice}</div>
+                </div>
+            )}
+
+            {tab === "plans" ? (
+                <div className={mcClasses("mc-card")}>
+                    <div className={mcClasses("mc-card-header")}>
+                        <h2 className={mcClasses("mc-card-title")}>
+                            {label(labels, "availableplans", "Available plans")}
+                        </h2>
+                    </div>
+                    <div className={mcClasses("mc-card-body")}>
+                        {planOptions === null ? (
+                            <LoadingState labels={labels} />
+                        ) : (
+                            <>
+                                {!planOptions.canchange && planOptions.message && (
+                                    <div className={mcClasses("mc-alert mc-alert--warning")} role="alert">
+                                        <i className="bi bi-info-circle mc-alert__icon" aria-hidden="true" />
+                                        <div className={mcClasses("mc-alert__body")}>{planOptions.message}</div>
+                                    </div>
+                                )}
+                                {planOptions.plans.map((option) => (
+                                    <PlanOptionRow
+                                        key={option.id}
+                                        plan={option}
+                                        labels={labels}
+                                        busy={busyPlanId === option.id}
+                                        disabled={!planOptions.canchange || busyPlanId !== 0}
+                                        onChoose={() => runAction("changeplan", option.id)}
+                                        onCancelChange={() => runAction("cancelchange")}
+                                    />
+                                ))}
+                            </>
+                        )}
+                    </div>
+                </div>
+            ) : (
+            <>
             <LearnerStatStrip>
                 <LearnerStatTile label={labels.totalcourses} value={counts.courses} icon="bi-play-circle" variant="primary" />
                 <LearnerStatTile label={labels.bundles} value={counts.bundles} icon="bi-layers" variant="info" />
@@ -496,7 +811,33 @@ export default function LearnerSubscription({
                 </div>
 
                 <div className="col-lg-4">
-                    <QuickActions actions={actions} urls={urls} labels={labels} />
+                    <QuickActions
+                        actions={actions}
+                        urls={urls}
+                        labels={labels}
+                        interactive={plansEnabled}
+                        busy={busyPlanId !== 0}
+                        cancelScheduled={subscription.cancelatperiodend}
+                        onChangePlan={() => setTab("plans")}
+                        onRenew={() => runAction("renew")}
+                        onResume={() => runAction("resume")}
+                        onCancel={() => {
+                            void confirmDialog({
+                                title: labels.cancel,
+                                message: label(
+                                    labels,
+                                    "cancelsubscriptionconfirm",
+                                    "Your subscription will stay active until the end of the paid period, then stop renewing."
+                                ),
+                                confirmLabel: labels.cancel,
+                            }).then((confirmed) => {
+                                if (confirmed) {
+                                    runAction("cancel");
+                                }
+                                return confirmed;
+                            });
+                        }}
+                    />
                 </div>
 
                 {data.features.length > 0 && (
@@ -534,6 +875,8 @@ export default function LearnerSubscription({
                     </div>
                 )}
             </div>
+            </>
+            )}
         </div>,
         plan.name,
         `${plan.price}${plan.billingcycle ? ` - ${plan.billingcycle}` : ""}`,

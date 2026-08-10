@@ -16,7 +16,7 @@ import {useEffect, useState} from "react";
 import type {ReactNode} from "react";
 import type {Labels} from "./learner_common";
 import Cart from "./cart";
-import Checkout from "./checkout";
+import Checkout, {type PublicLink} from "./checkout";
 import Redeem from "./redeem";
 import LearnerCalendar from "./learner_calendar";
 import LearnerCertificates from "./learner_certificates";
@@ -25,7 +25,7 @@ import LearnerCourses from "./learner_courses";
 import LearnerDashboard from "./learner_dashboard";
 import LearnerGrades from "./learner_grades";
 import LearnerLibrary from "./learner_library";
-import ModernLearnerLayout, {type LearnerLayoutContext} from "./learner_layout";
+import ModernLearnerLayout, {learnerAppHashUrl, type LearnerLayoutContext} from "./learner_layout";
 import LearnerOrder from "./learner_order";
 import LearnerOrders from "./learner_orders";
 import LearnerProductAccess from "./learner_product_access";
@@ -45,14 +45,16 @@ type Services = {
     certificates: string;
     subscription: string;
     subscriptionAccess: string;
+    planOptions: string;
+    changeSubscription: string;
     productAccess: string;
     grades: string;
     cart: string;
     cartUpdate: string;
     checkoutStart: string;
     checkoutPlaceOrder: string;
-    redeemValidate: string;
-    redeem: string;
+    redeemResolve: string;
+    redeemAny: string;
     profileGet: string;
     profileSave: string;
     profileSavePicture: string;
@@ -71,6 +73,7 @@ type LearnerAppProps = {
     labels: Labels;
     layout?: LearnerLayoutContext;
     calendar: CalendarContext;
+    publicLinks?: PublicLink[];
     urls: {
         catalog: string;
         courses: string;
@@ -122,23 +125,12 @@ const stringParam = (query: URLSearchParams, key: string, fallback = ""): string
     query.get(key) ?? fallback
 );
 
-const redeemLabels = (labels: Labels, activeNav: "redeem" | "bundlekeys"): Labels => {
-    if (activeNav === "bundlekeys") {
-        return {
-            ...labels,
-            title: labels.redeembundlekey || labels.bundleenrollmentkeys || labels.redeemkey,
-            intro: labels.redeembundlekeyheading || labels.bundleenrollmentkeysdesc || labels.redeemintro,
-            help: labels.redeemhelp,
-        };
-    }
-
-    return {
-        ...labels,
-        title: labels.redeemkey,
-        intro: labels.redeemintro,
-        help: labels.redeemhelp,
-    };
-};
+const redeemLabels = (labels: Labels): Labels => ({
+    ...labels,
+    title: labels.redeemkeys || labels.redeemkey,
+    intro: labels.redeemintro,
+    help: labels.redeemhelp,
+});
 
 const calendarDefaults = (calendar: CalendarContext): CalendarContext => ({
     monthHtml: calendar?.monthHtml ?? "",
@@ -215,6 +207,7 @@ export default function LearnerApp({
     layout,
     calendar,
     urls,
+    publicLinks = [],
 }: LearnerAppProps) {
     const [route, setRoute] = useState<RouteState>(parseRoute);
     const [first] = route.segments;
@@ -340,6 +333,8 @@ export default function LearnerApp({
                     key={route.key}
                     methodName={services.subscription}
                     accessMethodName={services.subscriptionAccess}
+                    plansMethodName={services.planOptions}
+                    changeMethodName={services.changeSubscription}
                     subscriptionId={intParam(route.query, "id")}
                     planId={intParam(route.query, "planid")}
                     labels={labels}
@@ -401,6 +396,7 @@ export default function LearnerApp({
                 orderId={intParam(route.query, "orderid")}
                 courseId={intParam(route.query, "courseid")}
                 bundleId={intParam(route.query, "bundleid")}
+                publicLinks={publicLinks}
                 labels={labels}
                 layout={layout}
             />
@@ -408,30 +404,21 @@ export default function LearnerApp({
         redeem: () => (
             <Redeem
                 key={route.key}
-                validateMethodName={services.redeemValidate}
-                redeemMethodName={services.redeem}
+                resolveMethodName={services.redeemResolve}
+                redeemMethodName={services.redeemAny}
                 orderId={intParam(route.query, "orderid")}
                 catalogUrl={urls.catalog}
                 coursesUrl={urls.courses}
-                labels={redeemLabels(labels, "redeem")}
+                subscriptionUrl={learnerAppHashUrl("subscriptions")}
+                labels={redeemLabels(labels)}
                 layout={layout}
                 activeNav="redeem"
             />
         ),
-        bundlekeys: () => (
-            <Redeem
-                key={route.key}
-                validateMethodName={services.redeemValidate}
-                redeemMethodName={services.redeem}
-                orderId={intParam(route.query, "orderid")}
-                catalogUrl={urls.catalog}
-                coursesUrl={urls.courses}
-                labels={redeemLabels(labels, "bundlekeys")}
-                layout={layout}
-                activeNav="bundlekeys"
-            />
-        ),
-        "redeem-bundle": () => routeComponents.bundlekeys(),
+        // Bundle keys were merged into the single redeem screen, which now detects the
+        // key type server-side. Both legacy routes keep working.
+        bundlekeys: () => routeComponents.redeem(),
+        "redeem-bundle": () => routeComponents.redeem(),
         calendar: () => (
             <LearnerCalendar key={route.key} labels={labels} layout={layout} {...calendarDefaults(calendar)} />
         ),

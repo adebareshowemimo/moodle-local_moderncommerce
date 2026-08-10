@@ -261,16 +261,17 @@ class get_subscription extends external_api {
             return [];
         }
 
-        $features = [];
-        $features = $DB->get_records(
+        $records = $DB->get_records(
             'local_moderncommerce_subscription_plan_features',
             ['planid' => $planid],
             'sortorder ASC'
         );
-        foreach ($features as $feature) {
+
+        $features = [];
+        foreach ($records as $record) {
             $features[] = [
-                'text' => format_string((string)$feature->feature),
-                'icon' => (string)($feature->icon ?: 'check-circle'),
+                'text' => format_string((string)$record->feature),
+                'icon' => (string)($record->icon ?: 'check-circle'),
             ];
         }
 

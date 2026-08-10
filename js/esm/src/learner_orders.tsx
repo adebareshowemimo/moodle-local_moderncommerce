@@ -18,6 +18,7 @@ import {badgeClass, callMoodleService, formatCount, Labels} from "./learner_comm
 import {mcClasses, useModernCommerceClassSync} from "./design_system";
 import ModernLearnerLayout, {type LearnerLayoutContext} from "./learner_layout";
 import {LearnerStatStrip, LearnerStatTile} from "./learner_stat_tiles";
+import {McTablePagination} from "./table_components";
 
 type Order = {
     id: number;
@@ -152,31 +153,16 @@ function Pagination({
     }
 
     return (
-        <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mt-3">
-            <span className={mcClasses("mc-cell-muted small")}>
-                {formatCount(data.page + 1)} {labels.of} {formatCount(data.totalpages)}
-            </span>
-            <div className="btn-group" role="group" aria-label={labels.myorders}>
-                <button
-                    type="button"
-                    className={mcClasses("mc-button btn-mc-secondary py-1 px-2")}
-                    disabled={!data.hasprevious}
-                    onClick={() => onPage(Math.max(0, data.page - 1))}
-                    aria-label={labels.previouspage}
-                >
-                    <i className="bi bi-chevron-left" aria-hidden="true" />
-                </button>
-                <button
-                    type="button"
-                    className={mcClasses("mc-button btn-mc-secondary py-1 px-2")}
-                    disabled={!data.hasnext}
-                    onClick={() => onPage(data.page + 1)}
-                    aria-label={labels.nextpage}
-                >
-                    <i className="bi bi-chevron-right" aria-hidden="true" />
-                </button>
-            </div>
-        </div>
+        <McTablePagination
+            className="mt-3"
+            previousLabel={labels.previous}
+            nextLabel={labels.next}
+            pageLabel={`${formatCount(data.page + 1)} ${labels.of} ${formatCount(data.totalpages)}`}
+            previousDisabled={!data.hasprevious}
+            nextDisabled={!data.hasnext}
+            onPrevious={() => onPage(Math.max(0, data.page - 1))}
+            onNext={() => onPage(data.page + 1)}
+        />
     );
 }
 

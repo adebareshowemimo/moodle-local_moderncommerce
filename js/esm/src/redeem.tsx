@@ -33,27 +33,41 @@ type Course = {
     url: string;
 };
 
-type ValidateResponse = {
+type KeyType = "enrollment" | "subscription" | "unknown";
+
+type ResolveResponse = {
+    type: KeyType;
     valid: boolean;
     message: string;
     courses: Course[];
+    planname: string;
 };
 
 type RedeemResponse = {
     success: boolean;
+    type: KeyType;
     message: string;
     courses: Course[];
+    planname: string;
+};
+
+type RedeemResult = {
+    type: KeyType;
+    courses: Course[];
+    planname: string;
+    message: string;
 };
 
 type RedeemProps = {
-    validateMethodName: string;
+    resolveMethodName: string;
     redeemMethodName: string;
     orderId: number;
     catalogUrl: string;
     coursesUrl: string;
+    subscriptionUrl: string;
     labels: Labels;
     layout?: LearnerLayoutContext;
-    activeNav?: "redeem" | "bundlekeys";
+    activeNav?: "redeem";
 };
 
 const callMoodleService = async <T, >(methodName: string, args: unknown): Promise<T> => {
@@ -97,11 +111,12 @@ const callMoodleService = async <T, >(methodName: string, args: unknown): Promis
 };
 
 export default function Redeem({
-    validateMethodName,
+    resolveMethodName,
     redeemMethodName,
     orderId,
     catalogUrl,
     coursesUrl,
+    subscriptionUrl,
     labels,
     layout,
     activeNav = "redeem",
@@ -110,10 +125,16 @@ export default function Redeem({
     const [keycode, setKeycode] = useState("");
     const [busy, setBusy] = useState<"idle" | "validating" | "redeeming">("idle");
     const [error, setError] = useState("");
-    const [preview, setPreview] = useState<Course[] | null>(null);
-    const [result, setResult] = useState<Course[] | null>(null);
+    const [preview, setPreview] = useState<ResolveResponse | null>(null);
+    const [result, setResult] = useState<RedeemResult | null>(null);
 
     const normalised = keycode.trim().toUpperCase();
+
+    const keyTypeLabel = (type: KeyType): string => (
+        type === "subscription"
+            ? labels.redeemkeytype_subscription || labels.subscriptionkey || "Subscription key"
+            : labels.redeemkeytype_enrollment || labels.enrollmentkey || "Course access key"
+    );
 
     const validate = async() => {
         if (normalised === "") {
@@ -124,12 +145,12 @@ export default function Redeem({
         setPreview(null);
 
         try {
-            const response = await callMoodleService<ValidateResponse>(validateMethodName, {keycode: normalised});
+            const response = await callMoodleService<ResolveResponse>(resolveMethodName, {keycode: normalised});
             if (!response.valid) {
                 setError(response.message);
                 return;
             }
-            setPreview(response.courses);
+            setPreview(response);
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : String(caught));
         } finally {
@@ -153,7 +174,12 @@ export default function Redeem({
                 setError(response.message);
                 return;
             }
-            setResult(response.courses);
+            setResult({
+                type: response.type,
+                courses: response.courses,
+                planname: response.planname,
+                message: response.message,
+            });
             setPreview(null);
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : String(caught));
@@ -185,19 +211,34 @@ export default function Redeem({
                                 <i className="bi bi-check-circle-fill" aria-hidden="true" />
                             </span>
                             <h2 className={mcClasses("mc-card-title mt-2")}>{labels.redeemsuccess}</h2>
-                            <div className={mcClasses("mc-redeem__courses mt-3")}>
-                                {result.map((course) => (
-                                    <div className={mcClasses("mc-redeem__course")} key={course.id}>
-                                        <span className="fw-semibold">{course.fullname}</span>
-                                        <a className={mcClasses("mc-button btn-mc-primary")} href={course.url}>{labels.accesscourse}</a>
-                                    </div>
-                                ))}
-                            </div>
+                            {result.type === "subscription" ? (
+                                <div className={mcClasses("mc-redeem__plan mt-3")}>
+                                    <p className="fw-semibold mb-1">{result.planname}</p>
+                                    <p className={mcClasses("mc-cell-muted mb-0")}>
+                                        {result.message || labels.redeemplanactivated}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className={mcClasses("mc-redeem__courses mt-3")}>
+                                    {result.courses.map((course) => (
+                                        <div className={mcClasses("mc-redeem__course")} key={course.id}>
+                                            <span className="fw-semibold">{course.fullname}</span>
+                                            <a className={mcClasses("mc-button btn-mc-primary")} href={course.url}>{labels.accesscourse}</a>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             <div className="d-flex flex-wrap justify-content-center gap-2 mt-4">
                                 <button className={mcClasses("mc-button btn-mc-secondary")} onClick={reset} type="button">
                                     {labels.redeemanother}
                                 </button>
-                                <a className={mcClasses("mc-button btn-mc-secondary")} href={coursesUrl}>{labels.mycourses}</a>
+                                {result.type === "subscription" ? (
+                                    <a className={mcClasses("mc-button btn-mc-secondary")} href={subscriptionUrl}>
+                                        {labels.redeemviewsubscription || labels.mysubscriptionplan}
+                                    </a>
+                                ) : (
+                                    <a className={mcClasses("mc-button btn-mc-secondary")} href={coursesUrl}>{labels.mycourses}</a>
+                                )}
                                 <a className={mcClasses("mc-button mc-btn-ghost")} href={catalogUrl}>{labels.browsecatalog}</a>
                             </div>
                         </div>
@@ -256,21 +297,30 @@ export default function Redeem({
                             />
                         </div>
 
-                        {preview && preview.length > 0 && (
+                        {preview && (
                             <div className={mcClasses("mc-redeem__preview mt-3")}>
-                                <div className={mcClasses("mc-filter-label")}>{labels.grantsaccess}</div>
-                                <ul className={mcClasses("mc-redeem__preview-list")}>
-                                    {preview.map((course) => (
-                                        <li key={course.id}>
-                                            <span>{course.fullname}</span>
-                                            {course.alreadyenrolled && (
-                                                <span className={mcClasses("mc-badge mc-badge--neutral ms-2")}>
-                                                    {labels.alreadyenrolled}
-                                                </span>
-                                            )}
-                                        </li>
-                                    ))}
-                                </ul>
+                                <div className="d-flex align-items-center gap-2">
+                                    <span className={mcClasses("mc-filter-label mb-0")}>{labels.grantsaccess}</span>
+                                    <span className={mcClasses("mc-badge mc-badge--info")}>
+                                        {keyTypeLabel(preview.type)}
+                                    </span>
+                                </div>
+                                {preview.type === "subscription" ? (
+                                    <p className={mcClasses("mc-cell-muted mb-0 mt-2")}>{preview.planname}</p>
+                                ) : (
+                                    <ul className={mcClasses("mc-redeem__preview-list")}>
+                                        {preview.courses.map((course) => (
+                                            <li key={course.id}>
+                                                <span>{course.fullname}</span>
+                                                {course.alreadyenrolled && (
+                                                    <span className={mcClasses("mc-badge mc-badge--neutral ms-2")}>
+                                                        {labels.alreadyenrolled}
+                                                    </span>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
                         )}
 

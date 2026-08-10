@@ -107,7 +107,7 @@ type CheckoutCoupon = {
     editable: boolean;
 };
 
-type PublicLink = {
+export type PublicLink = {
     key: string;
     label: string;
     url: string;
@@ -155,7 +155,7 @@ type CheckoutProps = {
     courseId: number;
     bundleId: number;
     labels: Labels;
-    publicLinks: PublicLink[];
+    publicLinks?: PublicLink[];
     layout?: LearnerLayoutContext;
 };
 

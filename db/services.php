@@ -259,6 +259,24 @@ $functions = [
         'capabilities'  => 'local/moderncommerce:viewcatalog',
         'loginrequired' => true,
     ],
+    'local_moderncommerce_get_plan_options' => [
+        'classname'     => 'local_moderncommerce\external\learner\get_plan_options',
+        'methodname'    => 'execute',
+        'description'   => 'List the subscription plans the learner can switch to, with upgrade/downgrade costs.',
+        'type'          => 'read',
+        'ajax'          => true,
+        'capabilities'  => 'local/moderncommerce:subscribetoplan',
+        'loginrequired' => true,
+    ],
+    'local_moderncommerce_change_subscription' => [
+        'classname'     => 'local_moderncommerce\external\learner\change_subscription',
+        'methodname'    => 'execute',
+        'description'   => 'Change plan, cancel at period end, resume, or renew the learner own subscription.',
+        'type'          => 'write',
+        'ajax'          => true,
+        'capabilities'  => 'local/moderncommerce:subscribetoplan',
+        'loginrequired' => true,
+    ],
     'local_moderncommerce_get_learner_product_access' => [
         'classname'     => 'local_moderncommerce\external\learner\get_product_access',
         'methodname'    => 'execute',
@@ -925,6 +943,25 @@ $functions = [
         'capabilities'  => 'local/moderncommerce:redeemkey',
         'loginrequired' => true,
     ],
+    'local_moderncommerce_resolve_key' => [
+        'classname'     => 'local_moderncommerce\external\redeem\resolve_key',
+        'methodname'    => 'execute',
+        'description'   => 'Detect whether a code is an enrollment or subscription key and preview what it grants.',
+        'type'          => 'read',
+        'ajax'          => true,
+        // No capability restriction: the resolved key type decides which capability
+        // applies, so the check happens per branch inside the function.
+        'loginrequired' => true,
+    ],
+    'local_moderncommerce_redeem_any_key' => [
+        'classname'     => 'local_moderncommerce\external\redeem\redeem_any_key',
+        'methodname'    => 'execute',
+        'description'   => 'Redeem any Modern Commerce key, enrolling in courses or activating a subscription plan.',
+        'type'          => 'write',
+        'ajax'          => true,
+        // No capability restriction: see local_moderncommerce_resolve_key.
+        'loginrequired' => true,
+    ],
     'local_moderncommerce_admin_list_emails' => [
         'classname'     => 'local_moderncommerce\external\emails\list_emails',
         'methodname'    => 'execute',
@@ -1462,6 +1499,8 @@ $services = [
             'local_moderncommerce_update_learner_wishlist',
             'local_moderncommerce_get_learner_subscription',
             'local_moderncommerce_get_learner_subscription_access',
+            'local_moderncommerce_get_plan_options',
+            'local_moderncommerce_change_subscription',
             'local_moderncommerce_get_learner_product_access',
             'local_moderncommerce_get_learner_profile',
             'local_moderncommerce_save_learner_profile',
@@ -1533,6 +1572,8 @@ $services = [
             'local_moderncommerce_upload_slide_image',
             'local_moderncommerce_validate_key',
             'local_moderncommerce_redeem_key',
+            'local_moderncommerce_resolve_key',
+            'local_moderncommerce_redeem_any_key',
             'local_moderncommerce_admin_list_emails',
             'local_moderncommerce_admin_get_email',
             'local_moderncommerce_admin_save_email',

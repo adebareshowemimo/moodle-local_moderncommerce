@@ -267,24 +267,22 @@
     color: var(--mc-success);
 }
 
-.mc-course-card,
-.mc-learner-course-card {
+/* .mc-course-card is the catalogue tile. The learner list row (.mc-learner-course-card)
+   used to share this rule, but a marketing tile and a dense list row are different
+   components; the row is now defined once, in runtime/_learner.scss. */
+.mc-course-card {
     background: var(--mc-surface);
     border: 1px solid var(--mc-border);
     border-radius: var(--mc-radius);
     text-decoration: none;
     color: var(--mc-text);
     transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.mc-course-card {
     overflow: hidden;
     display: flex;
     flex-direction: column;
 }
 
-.mc-course-card:hover,
-.mc-learner-course-card:hover {
+.mc-course-card:hover {
     border-color: var(--mc-primary-border);
     text-decoration: none;
     color: var(--mc-text);
@@ -1054,40 +1052,9 @@ body.mc-modal-open {
     vertical-align: middle;
 }
 
-.mc-learner-course-card {
-    display: flex;
-    align-items: center;
-    gap: 0.875rem;
-    padding: 0.875rem 1rem;
-}
-
-.mc-learner-course-card__thumb {
-    width: 72px;
-    height: 54px;
-    border-radius: var(--mc-radius-sm);
-    object-fit: cover;
-    background: var(--mc-surface-alt);
-    border: 1px solid var(--mc-border);
-    flex-shrink: 0;
-}
-
-.mc-learner-course-card__body {
-    flex: 1;
-    min-width: 0;
-}
-
-.mc-learner-course-card__title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--mc-text);
-    margin-bottom: 0.25rem;
-}
-
-.mc-learner-course-card__meta {
-    font-size: 0.75rem;
-    color: var(--mc-text-muted);
-    margin-bottom: 0.5rem;
-}
+/* .mc-learner-course-card is defined once, in runtime/_learner.scss. The duplicate that
+   lived here disagreed with it on alignment, padding and title truncation, so which one
+   applied depended on bundle load order. */
 
 .mc-learner-bundle-list {
     display: grid;
@@ -1787,12 +1754,12 @@ body.mc-sidebar-open {
     display: grid;
     min-height: 110px;
     overflow: hidden;
-    padding: 1.5rem 5.75rem 1.5rem 2rem;
+    padding: 1.5rem 3.25rem 1.5rem 1.5rem;
     border: 0;
     border-radius: var(--mc-radius-sm);
     align-items: center;
     grid-template-columns: auto minmax(0, 1fr);
-    gap: 1.625rem;
+    gap: 1rem;
     background: var(--mc-stat-tile-bg);
     color: var(--mc-stat-tile-fg);
 }
@@ -1833,6 +1800,7 @@ body.mc-sidebar-open {
     position: relative;
     z-index: 1;
     min-width: 0;
+    width: 100%;
 }
 
 .mc-stat-tile__label,
@@ -1854,7 +1822,10 @@ body.mc-sidebar-open {
     font-size: 1.75rem;
     font-weight: 800;
     line-height: 1;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .mc-stat-tile__delta {
@@ -1925,11 +1896,11 @@ body.mc-sidebar-open {
 
     .mc-stat-tile {
         min-height: 96px;
-        padding: 1.25rem 5.375rem 1.25rem 1.5rem;
+        padding: 1.25rem 3rem 1.25rem 1.25rem;
     }
 
     .mc-stat-tile__watermark {
-        font-size: 4.875rem;
+        font-size: 4.25rem;
     }
 
     .mc-stat-strip--grid .mc-stat-tile,
@@ -4007,7 +3978,23 @@ body.mc-sidebar-open {
     pointer-events: none;
 }
 
+/* The shared McTablePagination is placed by its container (inside a table footer, a card
+   body, or a padded list), so it carries no margin of its own; callers pass spacing via
+   className. */
+.mc-pagination {
+    margin-top: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mc-pagination-btn {
+        transition: none;
+    }
+}
+
 .mc-progress-bar-wrap {
+    /* Also a <span>: needs an explicit block display so its height applies even when
+       it is not being blockified by a parent flex container. */
+    display: block;
     background: var(--mc-neutral-bg);
     border-radius: var(--mc-radius-pill);
     height: 8px;
@@ -4015,6 +4002,9 @@ body.mc-sidebar-open {
 }
 
 .mc-progress-bar-fill {
+    /* The fill is a <span>; without an explicit block display, width/height do not
+       apply to an inline box and the bar renders empty at every value. */
+    display: block;
     background: var(--mc-primary);
     height: 100%;
     transition: width 0.2s ease;
@@ -4022,6 +4012,39 @@ body.mc-sidebar-open {
 
 .mc-progress-bar-fill--complete {
     background: var(--mc-success);
+}
+
+/* Table cells size to their content, so a flex-grown track would be a different length
+   in every row and the bars could not be compared down the column. Fixing the width
+   puts every row on one scale. The track is also darkened from --mc-neutral-bg, which
+   is near-invisible against the card surface at this height. */
+.mc-progress-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--mc-space-3);
+}
+
+.mc-progress-cell__value {
+    min-width: 2.75rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    text-align: left;
+}
+
+.mc-progress-cell .mc-progress-bar-wrap {
+    flex: 0 0 5.5rem;
+    width: 5.5rem;
+    /* Height and margin are pinned here because the learner bundle also defines this
+       component (4px + top margin); in a table row that margin misaligns the bar. */
+    height: 6px;
+    margin-top: 0;
+    background: var(--mc-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mc-progress-bar-fill {
+        transition: none;
+    }
 }
 
 .mc-charts {
@@ -6486,6 +6509,30 @@ button.mc-modern-avatar-edit:focus-visible {
 .mc-modern-side-nav__link i::before {
     display: block;
     line-height: 1;
+}
+
+/* Cart item count. Sits at the trailing edge of its nav link, so it reads as a
+   property of that item rather than a separate control. */
+.mc-modern-side-nav__badge {
+    display: inline-flex;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding: 0 0.4rem;
+    margin-left: auto;
+    align-items: center;
+    justify-content: center;
+    background: var(--mc-primary);
+    color: var(--mc-text-inverse);
+    border-radius: var(--mc-radius-pill);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.mc-modern-side-nav__link.active .mc-modern-side-nav__badge {
+    background: var(--mc-text-inverse);
+    color: var(--mc-primary);
 }
 
 .mc-modern-side-nav__link:hover,

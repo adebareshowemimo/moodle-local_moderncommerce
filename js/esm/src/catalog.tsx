@@ -16,6 +16,7 @@ import {CSSProperties, Dispatch, FormEvent, ReactNode, useEffect, useState} from
 import {callMoodleService, formatCount, Labels, refreshNavbarCart} from "./learner_common";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
+import {McTablePagination} from "./table_components";
 
 type CatalogItem = {
     id: number;
@@ -974,30 +975,19 @@ function CatalogContent({
                 ))}
             </div>
 
-            <nav className={mcClasses("mc-catalog-pagination")} aria-label={labels.catalog_page}>
-                <button
-                    type="button"
-                    className={mcClasses("mc-button mc-btn-soft")}
-                    disabled={!canPrevious || loading}
-                    onClick={() => onPageChange(data.page - 1)}
-                >
-                    {labels.catalog_previous}
-                </button>
-                <span className="mx-3">
-                    {formatMoodleLabel(labels.catalog_page_x_of_y, {
-                        page: formatCount(data.page + 1),
-                        total: formatCount(data.totalpages),
-                    })}
-                </span>
-                <button
-                    type="button"
-                    className={mcClasses("mc-button mc-btn-soft")}
-                    disabled={!canNext || loading}
-                    onClick={() => onPageChange(data.page + 1)}
-                >
-                    {labels.catalog_next}
-                </button>
-            </nav>
+            <McTablePagination
+                className="mt-3"
+                previousLabel={labels.catalog_previous}
+                nextLabel={labels.catalog_next}
+                pageLabel={formatMoodleLabel(labels.catalog_page_x_of_y, {
+                    page: formatCount(data.page + 1),
+                    total: formatCount(data.totalpages),
+                })}
+                previousDisabled={!canPrevious || loading}
+                nextDisabled={!canNext || loading}
+                onPrevious={() => onPageChange(data.page - 1)}
+                onNext={() => onPageChange(data.page + 1)}
+            />
         </>
     );
 }

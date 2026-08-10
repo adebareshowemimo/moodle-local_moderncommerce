@@ -211,11 +211,22 @@ class list_grades extends external_api {
             'itemtype' => 'course',
         ]);
 
-        if (!$grade || $grade->finalgrade === null || (float)$grade->grademax <= 0) {
+        // No usable course grade item: the course simply is not graded. A grademax of 0
+        // makes the percentage undefined, so it counts as ungraded too.
+        if (!$grade || (float)$grade->grademax <= 0) {
             return [
                 'hasgrade' => false,
                 'gradepercentage' => 0,
-                'gradelabel' => get_string('notavailable', 'local_moderncommerce'),
+                'gradelabel' => get_string('gradeungraded', 'local_moderncommerce'),
+            ];
+        }
+
+        // The course is graded, but this user has no result recorded yet.
+        if ($grade->finalgrade === null) {
+            return [
+                'hasgrade' => false,
+                'gradepercentage' => 0,
+                'gradelabel' => get_string('gradenotyet', 'local_moderncommerce'),
             ];
         }
 

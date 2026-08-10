@@ -13,7 +13,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {CSSProperties, FC, useEffect, useId, useMemo, useState} from "react";
+import {CSSProperties, FC, FormEvent, useEffect, useId, useMemo, useState} from "react";
 import {createPortal} from "react-dom";
 import {McButton} from "./button";
 import {McDrawer} from "./drawer";

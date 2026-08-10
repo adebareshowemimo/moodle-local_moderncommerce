@@ -24,6 +24,7 @@
 
 require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/calendar/lib.php');
+require_once($CFG->dirroot . '/local/moderncommerce/lib.php');
 
 use local_moderncommerce\output\learner_shell;
 
@@ -102,19 +103,22 @@ $reactconfig = json_encode([
             'certificates' => 'local_moderncommerce_list_learner_certificates',
             'subscription' => 'local_moderncommerce_get_learner_subscription',
             'subscriptionAccess' => 'local_moderncommerce_get_learner_subscription_access',
+            'planOptions' => 'local_moderncommerce_get_plan_options',
+            'changeSubscription' => 'local_moderncommerce_change_subscription',
             'productAccess' => 'local_moderncommerce_get_learner_product_access',
             'grades' => 'local_moderncommerce_list_learner_grades',
             'cart' => 'local_moderncommerce_get_cart',
             'cartUpdate' => 'local_moderncommerce_update_cart',
             'checkoutStart' => 'local_moderncommerce_start_checkout',
             'checkoutPlaceOrder' => 'local_moderncommerce_place_order',
-            'redeemValidate' => 'local_moderncommerce_validate_key',
-            'redeem' => 'local_moderncommerce_redeem_key',
+            'redeemResolve' => 'local_moderncommerce_resolve_key',
+            'redeemAny' => 'local_moderncommerce_redeem_any_key',
             'profileGet' => 'local_moderncommerce_get_learner_profile',
             'profileSave' => 'local_moderncommerce_save_learner_profile',
             'profileSavePicture' => 'local_moderncommerce_save_learner_profile_picture',
         ],
         'layout' => $shell->get_react_layout_context(),
+        'publicLinks' => local_moderncommerce_public_links(),
         'labels' => local_moderncommerce_learner_app_labels(),
         'calendar' => [
             'monthHtml' => $monthhtml,

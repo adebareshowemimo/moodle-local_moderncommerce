@@ -485,7 +485,9 @@ class get_dashboard extends external_api {
             'shortname' => format_string($course->shortname),
             'summary' => trim(strip_tags((string)$course->summary)),
             'categoryid' => (int)$course->category,
-            'categoryname' => format_string($categoryname),
+            // Escape => false: React escapes on render, so letting format_string() also
+            // escape turns "A & B" into a literal "A &amp; B" on screen.
+            'categoryname' => format_string($categoryname, true, ['escape' => false]),
             'imageurl' => (string)$imageurl,
             'hasimage' => $imageurl !== '',
             'progress' => max(0, min(100, $progress)),
@@ -498,7 +500,11 @@ class get_dashboard extends external_api {
             'enrolleddate' => self::get_course_enrolled_date($userid, $courseid),
             'enrolleddatelabel' => self::get_course_enrolled_date_label($userid, $courseid),
             'lastaccess' => $lastaccess,
-            'lastaccesslabel' => $lastaccess > 0 ? userdate($lastaccess, get_string('strftimedatetimeshort')) : get_string('never'),
+            // Date only, matching enrolleddatelabel: the two sit side by side in the course
+            // card, and a clock time there is noise the learner cannot act on.
+            'lastaccesslabel' => $lastaccess > 0
+                ? userdate($lastaccess, get_string('strftimedateshort'))
+                : get_string('never'),
             'source' => (string)($source['source'] ?? ''),
             'sourcelabel' => (string)($source['sourcelabel'] ?? ''),
             'producttype' => (string)($source['producttype'] ?? ''),

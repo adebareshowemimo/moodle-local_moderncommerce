@@ -73,19 +73,13 @@ function LoadingState({labels}: {labels: Labels}) {
     );
 }
 
-function GradeBar({course}: {course: GradeCourse}) {
-    const progress = clampProgress(course.hasgrade ? course.gradepercentage : 0);
-
+function GradeValue({course}: {course: GradeCourse}) {
+    // The grade is a single number, so it is shown as text: a bar alongside it restates
+    // the same value in a second visual language without adding information.
     return (
-        <div className="d-flex align-items-center justify-content-end gap-2">
-            <span className={mcClasses("mc-progress-bar-wrap flex-grow-1")} style={{maxWidth: "8rem"}}>
-                <span
-                    className={mcClasses("mc-progress-bar-fill", course.hasgrade && "mc-progress-bar-fill--complete")}
-                    style={{width: `${progress}%`}}
-                />
-            </span>
-            <span className="fw-semibold">{course.gradelabel}</span>
-        </div>
+        <span className={mcClasses(course.hasgrade ? "fw-semibold" : "mc-cell-muted")}>
+            {course.gradelabel}
+        </span>
     );
 }
 
@@ -213,11 +207,15 @@ export default function LearnerGrades({
                                 icon="bi-check2-circle"
                                 variant="success"
                             />
+                            {/* Averaged over graded courses only, so the label names that
+                                basis rather than implying an average across every course. */}
                             <LearnerStatTile
-                                label={label(labels, "gradeaverage")}
+                                label={stats.hasgradeaverage
+                                    ? `${label(labels, "gradeaverage")} (${formatCount(stats.gradedcourses)})`
+                                    : label(labels, "gradeaverage")}
                                 value={stats.hasgradeaverage
                                     ? `${formatCount(stats.gradeaverage)}%`
-                                    : label(labels, "notavailable")}
+                                    : label(labels, "gradeungraded")}
                                 icon="bi-graph-up"
                                 variant="warning"
                             />
@@ -260,26 +258,31 @@ export default function LearnerGrades({
                                                         <div className={mcClasses("mc-cell-muted small")}>{course.shortname}</div>
                                                     </td>
                                                     <td>
-                                                        <div className="d-flex align-items-center gap-2">
-                                                            <span className={mcClasses("mc-progress-bar-wrap flex-grow-1")}>
+                                                        {/* Completion off means progress is untracked, not zero, so no bar. */}
+                                                        {course.completionenabled ? (
+                                                            <div
+                                                                className={mcClasses("mc-progress-cell")}
+                                                                role="img"
+                                                                aria-label={`${formatCount(course.progress)}%`}
+                                                            >
+                                                                <span className={mcClasses("mc-progress-cell__value")}>
+                                                                    {formatCount(course.progress)}%
+                                                                </span>
                                                                 <span
-                                                                    className={mcClasses(
-                                                                        "mc-progress-bar-fill",
-                                                                        course.iscomplete && "mc-progress-bar-fill--complete"
-                                                                    )}
-                                                                    style={{width: `${clampProgress(course.progress)}%`}}
-                                                                />
-                                                            </span>
-                                                            <span className={mcClasses("mc-cell-muted small")}>
-                                                                {formatCount(course.progress)}%
-                                                            </span>
-                                                        </div>
-                                                        {course.completionenabled && (
-                                                            <div className={mcClasses("mc-cell-muted small mt-1")}>
-                                                                {formatCount(course.completedactivities)}
-                                                                {" / "}
-                                                                {formatCount(course.totalactivities)}
+                                                                    className={mcClasses("mc-progress-bar-wrap")}
+                                                                    aria-hidden="true"
+                                                                >
+                                                                    <span
+                                                                        className={mcClasses(
+                                                                            "mc-progress-bar-fill",
+                                                                            course.iscomplete && "mc-progress-bar-fill--complete"
+                                                                        )}
+                                                                        style={{width: `${clampProgress(course.progress)}%`}}
+                                                                    />
+                                                                </span>
                                                             </div>
+                                                        ) : (
+                                                            <span className={mcClasses("mc-cell-muted")}>&mdash;</span>
                                                         )}
                                                     </td>
                                                     <td>
@@ -292,7 +295,7 @@ export default function LearnerGrades({
                                                         </span>
                                                     </td>
                                                     <td className="text-end">
-                                                        <GradeBar course={course} />
+                                                        <GradeValue course={course} />
                                                     </td>
                                                     <td className="text-end">
                                                         <a
