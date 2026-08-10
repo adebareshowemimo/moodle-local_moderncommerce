@@ -233,8 +233,13 @@ function local_moderncommerce_seed_sample_data(
         local_moderncommerce_seed_wishlist($userid, $bundleid, $now);
     }
 
-    // Pre-configure the storefront Categories widget with the demo categories + matching icons.
-    $categorieswidgets = local_moderncommerce_seed_categories_widget($catalog['categories']);
+    // Pre-configure the storefront Categories widget with the demo PRODUCT categories. The tiles
+    // resolve Modern Commerce product categories, so seeding Moodle course-category ids here would
+    // leave the widget unable to resolve a single tile.
+    $categorieswidgets = local_moderncommerce_seed_categories_widget([
+        ['id' => $categoryids['courses'], 'icon' => 'mortarboard'],
+        ['id' => $categoryids['bundles'], 'icon' => 'box-seam'],
+    ]);
     $reviews = local_moderncommerce_seed_course_reviews($courses, $userid, $reviewtarget, $now);
 
     $orders = 0;
@@ -617,6 +622,9 @@ function local_moderncommerce_seed_moodle_catalog(int $categorycount, int $cours
  * Sets each widget's `items` list (categoryid + bare icon name) so the curated grid shows the
  * demo categories. Existing categories widgets are updated in place; none are created.
  *
+ * The ids MUST be Modern Commerce product category ids (local_moderncommerce_product_categories),
+ * not Moodle course category ids - the tiles resolver only ever looks products up by the former.
+ *
  * @param array $categories List of ['id' => int, 'icon' => string].
  * @return int Number of categories widgets updated.
  */
@@ -707,15 +715,26 @@ function local_moderncommerce_seed_get_users(int $preferreduserid): array {
 /**
  * Seed demo categories.
  *
+ * Product categories are a FLAT list: the admin screen (category_service::save_category) never
+ * writes a parent, and the storefront filter, the category tiles and coupon targeting all match on
+ * a single category id with no hierarchy. Seeding a parent "Modern Commerce Demo" wrapper would
+ * therefore surface an extra category that holds no products of its own - a dead entry in the
+ * catalog filter and a zero-count tile linking to an empty page. Every seeded category here is
+ * top-level and carries products.
+ *
  * @param int $now Current time.
- * @return array Category IDs.
+ * @return array ['courses' => int, 'bundles' => int] Product category IDs.
  */
 function local_moderncommerce_seed_categories(int $now): array {
-    $rootid = local_moderncommerce_seed_upsert('local_moderncommerce_product_categories', ['slug' => 'moderncommerce-demo'], [
+    global $DB;
+
+    $coursesid = local_moderncommerce_seed_upsert('local_moderncommerce_product_categories', [
+        'slug' => 'moderncommerce-demo-courses',
+    ], [
         'parentid' => null,
-        'name' => 'Modern Commerce Demo',
-        'slug' => 'moderncommerce-demo',
-        'description' => 'Sample catalog data generated for Modern Commerce.',
+        'name' => 'Demo Courses',
+        'slug' => 'moderncommerce-demo-courses',
+        'description' => 'Sample individual course products.',
         'path' => '',
         'depth' => 0,
         'visible' => 1,
@@ -723,39 +742,25 @@ function local_moderncommerce_seed_categories(int $now): array {
         'timecreated' => $now,
         'timemodified' => $now,
     ]);
+    $DB->set_field('local_moderncommerce_product_categories', 'path', '/' . $coursesid . '/', ['id' => $coursesid]);
 
-    $coursesid = local_moderncommerce_seed_upsert('local_moderncommerce_product_categories', [
-        'slug' => 'moderncommerce-demo-courses',
+    $bundlesid = local_moderncommerce_seed_upsert('local_moderncommerce_product_categories', [
+        'slug' => 'moderncommerce-demo-bundles',
     ], [
-        'parentid' => $rootid,
-        'name' => 'Demo Courses',
-        'slug' => 'moderncommerce-demo-courses',
-        'description' => 'Sample individual course products.',
-        'path' => '/' . $rootid,
-        'depth' => 1,
+        'parentid' => null,
+        'name' => 'Demo Bundles',
+        'slug' => 'moderncommerce-demo-bundles',
+        'description' => 'Sample bundle and program products.',
+        'path' => '',
+        'depth' => 0,
         'visible' => 1,
         'sortorder' => 20,
         'timecreated' => $now,
         'timemodified' => $now,
     ]);
-
-    $bundlesid = local_moderncommerce_seed_upsert('local_moderncommerce_product_categories', [
-        'slug' => 'moderncommerce-demo-bundles',
-    ], [
-        'parentid' => $rootid,
-        'name' => 'Demo Bundles',
-        'slug' => 'moderncommerce-demo-bundles',
-        'description' => 'Sample bundle and program products.',
-        'path' => '/' . $rootid,
-        'depth' => 1,
-        'visible' => 1,
-        'sortorder' => 30,
-        'timecreated' => $now,
-        'timemodified' => $now,
-    ]);
+    $DB->set_field('local_moderncommerce_product_categories', 'path', '/' . $bundlesid . '/', ['id' => $bundlesid]);
 
     return [
-        'root' => $rootid,
         'courses' => $coursesid,
         'bundles' => $bundlesid,
     ];

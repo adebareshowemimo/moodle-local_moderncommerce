@@ -3155,6 +3155,7 @@ $string['productalreadyaccessible'] = 'You already have access to this product.'
 $string['productalreadyaccessible_name'] = 'Product already accessible';
 $string['productarchived'] = 'Product Archived';
 $string['productbasics'] = 'Product Basics';
+$string['productcountlabel'] = 'products';
 $string['productcreated'] = 'Product Created';
 $string['productfeatures'] = 'Product features';
 $string['productformsettings'] = 'Product form fields';

@@ -1236,5 +1236,14 @@ function xmldb_local_moderncommerce_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026062612, 'local', 'moderncommerce');
     }
 
+    if ($oldversion < 2026081002) {
+        // The storefront category tiles used to resolve Moodle course categories; they now resolve
+        // Modern Commerce product categories, so saved widget items hold ids that no longer mean
+        // anything and the widget renders empty. See the service method for the remapping rules.
+        \local_moderncommerce\services\category_service::migrate_widget_items_to_product_categories();
+
+        upgrade_plugin_savepoint(true, 2026081002, 'local', 'moderncommerce');
+    }
+
     return true;
 }

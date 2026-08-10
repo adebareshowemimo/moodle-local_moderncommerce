@@ -129,7 +129,8 @@ class categories_resolver implements widget_resolver {
             'paddingtop' => max(0, (int)($settings['paddingtop'] ?? 0)),
             'paddingbottom' => max(0, (int)($settings['paddingbottom'] ?? 0)),
             'labels' => [
-                'courses' => get_string('coursecountlabel', 'local_moderncommerce'),
+                // The tile count spans every sellable product type, not just courses.
+                'courses' => get_string('productcountlabel', 'local_moderncommerce'),
                 'scrollleft' => get_string('p1_storefront_scrollleft', 'local_moderncommerce'),
                 'scrollright' => get_string('p1_storefront_scrollright', 'local_moderncommerce'),
             ],

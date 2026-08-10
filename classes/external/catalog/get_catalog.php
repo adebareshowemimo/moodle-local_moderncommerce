@@ -69,7 +69,7 @@ class get_catalog extends external_api {
      *
      * @param string $search Search product title.
      * @param string $coursetype Course type filter.
-     * @param int $categoryid Moodle course category filter.
+     * @param int $categoryid Modern Commerce product category filter.
      * @param string $level Skill level filter.
      * @param float $minprice Minimum price.
      * @param float $maxprice Maximum price.

@@ -165,6 +165,11 @@ class category_service {
      * product of a type the catalog renders. Courses additionally need an enabled regular price
      * and a visible, non-site course behind them, matching the catalog's own product query.
      *
+     * A product can carry several mappings, but the catalog only ever shows it under the ONE
+     * category that get_primary_category_map() resolves. Counting raw mapping rows would advertise
+     * products under a category that then returns nothing, so the tally is built from the same
+     * canonical winner the catalog uses - the two cannot drift apart.
+     *
      * @return array Category id => product count. Visible categories with no products are present as 0.
      */
     public static function count_visible_products(): array {
@@ -179,12 +184,9 @@ class category_service {
             return [];
         }
 
-        $sql = "SELECT pcm.categoryid, COUNT(DISTINCT p.id) AS productcount
-                  FROM {" . self::MAP_TABLE . "} pcm
-                  JOIN {" . self::TABLE . "} pc ON pc.id = pcm.categoryid
-                  JOIN {local_moderncommerce_products} p ON p.id = pcm.productid
-                 WHERE pc.visible = 1
-                   AND p.status = :status
+        $sql = "SELECT DISTINCT p.id
+                  FROM {local_moderncommerce_products} p
+                 WHERE p.status = :status
                    AND p.visible = 1
                    AND p.producttype IN (:typecourse, :typebundle, :typeprogram)
                    AND (
@@ -196,8 +198,7 @@ class category_service {
                                   AND pr.enabled = 1
                                   AND pr.pricetype = :pricetype
                            )
-                       )
-              GROUP BY pcm.categoryid";
+                       )";
 
         $params = [
             'status' => 'active',
@@ -208,8 +209,16 @@ class category_service {
             'pricetype' => 'regular',
         ];
 
-        foreach ($DB->get_records_sql($sql, $params) as $record) {
-            $counts[(int) $record->categoryid] = (int) $record->productcount;
+        $productids = $DB->get_fieldset_sql($sql, $params);
+        if (empty($productids)) {
+            return $counts;
+        }
+
+        foreach (self::get_primary_category_map($productids) as $category) {
+            $categoryid = (int) $category['id'];
+            if (array_key_exists($categoryid, $counts)) {
+                $counts[$categoryid]++;
+            }
         }
 
         return $counts;
@@ -244,6 +253,73 @@ class category_service {
             'isprimary' => 1,
             'timecreated' => time(),
         ]);
+    }
+
+    /**
+     * Repoint saved category-tile widget items from Moodle course categories to product categories.
+     *
+     * The tiles widget used to resolve Moodle course categories and now resolves Modern Commerce
+     * product categories, so any stored item still holds a course-category id that resolves to
+     * nothing - leaving the widget blank. Each stored id is remapped to the product category of the
+     * same name where one exists; ids that cannot be matched are dropped so the widget falls back
+     * to listing the visible product categories rather than rendering an empty grid.
+     *
+     * Idempotent: ids that are already product categories are left untouched.
+     *
+     * @return int Number of widgets whose items were rewritten.
+     */
+    public static function migrate_widget_items_to_product_categories(): int {
+        global $DB;
+
+        $productcategories = [];
+        foreach ($DB->get_records(self::TABLE, null, '', 'id, name') as $category) {
+            $productcategories[\core_text::strtolower(trim($category->name))] = (int) $category->id;
+        }
+
+        $coursecategories = $DB->get_records_menu('course_categories', null, '', 'id, name');
+
+        $updated = 0;
+        foreach ($DB->get_records('local_moderncommerce_widget', ['type' => 'categories']) as $widget) {
+            $settings = json_decode((string) $widget->settings, true);
+            if (!is_array($settings) || empty($settings['items']) || !is_array($settings['items'])) {
+                continue;
+            }
+
+            $items = [];
+            foreach ($settings['items'] as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $storedid = (int) ($item['categoryid'] ?? 0);
+                if ($storedid <= 0) {
+                    continue;
+                }
+
+                // Already a product category: nothing to do.
+                if (in_array($storedid, $productcategories, true)) {
+                    $items[] = $item;
+                    continue;
+                }
+
+                // Otherwise treat it as a legacy course-category id and match on name.
+                $name = \core_text::strtolower(trim((string) ($coursecategories[$storedid] ?? '')));
+                if ($name !== '' && isset($productcategories[$name])) {
+                    $item['categoryid'] = (string) $productcategories[$name];
+                    $items[] = $item;
+                }
+            }
+
+            $settings['items'] = array_values($items);
+            $DB->set_field(
+                'local_moderncommerce_widget',
+                'settings',
+                json_encode($settings, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                ['id' => $widget->id]
+            );
+            $updated++;
+        }
+
+        return $updated;
     }
 
     /**
