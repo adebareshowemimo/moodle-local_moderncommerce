@@ -49,6 +49,11 @@ class catalog_resolver implements widget_resolver {
     public function resolve(widget $instance, array $context): array {
         $settings = $instance->get_settings_array();
 
+        // A category tile deep-links as ?categoryid=N. The page passes it through the render
+        // context, since this resolver runs inside a web service call and cannot read the
+        // storefront's own query string.
+        $urlcategoryid = max(0, (int)($context['categoryid'] ?? 0));
+
         // Title: widget setting, then the generic catalog label.
         $title = trim((string)($settings['title'] ?? ''));
         if ($title === '') {
@@ -158,7 +163,11 @@ class catalog_resolver implements widget_resolver {
             'initialfilters' => [
                 'search' => '',
                 'coursetype' => (string)($settings['coursetype'] ?? ''),
-                'categoryid' => max(0, (int)($settings['categoryid'] ?? 0)),
+                // A category tile links in as ?categoryid=N, so the URL beats the widget's own
+                // configured category. The client re-reads the query string on mount as well.
+                'categoryid' => $urlcategoryid > 0
+                    ? $urlcategoryid
+                    : max(0, (int)($settings['categoryid'] ?? 0)),
                 'level' => '',
                 'minprice' => 0,
                 'maxprice' => 0,

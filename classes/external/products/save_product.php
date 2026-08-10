@@ -29,6 +29,7 @@ use core_external\external_api;
 use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_value;
+use local_moderncommerce\services\category_service;
 
 /**
  * Save product basics, price, inventory, and primary category.
@@ -183,7 +184,7 @@ class save_product extends external_api {
 
         self::save_price($productid, $params, $now);
         self::save_inventory($productid, $params, $now);
-        self::save_primary_category($productid, $params['categoryid'], $now);
+        category_service::set_primary_category($productid, $params['categoryid']);
         self::save_course_link($productid, $params, $now);
 
         $transaction->allow_commit();
@@ -288,7 +289,7 @@ class save_product extends external_api {
 
         if (
             $params['categoryid'] > 0
-            && !$DB->record_exists('local_moderncommerce_product_categories', ['id' => $params['categoryid']])
+            && !category_service::category_exists($params['categoryid'])
         ) {
             return get_string('invalidcategory', 'local_moderncommerce');
         }
@@ -428,30 +429,6 @@ class save_product extends external_api {
         } else {
             $DB->insert_record('local_moderncommerce_product_inventory', $record);
         }
-    }
-
-    /**
-     * Save primary category mapping.
-     *
-     * @param int $productid Product ID.
-     * @param int $categoryid Category ID.
-     * @param int $now Current timestamp.
-     */
-    private static function save_primary_category(int $productid, int $categoryid, int $now): void {
-        global $DB;
-
-        $DB->delete_records('local_moderncommerce_product_category_map', ['productid' => $productid]);
-
-        if ($categoryid <= 0) {
-            return;
-        }
-
-        $DB->insert_record('local_moderncommerce_product_category_map', (object) [
-            'productid' => $productid,
-            'categoryid' => $categoryid,
-            'isprimary' => 1,
-            'timecreated' => $now,
-        ]);
     }
 
     /**

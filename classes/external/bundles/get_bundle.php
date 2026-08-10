@@ -32,6 +32,7 @@ use core_external\external_single_structure;
 use core_external\external_value;
 use core_external\external_warnings;
 use local_moderncommerce\api\bundle_api;
+use local_moderncommerce\services\category_service;
 use local_moderncommerce\services\pricing_service;
 
 /**
@@ -111,6 +112,9 @@ class get_bundle extends external_api {
             'featured' => !empty($bundle->featured),
             'displayorder' => (int) ($bundle->displayorder ?? 0),
             'maxenrollment' => (int) ($bundle->maxenrollment ?? 0),
+            'primarycategoryid' => (int) (
+                category_service::get_primary_category_map([(int) $bundle->id])[(int) $bundle->id]['id'] ?? 0
+            ),
             'price' => $regularprice,
             'saleprice' => $saleprice,
             'salestartdate' => (int) ($bundle->salestartdate ?? 0),
@@ -147,6 +151,7 @@ class get_bundle extends external_api {
             'featured' => new external_value(PARAM_BOOL, 'Whether featured.'),
             'displayorder' => new external_value(PARAM_INT, 'Display order.'),
             'maxenrollment' => new external_value(PARAM_INT, 'Max enrollment (0 = unlimited).'),
+            'primarycategoryid' => new external_value(PARAM_INT, 'Primary product category ID (0 = none).'),
             'price' => new external_value(PARAM_FLOAT, 'Regular price.'),
             'saleprice' => new external_value(PARAM_FLOAT, 'Sale price (0 = none).'),
             'salestartdate' => new external_value(PARAM_INT, 'Sale start timestamp.'),

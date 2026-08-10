@@ -3248,7 +3248,7 @@ export default function Storefront(props: Props) {
                     return (
                         <>
                             {renderEditorSchemaField("coursetype", "Product type", "select")}
-                            {renderEditorSchemaField("categoryid", "Category", "number")}
+                            {renderEditorSchemaField("categoryid", "Category", "select")}
                             {renderEditorSchemaField("sort", "Sort by", "select")}
                             {renderEditorSchemaField("perpage", "Count", "number")}
                         </>

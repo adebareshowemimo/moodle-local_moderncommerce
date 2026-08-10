@@ -49,7 +49,7 @@ class get_catalog extends external_api {
         return new external_function_parameters([
             'search' => new external_value(PARAM_TEXT, 'Search product title.', VALUE_DEFAULT, ''),
             'coursetype' => new external_value(PARAM_ALPHANUMEXT, 'Course, Bundle, Program, or empty.', VALUE_DEFAULT, ''),
-            'categoryid' => new external_value(PARAM_INT, 'Moodle course category ID.', VALUE_DEFAULT, 0),
+            'categoryid' => new external_value(PARAM_INT, 'Modern Commerce product category ID.', VALUE_DEFAULT, 0),
             'level' => new external_value(PARAM_TEXT, 'Skill level filter.', VALUE_DEFAULT, ''),
             'minprice' => new external_value(PARAM_FLOAT, 'Minimum price.', VALUE_DEFAULT, 0),
             'maxprice' => new external_value(PARAM_FLOAT, 'Maximum price. Zero means no maximum.', VALUE_DEFAULT, 0),
@@ -571,6 +571,8 @@ class get_catalog extends external_api {
             if ($params['coursetype'] !== '' && $item['coursetype'] !== $params['coursetype']) {
                 return false;
             }
+            // Product categories are a flat list, so an exact match is the whole story: there are
+            // no sub-categories to descend into.
             if ($params['categoryid'] > 0 && (int)$item['categoryid'] !== $params['categoryid']) {
                 return false;
             }

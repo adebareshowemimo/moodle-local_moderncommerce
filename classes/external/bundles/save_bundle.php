@@ -32,6 +32,7 @@ use core_external\external_single_structure;
 use core_external\external_value;
 use core_external\external_warnings;
 use local_moderncommerce\api\bundle_api;
+use local_moderncommerce\services\category_service;
 
 /**
  * Create or update a bundle/program, reconciling its included courses.
@@ -54,6 +55,12 @@ class save_bundle extends external_api {
             'featured' => new external_value(PARAM_BOOL, 'Whether featured.', VALUE_DEFAULT, false),
             'displayorder' => new external_value(PARAM_INT, 'Display order.', VALUE_DEFAULT, 0),
             'maxenrollment' => new external_value(PARAM_INT, 'Max enrollment (0 = unlimited).', VALUE_DEFAULT, 0),
+            'categoryid' => new external_value(
+                PARAM_INT,
+                'Primary product category ID, or 0 for none.',
+                VALUE_DEFAULT,
+                0
+            ),
             'price' => new external_value(PARAM_FLOAT, 'Regular price.', VALUE_DEFAULT, 0),
             'saleprice' => new external_value(PARAM_FLOAT, 'Sale price (0 = none).', VALUE_DEFAULT, 0),
             'salestartdate' => new external_value(PARAM_INT, 'Sale start timestamp.', VALUE_DEFAULT, 0),
@@ -80,6 +87,7 @@ class save_bundle extends external_api {
      * @param bool $featured Featured flag.
      * @param int $displayorder Display order.
      * @param int $maxenrollment Max enrollment.
+     * @param int $categoryid Primary product category ID.
      * @param float $price Regular price.
      * @param float $saleprice Sale price.
      * @param int $salestartdate Sale start.
@@ -98,6 +106,7 @@ class save_bundle extends external_api {
         bool $featured = false,
         int $displayorder = 0,
         int $maxenrollment = 0,
+        int $categoryid = 0,
         float $price = 0,
         float $saleprice = 0,
         int $salestartdate = 0,
@@ -115,6 +124,7 @@ class save_bundle extends external_api {
             'featured' => $featured,
             'displayorder' => $displayorder,
             'maxenrollment' => $maxenrollment,
+            'categoryid' => $categoryid,
             'price' => $price,
             'saleprice' => $saleprice,
             'salestartdate' => $salestartdate,
@@ -129,6 +139,16 @@ class save_bundle extends external_api {
 
         if (trim($params['name']) === '') {
             return ['success' => false, 'bundleid' => 0, 'message' => get_string('required'), 'warnings' => []];
+        }
+
+        $categoryid = max(0, (int) $params['categoryid']);
+        if ($categoryid > 0 && !category_service::category_exists($categoryid)) {
+            return [
+                'success' => false,
+                'bundleid' => 0,
+                'message' => get_string('invalidcategory', 'local_moderncommerce'),
+                'warnings' => [],
+            ];
         }
 
         $allowedstatuses = ['active', 'inactive', 'draft', 'archived'];
@@ -169,6 +189,9 @@ class save_bundle extends external_api {
             bundle_api::update($bundleid, $data);
             self::reconcile_courses($bundleid, $courseids);
         }
+
+        // Bundles and programs are products, so they categorise exactly like any other product.
+        category_service::set_primary_category($bundleid, $categoryid);
 
         \local_moderncommerce\audit\audit_service::record(
             $oldbundle ? 'bundle_updated' : 'bundle_created',

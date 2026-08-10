@@ -24,15 +24,21 @@
 
 namespace local_moderncommerce\storefront\resolver;
 
-use core_course_category;
 use local_moderncommerce\branding;
 use local_moderncommerce\persistent\widget;
+use local_moderncommerce\services\category_service;
 use moodle_url;
 
 /**
  * Builds the top-level category tile list, linking into the filtered catalog.
  */
 class categories_resolver implements widget_resolver {
+    /** @var array|null Visible product categories keyed by id, loaded once per resolve. */
+    private $categories = null;
+
+    /** @var array|null Sellable product counts keyed by category id, loaded once per resolve. */
+    private $productcounts = null;
+
     /**
      * Build the categories payload.
      *
@@ -80,13 +86,11 @@ class categories_resolver implements widget_resolver {
                 }
             }
         } else {
-            // Nothing selected yet: fall back to the visible top-level categories.
+            // Nothing selected yet: fall back to the visible product categories, in the order set
+            // on the admin categories screen.
             try {
-                foreach (core_course_category::top()->get_children() as $category) {
-                    if (!$category->is_uservisible()) {
-                        continue;
-                    }
-                    $tile = $this->build_tile((int)$category->id, $showcount, 'collection', '');
+                foreach ($this->get_categories() as $category) {
+                    $tile = $this->build_tile((int)$category['id'], $showcount, 'collection', '');
                     if ($tile !== null) {
                         $tiles[] = $tile;
                     }
@@ -143,10 +147,12 @@ class categories_resolver implements widget_resolver {
      */
     private function build_tile(int $catid, bool $showcount, string $icon, string $color = ''): ?array {
         try {
-            $category = core_course_category::get($catid, IGNORE_MISSING);
-            if (!$category || !$category->is_uservisible()) {
+            $categories = $this->get_categories();
+            // Only visible categories are loaded, so a miss means the category is hidden or gone.
+            if (!isset($categories[$catid])) {
                 return null;
             }
+            $category = $categories[$catid];
             // Normalise to a bare icon name (no "bi-" / "bi " prefix); React adds "bi bi-".
             $icon = (string) preg_replace('/^bi-/', '', preg_replace('/^bi\s+/', '', trim($icon)));
             // Only accept a valid hex colour; anything else becomes '' (palette fallback client-side).
@@ -163,9 +169,10 @@ class categories_resolver implements widget_resolver {
             }
             return [
                 'id' => $catid,
-                // React escapes text nodes itself, so default escaping double-encodes ampersands.
-                'name' => $category->get_formatted_name(['escape' => false]),
-                'count' => $showcount ? (int)$category->get_courses_count() : 0,
+                // React escapes text nodes itself, so decode first or ampersands double-encode.
+                'name' => html_entity_decode($category['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                // Count what a shopper can actually buy in this category, not raw Moodle courses.
+                'count' => $showcount ? ($this->get_product_counts()[$catid] ?? 0) : 0,
                 'url' => (new moodle_url(
                     '/local/moderncommerce/index.php',
                     ['categoryid' => $catid]
@@ -176,6 +183,35 @@ class categories_resolver implements widget_resolver {
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    /**
+     * The visible product categories keyed by id, loaded once per resolve.
+     *
+     * @return array Category id => ['id' => int, 'name' => string, 'slug' => string].
+     */
+    private function get_categories(): array {
+        if ($this->categories === null) {
+            $this->categories = [];
+            foreach (category_service::get_visible_categories() as $category) {
+                $this->categories[(int)$category['id']] = $category;
+            }
+        }
+
+        return $this->categories;
+    }
+
+    /**
+     * Sellable product counts keyed by category id, loaded once per resolve.
+     *
+     * @return array Category id => product count.
+     */
+    private function get_product_counts(): array {
+        if ($this->productcounts === null) {
+            $this->productcounts = category_service::count_visible_products();
+        }
+
+        return $this->productcounts;
     }
 
     /**

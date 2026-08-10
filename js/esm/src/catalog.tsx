@@ -511,6 +511,42 @@ const defaultFilters = (initialFilters: CatalogFilters): CatalogFilters => ({
     perpage: Math.max(1, Number(initialFilters.perpage ?? 12)),
 });
 
+// syncUrl() writes the active filters into the query string; read them back so a shared or
+// bookmarked catalog link - including a category tile's ?categoryid=N - opens already filtered.
+const filtersFromUrl = (base: CatalogFilters): CatalogFilters => {
+    if (typeof window === "undefined") {
+        return base;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    if (![...params.keys()].length) {
+        return base;
+    }
+
+    const text = (key: string, fallback: string): string => (
+        params.has(key) ? String(params.get(key)) : fallback
+    );
+    const number = (key: string, fallback: number, min: number): number => {
+        if (!params.has(key)) {
+            return fallback;
+        }
+        const parsed = Number(params.get(key));
+        return Number.isFinite(parsed) ? Math.max(min, parsed) : fallback;
+    };
+
+    return {
+        search: text("search", base.search),
+        coursetype: text("coursetype", base.coursetype),
+        categoryid: number("categoryid", base.categoryid, 0),
+        level: text("level", base.level),
+        minprice: number("minprice", base.minprice, 0),
+        maxprice: number("maxprice", base.maxprice, 0),
+        sort: text("sort", base.sort) || "popular",
+        page: number("page", base.page, 0),
+        perpage: number("perpage", base.perpage, 1),
+    };
+};
+
 const filtersForService = (filters: CatalogFilters) => ({
     search: filters.search,
     coursetype: filters.coursetype,
@@ -1005,7 +1041,10 @@ export default function Catalog({
     const display = displaySettingsDefaults(displaySettings, initialFilters);
     const defaultPerPage = display.perpage;
     const catalogTitle = display.title || labels.catalog;
-    const initial = defaultFilters(initialFilters);
+    // The URL wins over the widget's configured defaults, but only where the page owns the URL.
+    const initial = syncUrlEnabled
+        ? filtersFromUrl(defaultFilters(initialFilters))
+        : defaultFilters(initialFilters);
     const [filters, setFilters] = useState<CatalogFilters>(initial);
     const [draft, setDraft] = useState<CatalogFilters>(initial);
     const [data, setData] = useState<CatalogResponse | null>(null);

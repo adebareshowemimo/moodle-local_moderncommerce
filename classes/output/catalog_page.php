@@ -21,6 +21,7 @@ use renderable;
 use templatable;
 use moodle_url;
 use local_moderncommerce\api\bundle_api;
+use local_moderncommerce\services\category_service;
 use local_moderncommerce\services\pricing_service;
 use local_moderncommerce\services\meta_service;
 use local_moderncommerce\services\review_service;
@@ -78,7 +79,7 @@ class catalog_page implements renderable, templatable {
         $currencyconfig = pricing_service::get_currency_config();
         $currencysymbol = $currencyconfig->symbol;
         // Get courses with active canonical product pricing.
-        $sql = "SELECT c.id, c.fullname, c.category, c.summary, c.summaryformat,
+        $sql = "SELECT c.id, c.fullname, c.summary, c.summaryformat,
                        p.id AS productid, p.timecreated as pricingcreated,
                        pr.id AS priceid, pr.amount AS price, pr.compareamount
                   FROM {course} c
@@ -109,15 +110,26 @@ class catalog_page implements renderable, templatable {
             }
         }
         $recordset->close();
-        // Get categories for filter.
-        $categories = $DB->get_records('course_categories', ['visible' => 1], 'name ASC', 'id, name');
-        $categorylist = [];
-        foreach ($categories as $cat) {
-            $categorylist[] = [
-                'id' => $cat->id,
-                'name' => format_string($cat->name),
-            ];
+        // Get the Modern Commerce product categories for the filter. Moodle course categories
+        // organise courses inside Moodle; the storefront filters on the merchant's own categories,
+        // which cover bundles and programs too. The admin's drag-and-drop order is preserved here.
+        $categorylist = category_service::get_visible_categories();
+
+        // Bundles and programs are products in their own right, so fetch them up front and resolve
+        // every product's category in a single query shared by both passes below.
+        $bundles = bundle_api::get_all([
+            'visible' => 1, 'status' => 'active',
+        ]);
+        $bundles = $this->dedupe_catalog_bundles($bundles);
+
+        $productids = [];
+        foreach ($records as $rec) {
+            $productids[] = (int) $rec->productid;
         }
+        foreach ($bundles as $bundle) {
+            $productids[] = (int) $bundle->id;
+        }
+        $categorymap = category_service::get_primary_category_map($productids);
 
         // Build items array.
         $items = [];
@@ -155,14 +167,9 @@ class catalog_page implements renderable, templatable {
                 $level = !empty($coursemeta->skill_level) ? (string)$coursemeta->skill_level : '';
                 $bestseller = !empty($coursemeta->badge_bestseller);
             }
-            // Get category name.
-            $categoryname = '';
-            if (!empty($rec->category)) {
-                $cat = $DB->get_record('course_categories', ['id' => $rec->category], 'name');
-                if ($cat) {
-                    $categoryname = format_string($cat->name);
-                }
-            }
+            // Get the assigned product category. Unmapped products, and products whose category has
+            // been hidden, fall back to no category so they stay out of every category filter.
+            $productcategory = $categorymap[(int) $rec->productid] ?? null;
 
             // Get price value for filtering.
             $pricevalue = 0;
@@ -195,8 +202,8 @@ class catalog_page implements renderable, templatable {
                 'rating' => $rating,
                 'reviewcount' => $reviewcount,
                 'level' => $level,
-                'category' => $categoryname,
-                'categoryid' => $rec->category,
+                'category' => $productcategory['name'] ?? '',
+                'categoryid' => $productcategory['id'] ?? 0,
                 'coursetype' => 'Course',
                 'isbundle' => false,
                 'isprogram' => false,
@@ -206,14 +213,12 @@ class catalog_page implements renderable, templatable {
             ];
         }
 
-        // Add bundles and programs.
-        $bundles = bundle_api::get_all([
-            'visible' => 1, 'status' => 'active',
-        ]);
-        $bundles = $this->dedupe_catalog_bundles($bundles);
+        // Add bundles and programs (already fetched and deduped above).
         foreach ($bundles as $bundle) {
             $bundleid = (int) $bundle->id;
             $isprogram = !empty($bundle->isprogram);
+            // The bundle id is its product id, so it categorises exactly like any other product.
+            $bundlecategory = $categorymap[$bundleid] ?? null;
 
             // Get bundle image.
             $thumb = '';
@@ -306,8 +311,8 @@ class catalog_page implements renderable, templatable {
                 'rating' => $bundlerating,
                 'reviewcount' => $bundlereviewcount,
                 'level' => $level,
-                'category' => '',
-                'categoryid' => 0,
+                'category' => $bundlecategory['name'] ?? '',
+                'categoryid' => $bundlecategory['id'] ?? 0,
                 'coursetype' => $coursetype,
                 'isbundle' => !$isprogram,
                 'isprogram' => $isprogram,

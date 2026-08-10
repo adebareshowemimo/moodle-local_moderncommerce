@@ -70,6 +70,195 @@ class category_service {
     }
 
     /**
+     * List the visible product categories in the admin's saved display order.
+     *
+     * This is the single source of truth for the storefront: the catalog filter list and the
+     * category tiles widget both read it, so hidden categories never reach a public page and the
+     * drag-and-drop order set on the admin screen is the order shoppers see.
+     *
+     * @return array List of ['id', 'name', 'slug'] rows.
+     */
+    public static function get_visible_categories(): array {
+        global $DB;
+
+        $context = context_system::instance();
+        $records = $DB->get_records(
+            self::TABLE,
+            ['visible' => 1],
+            'sortorder ASC, name ASC',
+            'id, name, slug'
+        );
+
+        $rows = [];
+        foreach ($records as $record) {
+            $rows[] = [
+                'id' => (int) $record->id,
+                'name' => format_string($record->name, true, ['context' => $context]),
+                'slug' => (string) $record->slug,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Map products to their primary product category in one query.
+     *
+     * Products may map to several categories, but the write path stores exactly one primary row.
+     * Legacy and seeded rows can still carry more than one mapping - and even more than one row
+     * flagged primary - so the tie is broken deterministically: primary first, then the admin's
+     * display order, then name. Hidden categories are excluded so a hidden category can neither be
+     * shown on a product nor be filtered on from the storefront.
+     *
+     * @param int[] $productids Product ids to resolve.
+     * @return array Product id => ['id' => int, 'name' => string, 'slug' => string].
+     */
+    public static function get_primary_category_map(array $productids): array {
+        global $DB;
+
+        $clean = [];
+        foreach ($productids as $productid) {
+            $productid = (int) $productid;
+            if ($productid > 0) {
+                $clean[$productid] = $productid;
+            }
+        }
+
+        if (empty($clean)) {
+            return [];
+        }
+
+        $context = context_system::instance();
+        [$insql, $inparams] = $DB->get_in_or_equal($clean, SQL_PARAMS_NAMED, 'pid');
+        $sql = "SELECT pcm.id AS mapid,
+                       pcm.productid,
+                       pc.id AS categoryid,
+                       pc.name,
+                       pc.slug
+                  FROM {" . self::MAP_TABLE . "} pcm
+                  JOIN {" . self::TABLE . "} pc ON pc.id = pcm.categoryid
+                 WHERE pcm.productid $insql
+                   AND pc.visible = 1
+              ORDER BY pcm.productid ASC, pcm.isprimary DESC, pc.sortorder ASC, pc.name ASC";
+
+        $map = [];
+        foreach ($DB->get_records_sql($sql, $inparams) as $record) {
+            $productid = (int) $record->productid;
+            // Ordered primary-first, so the first row seen for a product is the one to keep.
+            if (isset($map[$productid])) {
+                continue;
+            }
+            $map[$productid] = [
+                'id' => (int) $record->categoryid,
+                'name' => format_string($record->name, true, ['context' => $context]),
+                'slug' => (string) $record->slug,
+            ];
+        }
+
+        return $map;
+    }
+
+    /**
+     * Count the sellable products mapped to each visible category.
+     *
+     * "Sellable" means what a shopper can actually reach from the catalog: an active, visible
+     * product of a type the catalog renders. Courses additionally need an enabled regular price
+     * and a visible, non-site course behind them, matching the catalog's own product query.
+     *
+     * @return array Category id => product count. Visible categories with no products are present as 0.
+     */
+    public static function count_visible_products(): array {
+        global $DB;
+
+        $counts = [];
+        foreach ($DB->get_records(self::TABLE, ['visible' => 1], '', 'id') as $record) {
+            $counts[(int) $record->id] = 0;
+        }
+
+        if (empty($counts)) {
+            return [];
+        }
+
+        $sql = "SELECT pcm.categoryid, COUNT(DISTINCT p.id) AS productcount
+                  FROM {" . self::MAP_TABLE . "} pcm
+                  JOIN {" . self::TABLE . "} pc ON pc.id = pcm.categoryid
+                  JOIN {local_moderncommerce_products} p ON p.id = pcm.productid
+                 WHERE pc.visible = 1
+                   AND p.status = :status
+                   AND p.visible = 1
+                   AND p.producttype IN (:typecourse, :typebundle, :typeprogram)
+                   AND (
+                        p.producttype <> :typecoursecheck
+                        OR EXISTS (
+                               SELECT 1
+                                 FROM {local_moderncommerce_product_prices} pr
+                                WHERE pr.productid = p.id
+                                  AND pr.enabled = 1
+                                  AND pr.pricetype = :pricetype
+                           )
+                       )
+              GROUP BY pcm.categoryid";
+
+        $params = [
+            'status' => 'active',
+            'typecourse' => 'course',
+            'typebundle' => 'bundle',
+            'typeprogram' => 'program',
+            'typecoursecheck' => 'course',
+            'pricetype' => 'regular',
+        ];
+
+        foreach ($DB->get_records_sql($sql, $params) as $record) {
+            $counts[(int) $record->categoryid] = (int) $record->productcount;
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Set a product's primary category, replacing any existing assignment.
+     *
+     * Shared by every product editor (courses, bundles, programs) so all types categorise
+     * identically. Passing 0 clears the product's category.
+     *
+     * @param int $productid Product id.
+     * @param int $categoryid Category id, or 0 to clear.
+     * @return void
+     */
+    public static function set_primary_category(int $productid, int $categoryid): void {
+        global $DB;
+
+        if ($productid <= 0) {
+            return;
+        }
+
+        $DB->delete_records(self::MAP_TABLE, ['productid' => $productid]);
+
+        if ($categoryid <= 0) {
+            return;
+        }
+
+        $DB->insert_record(self::MAP_TABLE, (object) [
+            'productid' => $productid,
+            'categoryid' => $categoryid,
+            'isprimary' => 1,
+            'timecreated' => time(),
+        ]);
+    }
+
+    /**
+     * Whether a product category exists.
+     *
+     * @param int $categoryid Category id.
+     * @return bool
+     */
+    public static function category_exists(int $categoryid): bool {
+        global $DB;
+
+        return $categoryid > 0 && $DB->record_exists(self::TABLE, ['id' => $categoryid]);
+    }
+
+    /**
      * Create or update a product category.
      *
      * @param int $id Category id, or 0 to create.

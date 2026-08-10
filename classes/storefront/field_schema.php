@@ -1266,7 +1266,13 @@ class field_schema {
                     'Program' => 'Program',
                 ],
             ],
-            ['name' => 'categoryid', 'label' => 'Category', 'type' => 'number', 'default' => 0],
+            [
+                'name' => 'categoryid',
+                'label' => 'Category',
+                'type' => 'select',
+                'default' => 0,
+                'choices' => self::category_choices(),
+            ],
             [
                 'name' => 'sort',
                 'label' => 'Sort by',
@@ -1343,15 +1349,16 @@ class field_schema {
     }
 
     /**
-     * Build the category dropdown choices (every category and sub-category, hierarchy in the label).
+     * Build the category dropdown choices from the visible Modern Commerce product categories,
+     * in the display order set on the admin categories screen.
      *
      * @return array<string, string>
      */
     private static function category_choices(): array {
         $choices = ['' => get_string('choosedots')];
         try {
-            foreach (\core_course_category::make_categories_list() as $id => $name) {
-                $choices[(string)$id] = $name;
+            foreach (\local_moderncommerce\services\category_service::get_visible_categories() as $category) {
+                $choices[(string)$category['id']] = $category['name'];
             }
         } catch (\Throwable $e) {
             return $choices;

@@ -67,6 +67,9 @@ $courseid = optional_param('courseid', 0, PARAM_INT);
 $bundleid = optional_param('bundleid', 0, PARAM_INT);
 $quantity = max(1, optional_param('quantity', 1, PARAM_INT));
 
+// Category tiles link in as ?categoryid=N, so the catalog opens filtered to that product category.
+$categoryid = max(0, optional_param('categoryid', 0, PARAM_INT));
+
 if (in_array($action, ['add', 'addtocart'], true) && confirm_sesskey()) {
     if (!isloggedin() || isguestuser()) {
         redirect(new moodle_url('/login/index.php', ['wantsurl' => $PAGE->url->out(false)]));
@@ -117,7 +120,10 @@ $reactconfig = json_encode([
     'props' => [
         'getPageMethod' => 'local_moderncommerce_get_storefront_page',
         'pageType' => zones::PAGE_CATALOG,
-        'renderContext' => ['hostpage' => zones::PAGE_CATALOG],
+        'renderContext' => array_filter([
+            'hostpage' => zones::PAGE_CATALOG,
+            'categoryid' => $categoryid,
+        ]),
         'layoutGetMethod' => 'local_moderncommerce_get_storefront_layout',
         'layoutSaveMethod' => 'local_moderncommerce_save_storefront_layout',
         'widgetGetMethod' => 'local_moderncommerce_get_storefront_widget',

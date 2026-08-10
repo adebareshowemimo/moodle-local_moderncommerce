@@ -24,6 +24,7 @@
 
 namespace local_moderncommerce\output;
 
+use local_moderncommerce\services\category_service;
 use local_moderncommerce\services\pricing_service;
 use moodle_url;
 
@@ -46,6 +47,12 @@ class bundles_page {
             ['value' => 'archived', 'label' => get_string('archived', 'local_moderncommerce')],
         ];
 
+        // Bundles and programs are products, so they use the same product categories as courses.
+        $categoryoptions = [['value' => '0', 'label' => get_string('allcategories', 'local_moderncommerce')]];
+        foreach (category_service::get_visible_categories() as $category) {
+            $categoryoptions[] = ['value' => (string) $category['id'], 'label' => $category['name']];
+        }
+
         $currencyconfig = pricing_service::get_currency_config();
 
         $config = json_encode([
@@ -62,6 +69,7 @@ class bundles_page {
                 'openBundleId' => $openbundleid,
                 'advancedUrlBase' => (new moodle_url('/local/moderncommerce/admin/advanced_bundle_features.php'))->out(false),
                 'statusOptions' => $statusoptions,
+                'categoryOptions' => $categoryoptions,
                 'perPageOptions' => [10, 25, 50, 100],
                 'currency' => [
                     'code' => $currencyconfig->currency,
@@ -145,6 +153,7 @@ class bundles_page {
             'coursessettings' => get_string('coursessettings', 'local_moderncommerce'),
             'isprogram' => get_string('isprogram', 'local_moderncommerce'),
             'maxenrollment' => get_string('maxenrollment', 'local_moderncommerce'),
+            'category' => get_string('category', 'local_moderncommerce'),
             'displayorder' => get_string('displayorder', 'local_moderncommerce'),
             'selectcourses' => get_string('selectcourses', 'local_moderncommerce'),
             'searchcoursesplaceholder' => get_string('searchcoursesplaceholder', 'local_moderncommerce'),

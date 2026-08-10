@@ -113,6 +113,7 @@ type BundleDetail = {
     featured: boolean;
     displayorder: number;
     maxenrollment: number;
+    primarycategoryid: number;
     price: number;
     saleprice: number;
     salestartdate: number;
@@ -146,6 +147,7 @@ type BundleForm = {
     featured: boolean;
     displayorder: string;
     maxenrollment: string;
+    categoryid: string;
     price: string;
     saleenabled: boolean;
     saleprice: string;
@@ -170,6 +172,7 @@ type BundlesAdminProps = {
     openBundleId: number;
     advancedUrlBase: string;
     statusOptions: SelectOption[];
+    categoryOptions: SelectOption[];
     perPageOptions: number[];
     currency: Currency;
     labels: Labels;
@@ -274,6 +277,7 @@ const emptyForm = (): BundleForm => ({
     featured: false,
     displayorder: "0",
     maxenrollment: "0",
+    categoryid: "0",
     price: "0",
     saleenabled: false,
     saleprice: "0",
@@ -299,6 +303,7 @@ const detailToForm = (detail: BundleDetail): BundleForm => ({
     featured: detail.featured,
     displayorder: String(detail.displayorder),
     maxenrollment: detail.maxenrollment > 0 ? String(detail.maxenrollment) : "0",
+    categoryid: String(detail.primarycategoryid || 0),
     price: String(detail.price),
     saleenabled: detail.saleprice > 0,
     saleprice: detail.saleprice > 0 ? String(detail.saleprice) : "0",
@@ -327,6 +332,7 @@ export default function BundlesAdmin({
     openBundleId,
     advancedUrlBase,
     statusOptions,
+    categoryOptions,
     perPageOptions,
     currency,
     labels,
@@ -568,6 +574,7 @@ export default function BundlesAdmin({
                 featured: form.featured,
                 displayorder: Number(form.displayorder) || 0,
                 maxenrollment: Number(form.maxenrollment) || 0,
+                categoryid: Number(form.categoryid) || 0,
                 price: toFloat(form.price),
                 saleprice: form.saleenabled ? toFloat(form.saleprice) : 0,
                 salestartdate: form.saleenabled ? dateInputToTimestamp(form.salestartdate) : 0,
@@ -830,6 +837,18 @@ export default function BundlesAdmin({
                                             value={form.status}
                                         >
                                             {statusOptions.map((option) => (
+                                                <option key={option.value} value={option.value}>{option.label}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label>
+                                        <span>{labels.category}</span>
+                                        <select
+                                            className={mcClasses("mc-select")}
+                                            onChange={(event) => updateForm({categoryid: event.target.value})}
+                                            value={form.categoryid}
+                                        >
+                                            {categoryOptions.map((option) => (
                                                 <option key={option.value} value={option.value}>{option.label}</option>
                                             ))}
                                         </select>
