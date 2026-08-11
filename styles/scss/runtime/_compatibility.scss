@@ -269,8 +269,12 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.mc-product-form__grid label,
-.mc-product-form__checks label {
+// Legacy layout for labels that WRAP their own control. The shared <Field>
+// primitive emits .mc-field-label as a sibling of the control instead, so it is
+// excluded here: a column flex container would push the required asterisk onto
+// its own line, and flex blockifies the span so display:inline cannot fix it.
+.mc-product-form__grid label:not(.mc-field-label):not(.mc-switch),
+.mc-product-form__checks label:not(.mc-field-label):not(.mc-switch) {
     color: var(--mc-text);
     display: flex;
     flex-direction: column;
@@ -294,7 +298,7 @@
 .mc-product-form__checks label {
     align-items: center;
     flex-direction: row;
-    gap: 0.4rem;
+    gap: 0.625rem;
 }
 
 .mc-course-picker {

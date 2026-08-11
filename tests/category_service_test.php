@@ -305,4 +305,76 @@ final class category_service_test extends advanced_testcase {
         $this->assertSame([], category_service::get_primary_category_map([]));
         $this->assertSame([], category_service::get_primary_category_map([0, -1]));
     }
+
+    /**
+     * A blank name is reported against the field, not as a flat message.
+     */
+    public function test_validate_category_requires_a_name(): void {
+        [, $errors] = category_service::validate_category(['name' => '']);
+
+        $this->assertArrayHasKey('name', $errors);
+        $this->assertSame(get_string('error:required', 'local_moderncommerce'), $errors['name']);
+    }
+
+    /**
+     * Whitespace is not a value. PARAM_TEXT would let this through, which is
+     * why the endpoint declares the name as PARAM_RAW_TRIMMED.
+     */
+    public function test_validate_category_rejects_a_whitespace_only_name(): void {
+        [, $errors] = category_service::validate_category(['name' => '    ']);
+
+        $this->assertArrayHasKey('name', $errors);
+    }
+
+    /**
+     * Over-long values are rejected before they reach the database column.
+     */
+    public function test_validate_category_enforces_field_lengths(): void {
+        [, $errors] = category_service::validate_category([
+            'name' => str_repeat('x', 256),
+            'description' => str_repeat('y', 1001),
+        ]);
+
+        $this->assertArrayHasKey('name', $errors);
+        $this->assertArrayHasKey('description', $errors);
+    }
+
+    /**
+     * Editing a category that has since been deleted is a form-level problem:
+     * there is no field the user could retype to fix it.
+     */
+    public function test_validate_category_reports_a_missing_record_at_form_level(): void {
+        [, $errors] = category_service::validate_category(['name' => 'Fine'], 99999);
+
+        $this->assertArrayHasKey('_form', $errors);
+        $this->assertArrayNotHasKey('name', $errors);
+    }
+
+    /**
+     * Valid input yields no errors and trimmed, normalised values.
+     */
+    public function test_validate_category_normalises_valid_input(): void {
+        [$normalised, $errors] = category_service::validate_category([
+            'name' => '  Courses  ',
+            'description' => '  All courses  ',
+            'visible' => true,
+        ]);
+
+        $this->assertSame([], $errors);
+        $this->assertSame('Courses', $normalised['name']);
+        $this->assertSame('All courses', $normalised['description']);
+        $this->assertTrue($normalised['visible']);
+    }
+
+    /**
+     * Every problem is collected in one pass so the UI can highlight them all.
+     */
+    public function test_validate_category_collects_all_errors_at_once(): void {
+        [, $errors] = category_service::validate_category([
+            'name' => '',
+            'description' => str_repeat('y', 1001),
+        ], 99999);
+
+        $this->assertCount(3, $errors);
+    }
 }

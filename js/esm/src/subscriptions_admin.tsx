@@ -21,6 +21,9 @@ import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import {McDrawer} from "./drawer";
 import {confirmDialog} from "./modal";
+import {FieldError} from "./form";
+import {focusFirstError, integer, max, maxLength, min, number, required, runRules} from "./validation";
+import type {FieldErrorMap} from "./validation";
 import {McTableActionMenu, McTableCard, McTableFooter, McTableFrame, McTablePagination} from "./table_components";
 
 declare const M: {
@@ -421,6 +424,7 @@ function PlansTab({
     const [form, setForm] = useState<PlanForm | null>(null);
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const drawerBodyRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -497,10 +501,23 @@ function PlansTab({
         if (!form) {
             return;
         }
-        if (form.name.trim() === "") {
-            setFormError(labels.error_namerequired);
+        const t = (key: string) => labels[key] ?? key;
+        const found = runRules(form, {
+            name: [required(labels.error_namerequired ?? t("error:required")), maxLength(255, t("error:maxlength"))],
+            price: [required(t("error:required")), number(t("error:invalidnumber")), min(0, t("error:minvalue"))],
+            billingcycle: required(t("error:selectoption")),
+            trialdays: [integer(t("error:invalidinteger")), min(0, t("error:minvalue")), max(365, t("error:maxvalue"))],
+            graceperioddays: [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))],
+            maxseats: [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))],
+            sortorder: integer(t("error:invalidinteger")),
+        });
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setFormError("");
+            focusFirstError(found, ["name", "price", "billingcycle", "trialdays", "graceperioddays", "maxseats"]);
             return;
         }
+
         setSaving(true);
         setFormError("");
         try {
@@ -599,23 +616,34 @@ function PlansTab({
             >
                 {formError && <ErrorAlert message={formError} />}
 
-                <form id="mc-subscription-plan-drawer-form" onSubmit={submitForm}>
+                <form id="mc-subscription-plan-drawer-form" noValidate onSubmit={submitForm}>
                             <div className={mcClasses("mc-form-section")}>
                                 <div className={mcClasses("mc-form-section__header")}>
                                     <h4 className={mcClasses("mc-form-section__title")}>{labels.planinfo}</h4>
                                 </div>
                                 <div className={mcClasses("mc-form-section__body")}>
                                     <div className={mcClasses("mc-product-form__grid")}>
-                                        <label className={mcClasses("mc-product-form__wide")}>
-                                            <span>{labels.planname}</span>
+                                        <label className={mcClasses("mc-product-form__wide")} htmlFor="mc-plan-name">
+                                            <span>
+                                                {labels.planname}
+                                                <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                            </span>
                                             <input
                                                 autoFocus
-                                                className={mcClasses("mc-form-control")}
+                                                aria-describedby={fieldErrors.name ? "mc-plan-name-error" : undefined}
+                                                aria-invalid={fieldErrors.name ? true : undefined}
+                                                aria-required="true"
+                                                className={mcClasses("mc-form-control",
+                                                    fieldErrors.name ? "mc-field-invalid" : "")}
+                                                id="mc-plan-name"
+                                                maxLength={255}
+                                                name="name"
                                                 onChange={(event) => updateForm({name: event.target.value})}
                                                 required
                                                 type="text"
                                                 value={form.name}
                                             />
+                                            <FieldError id="mc-plan-name-error" message={fieldErrors.name} />
                                         </label>
                                         <label>
                                             <span>{labels.plancode}</span>
@@ -670,15 +698,25 @@ function PlansTab({
                                             </select>
                                         </label>
                                         <label>
-                                            <span>{labels.planprice}</span>
+                                            <span>
+                                                {labels.planprice}
+                                                <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                            </span>
                                             <input
-                                                className={mcClasses("mc-form-control")}
+                                                aria-describedby={fieldErrors.price ? "mc-plan-price-error" : undefined}
+                                                aria-invalid={fieldErrors.price ? true : undefined}
+                                                aria-required="true"
+                                                className={mcClasses("mc-form-control",
+                                                    fieldErrors.price ? "mc-field-invalid" : "")}
+                                                id="mc-plan-price"
                                                 min="0"
+                                                name="price"
                                                 step="0.01"
                                                 onChange={(event) => updateForm({price: event.target.value})}
                                                 type="number"
                                                 value={form.price}
                                             />
+                                            <FieldError id="mc-plan-price-error" message={fieldErrors.price} />
                                         </label>
                                         <label>
                                             <span>{labels.promoprice}</span>
@@ -1222,6 +1260,7 @@ function FeaturesTab({
     const [savingMatrix, setSavingMatrix] = useState(false);
     const [featureForm, setFeatureForm] = useState<FeatureForm | null>(null);
     const [featureFormError, setFeatureFormError] = useState("");
+    const [featureFieldErrors, setFeatureFieldErrors] = useState<FieldErrorMap>({});
     const [savingFeature, setSavingFeature] = useState(false);
     const [busyId, setBusyId] = useState(0);
     const featureDrawerBodyRef = useRef<HTMLDivElement>(null);
@@ -1326,10 +1365,18 @@ function FeaturesTab({
         if (!featureForm) {
             return;
         }
-        if (featureForm.name.trim() === "") {
-            setFeatureFormError(labels.error_namerequired);
+        const ft = (key: string) => labels[key] ?? key;
+        const featureFound = runRules(featureForm, {
+            name: [required(labels.error_namerequired ?? ft("error:required")), maxLength(255, ft("error:maxlength"))],
+            description: maxLength(500, ft("error:maxlength")),
+        });
+        setFeatureFieldErrors(featureFound);
+        if (Object.keys(featureFound).length > 0) {
+            setFeatureFormError("");
+            focusFirstError(featureFound, ["name", "description"]);
             return;
         }
+
         setSavingFeature(true);
         setFeatureFormError("");
         try {
@@ -1429,7 +1476,7 @@ function FeaturesTab({
             >
                 {featureFormError && <ErrorAlert message={featureFormError} />}
 
-                <form id="mc-subscription-feature-drawer-form" onSubmit={submitFeature}>
+                <form id="mc-subscription-feature-drawer-form" noValidate onSubmit={submitFeature}>
                             <div className={mcClasses("mc-form-section")}>
                                 <div className={mcClasses("mc-form-section__header")}>
                                     <h4 className={mcClasses("mc-form-section__title")}>{labels.feature}</h4>
@@ -1444,11 +1491,18 @@ function FeaturesTab({
                                                 onChange={(event) => setFeatureForm((current) =>
                                                     current ? {...current, name: event.target.value} : current
                                                 )}
+                                                aria-describedby={featureFieldErrors.name
+                                                    ? "mc-feature-name-error" : undefined}
+                                                aria-invalid={featureFieldErrors.name ? true : undefined}
+                                                aria-required="true"
+                                                id="mc-feature-name"
+                                                name="name"
                                                 placeholder={labels.featurename_placeholder}
                                                 required
                                                 type="text"
                                                 value={featureForm.name}
                                             />
+                                            <FieldError id="mc-feature-name-error" message={featureFieldErrors.name} />
                                         </label>
                                         <IconPicker
                                             labels={labels}

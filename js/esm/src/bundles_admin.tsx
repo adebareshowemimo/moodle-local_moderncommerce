@@ -13,6 +13,7 @@
  */
 
 import {useEffect, useRef, useState} from "react";
+import type {FormEvent} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import {McBadge} from "./badge";
@@ -20,6 +21,11 @@ import type {McBadgeVariant} from "./badge";
 import {McTableActionMenu, McTableCard, McTableFooter, McTableFrame, McTablePagination} from "./table_components";
 import {confirmDialog} from "./modal";
 import {McDrawer} from "./drawer";
+import {FieldError} from "./form";
+import {
+    afterField, focusFirstError, lteField, maxLength, min, normaliseServerErrors, number, required, runRules,
+} from "./validation";
+import type {FieldErrorMap} from "./validation";
 
 declare const M: {
     cfg: {
@@ -134,6 +140,7 @@ type SaveResponse = {
     success: boolean;
     bundleid: number;
     message: string;
+    errors?: Array<{field?: string; name?: string; message: string}>;
 };
 
 type BundleForm = {
@@ -346,6 +353,7 @@ export default function BundlesAdmin({
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState<BundleForm | null>(null);
     const [formError, setFormError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [savings, setSavings] = useState<Savings | null>(null);
     const [reloadToken, setReloadToken] = useState(0);
     const [courseQuery, setCourseQuery] = useState("");
@@ -357,10 +365,12 @@ export default function BundlesAdmin({
         setForm(emptyForm());
         setSavings(null);
         setFormError("");
+        setFieldErrors({});
     };
 
     const loadBundle = (id: number) => {
         setFormError("");
+        setFieldErrors({});
         void callMoodleService<BundleDetail>(getMethodName, {id})
             .then((detail) => {
                 setForm(detailToForm(detail));
@@ -550,12 +560,36 @@ export default function BundlesAdmin({
         updateForm({imagedata: "", imagefilename: "", imagemimetype: "", imageremoved: true});
     };
 
-    const submitForm = async() => {
+    const submitForm = async(event?: FormEvent<HTMLFormElement>) => {
+        event?.preventDefault();
         if (!form) {
             return;
         }
-        if (form.name.trim() === "") {
-            setFormError(labels.name);
+
+        const t = (key: string) => labels[key] ?? key;
+        // Previously this only checked the name and put the field LABEL in the
+        // error slot, so the user saw "Name" rather than a message.
+        const found = runRules(form, {
+            name: [required(t("error:required")), maxLength(255, t("error:maxlength"))],
+            // A bundle defaults to "0", which is a legitimate free bundle, so
+            // this checks the value is a number in range rather than present.
+            price: [number(t("error:invalidnumber")), min(0, t("error:minvalue"))],
+            saleprice: form.saleenabled
+                ? [number(t("error:invalidnumber")), min(0, t("error:minvalue")),
+                    lteField("price", t("error:salepriceabovebase"))]
+                : [],
+            saleenddate: form.saleenabled ? afterField("salestartdate", t("error:enddatebeforestart")) : [],
+            maxenrollment: min(0, t("error:minvalue")),
+            displayorder: min(0, t("error:minvalue")),
+        });
+        if (form.courses.length === 0) {
+            found.courses = t("error:bundleneedscourses");
+        }
+
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setFormError("");
+            focusFirstError(found, ["name", "price", "saleprice", "saleenddate", "courses"]);
             return;
         }
 
@@ -583,7 +617,13 @@ export default function BundlesAdmin({
             });
 
             if (!result.success) {
-                setFormError(result.message);
+                const serverErrors = normaliseServerErrors(result.errors);
+                if (Object.keys(serverErrors).length > 0) {
+                    setFieldErrors(serverErrors);
+                    focusFirstError(serverErrors, ["name", "price", "saleprice", "saleenddate", "courses"]);
+                } else {
+                    setFormError(result.message);
+                }
                 return;
             }
 
@@ -667,27 +707,41 @@ export default function BundlesAdmin({
         </label>
     );
 
-    const renderPriceInput = (id: string, value: string, onChange: StringChange, disabled = false) => {
+    const renderPriceInput = (
+        id: string,
+        value: string,
+        onChange: StringChange,
+        disabled = false,
+        options: {name?: string; error?: string; required?: boolean} = {}
+    ) => {
         const after = currency.position === "after";
+        const {name, error, required: isRequired} = options;
         return (
-            <div className={mcClasses(after ? "mc-price-input mc-price-input--after" : "mc-price-input")}>
-                <span
-                    className={mcClasses(after ? "mc-price-input__symbol mc-price-input__symbol--after" : "mc-price-input__symbol")}
-                    aria-hidden="true"
-                >
-                    {currency.symbol}
-                </span>
-                <input
-                    className={mcClasses("mc-form-control")}
-                    disabled={disabled}
-                    id={id}
-                    min="0"
-                    onChange={(event) => onChange(event.target.value)}
-                    step="0.01"
-                    type="number"
-                    value={value}
-                />
-            </div>
+            <>
+                <div className={mcClasses(after ? "mc-price-input mc-price-input--after" : "mc-price-input")}>
+                    <span
+                        className={mcClasses(after ? "mc-price-input__symbol mc-price-input__symbol--after" : "mc-price-input__symbol")}
+                        aria-hidden="true"
+                    >
+                        {currency.symbol}
+                    </span>
+                    <input
+                        aria-describedby={error ? `${id}-error` : undefined}
+                        aria-invalid={error ? true : undefined}
+                        aria-required={isRequired ? true : undefined}
+                        className={mcClasses("mc-form-control", error ? "mc-field-invalid" : "")}
+                        disabled={disabled}
+                        id={id}
+                        min="0"
+                        name={name}
+                        onChange={(event) => onChange(event.target.value)}
+                        step="0.01"
+                        type="number"
+                        value={value}
+                    />
+                </div>
+                <FieldError id={`${id}-error`} message={error} />
+            </>
         );
     };
 
@@ -746,10 +800,10 @@ export default function BundlesAdmin({
                     <>
                         <McButton
                             className={mcClasses("btn-mc-primary")}
+                            form="mc-bundle-drawer-form"
                             loading={saving}
                             loadingLabel={labels.saving || "Saving..."}
-                            onClick={submitForm}
-                            type="button"
+                            type="submit"
                         >
                             {labels.save}
                         </McButton>
@@ -765,6 +819,8 @@ export default function BundlesAdmin({
                                 <div className={mcClasses("mc-alert__body")}>{formError}</div>
                             </div>
                         )}
+
+                        <form id="mc-bundle-drawer-form" noValidate onSubmit={(event) => void submitForm(event)}>
 
                         <div className={mcClasses("mc-form-section")}>
                             <div className={mcClasses("mc-form-section__header")}>
@@ -808,15 +864,26 @@ export default function BundlesAdmin({
                                     })()}
                                 </div>
                                 <div className={mcClasses("mc-product-form__grid")}>
-                                    <label className={mcClasses("mc-product-form__wide")}>
-                                        <span>{labels.name}</span>
+                                    <label className={mcClasses("mc-product-form__wide")} htmlFor="mc-bundle-name">
+                                        <span>
+                                            {labels.name}
+                                            <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                        </span>
                                         <input
                                             autoFocus
-                                            className={mcClasses("mc-form-control")}
+                                            aria-describedby={fieldErrors.name ? "mc-bundle-name-error" : undefined}
+                                            aria-invalid={fieldErrors.name ? true : undefined}
+                                            aria-required="true"
+                                            className={mcClasses("mc-form-control", fieldErrors.name ? "mc-field-invalid" : "")}
+                                            id="mc-bundle-name"
+                                            maxLength={255}
+                                            name="name"
                                             onChange={(event) => updateForm({name: event.target.value})}
+                                            required
                                             type="text"
                                             value={form.name}
                                         />
+                                        <FieldError id="mc-bundle-name-error" message={fieldErrors.name} />
                                     </label>
                                     <label>
                                         <span>{labels.type}</span>
@@ -904,8 +971,16 @@ export default function BundlesAdmin({
                             </div>
                             <div className={mcClasses("mc-form-section__body")}>
                                 <div className={mcClasses("mc-field")}>
-                                    <label className={mcClasses("mc-field-label")} htmlFor="mc-bundle-price">{labels.price}</label>
-                                    {renderPriceInput("mc-bundle-price", form.price, (value) => updateForm({price: value}))}
+                                    <label className={mcClasses("mc-field-label")} htmlFor="mc-bundle-price">
+                                        {labels.price}
+                                    </label>
+                                    {renderPriceInput(
+                                        "mc-bundle-price",
+                                        form.price,
+                                        (value) => updateForm({price: value}),
+                                        false,
+                                        {name: "price", error: fieldErrors.price}
+                                    )}
                                 </div>
 
                                 <div className={mcClasses("mc-field")}>
@@ -919,26 +994,44 @@ export default function BundlesAdmin({
                                 {form.saleenabled && (
                                     <div className={mcClasses("mc-sale-panel")}>
                                         <div className={mcClasses("mc-product-form__grid")}>
-                                            <label>
+                                            <label htmlFor="mc-bundle-saleprice">
                                                 <span>{labels.saleprice}</span>
-                                                {renderPriceInput("mc-bundle-saleprice", form.saleprice, (value) => updateForm({saleprice: value}))}
+                                                {renderPriceInput(
+                                                    "mc-bundle-saleprice",
+                                                    form.saleprice,
+                                                    (value) => updateForm({saleprice: value}),
+                                                    false,
+                                                    {name: "saleprice", error: fieldErrors.saleprice}
+                                                )}
                                             </label>
-                                            <label>
+                                            <label htmlFor="mc-bundle-salestartdate">
                                                 <span>{labels.startdate}</span>
                                                 <input
                                                     className={mcClasses("mc-form-control")}
+                                                    id="mc-bundle-salestartdate"
+                                                    name="salestartdate"
                                                     onChange={(event) => updateForm({salestartdate: event.target.value})}
                                                     type="date"
                                                     value={form.salestartdate}
                                                 />
                                             </label>
-                                            <label>
+                                            <label htmlFor="mc-bundle-saleenddate">
                                                 <span>{labels.enddate}</span>
                                                 <input
-                                                    className={mcClasses("mc-form-control")}
+                                                    aria-describedby={fieldErrors.saleenddate
+                                                        ? "mc-bundle-saleenddate-error" : undefined}
+                                                    aria-invalid={fieldErrors.saleenddate ? true : undefined}
+                                                    className={mcClasses("mc-form-control",
+                                                        fieldErrors.saleenddate ? "mc-field-invalid" : "")}
+                                                    id="mc-bundle-saleenddate"
+                                                    name="saleenddate"
                                                     onChange={(event) => updateForm({saleenddate: event.target.value})}
                                                     type="date"
                                                     value={form.saleenddate}
+                                                />
+                                                <FieldError
+                                                    id="mc-bundle-saleenddate-error"
+                                                    message={fieldErrors.saleenddate}
                                                 />
                                             </label>
                                         </div>
@@ -982,16 +1075,35 @@ export default function BundlesAdmin({
                             <div className={mcClasses("mc-form-section__body")}>
                                 <div className={mcClasses("mc-course-picker")}>
                                     <label htmlFor="mc-bundle-course-input">
-                                        <span>{labels.selectcourses}</span>
+                                        <span>
+                                            {labels.selectcourses}
+                                            <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                        </span>
                                         <input
                                             autoComplete="off"
-                                            className={mcClasses("mc-form-control")}
+                                            // The bundle needs at least one course, so the error is
+                                            // reported against the picker the user types into.
+                                            aria-describedby={fieldErrors.courses ? "mc-bundle-courses-error" : undefined}
+                                            aria-invalid={fieldErrors.courses ? true : undefined}
+                                            aria-required="true"
+                                            className={mcClasses("mc-form-control",
+                                                fieldErrors.courses ? "mc-field-invalid" : "")}
                                             id="mc-bundle-course-input"
+                                            name="courses"
                                             onChange={(event) => setCourseQuery(event.target.value)}
+                                            // This is a search box inside the save form: without
+                                            // this, Enter would submit the bundle instead of
+                                            // filtering the course list.
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter") {
+                                                    event.preventDefault();
+                                                }
+                                            }}
                                             placeholder={labels.searchcoursesplaceholder}
                                             type="search"
                                             value={courseQuery}
                                         />
+                                        <FieldError id="mc-bundle-courses-error" message={fieldErrors.courses} />
                                     </label>
                                     {courseOptions.length > 0 && (
                                         <div className={mcClasses("mc-course-picker__results")} role="listbox">
@@ -1077,6 +1189,7 @@ export default function BundlesAdmin({
                                 {labels.advancedfeatures}
                             </a>
                         )}
+                        </form>
             </McDrawer>
         );
     };
@@ -1130,7 +1243,12 @@ export default function BundlesAdmin({
             <McTableCard
                 title={<h2 className={mcClasses("mc-card-title")}>{labels.title}</h2>}
                 actions={(
-                    <button className={mcClasses("mc-button btn-mc-primary")} onClick={openNewBundle} type="button">
+                    <button
+                        className={mcClasses("mc-button btn-mc-primary")}
+                        id="moderncommerce-bundles-new"
+                        onClick={openNewBundle}
+                        type="button"
+                    >
                         <i className="bi bi-plus-lg me-1" aria-hidden="true" />
                         {labels.createbundle}
                     </button>

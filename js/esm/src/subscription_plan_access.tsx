@@ -17,6 +17,7 @@ import {useEffect, useRef, useState} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import {confirmDialog} from "./modal";
+import {FieldError} from "./form";
 
 declare const M: {
     cfg: {
@@ -165,11 +166,15 @@ function SearchablePicker({
     search,
     onSelect,
     noResults,
+    error,
+    id = "mc-plan-access-target",
 }: {
     placeholder: string;
     search: (query: string) => Promise<PickerItem[]>;
     onSelect: (id: number) => void;
     noResults: string;
+    error?: string;
+    id?: string;
 }) {
     const [query, setQuery] = useState("");
     const [options, setOptions] = useState<PickerItem[]>([]);
@@ -201,9 +206,14 @@ function SearchablePicker({
     return (
         <div className={mcClasses("mc-course-picker")}>
             <input
+                aria-describedby={error ? `${id}-error` : undefined}
+                aria-invalid={error ? true : undefined}
                 aria-label={placeholder}
+                aria-required="true"
                 autoComplete="off"
-                className={mcClasses("mc-form-control")}
+                className={mcClasses("mc-form-control", error ? "mc-field-invalid" : "")}
+                id={id}
+                name="targetid"
                 onBlur={() => window.setTimeout(() => setFocused(false), 150)}
                 onChange={(event) => {
                     setChosen(null);
@@ -215,6 +225,7 @@ function SearchablePicker({
                 type="search"
                 value={chosen ? chosen.label : query}
             />
+            <FieldError id={`${id}-error`} message={error} />
             {showResults && (
                 <div className={mcClasses("mc-course-picker__results")} role="listbox">
                     {options.length === 0 && (
@@ -264,6 +275,7 @@ export default function SubscriptionPlanAccess({
 
     const [addType, setAddType] = useState<AccessType>("course");
     const [targetId, setTargetId] = useState(0);
+    const [targetError, setTargetError] = useState("");
     const [adding, setAdding] = useState(false);
     const [pickerNonce, setPickerNonce] = useState(0);
 
@@ -331,10 +343,13 @@ export default function SubscriptionPlanAccess({
     };
 
     const addRule = async() => {
+        // The picker is the only field, so the message lands on it rather than
+        // in the panel banner where it used to sit.
         if (targetId <= 0) {
-            setError(labels.selecttargetfirst);
+            setTargetError(labels.selecttargetfirst ?? labels["error:required"] ?? "");
             return;
         }
+        setTargetError("");
         setAdding(true);
         setError("");
         try {
@@ -577,9 +592,13 @@ export default function SubscriptionPlanAccess({
                                 </label>
                                 <div className="mb-3">
                                     <SearchablePicker
+                                        error={targetError}
                                         key={`${addType}-${pickerNonce}`}
                                         noResults={labels.noresults}
-                                        onSelect={setTargetId}
+                                        onSelect={(id) => {
+                                            setTargetId(id);
+                                            setTargetError("");
+                                        }}
                                         placeholder={pickerPlaceholder}
                                         search={searchFor(addType)}
                                     />

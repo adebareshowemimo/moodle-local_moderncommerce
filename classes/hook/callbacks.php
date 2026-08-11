@@ -135,6 +135,26 @@ class callbacks {
     }
 
     /**
+     * Redirect the core Moodle dashboard to the Modern Commerce learner workspace.
+     *
+     * @param before_http_headers $hook The hook instance.
+     */
+    public static function redirect_my_to_learner_dashboard(before_http_headers $hook): void {
+        global $PAGE;
+
+        if (!isloggedin() || isguestuser()) {
+            return;
+        }
+
+        $mydashboard = new \moodle_url('/my/index.php');
+        if (!$PAGE->url->compare($mydashboard, URL_MATCH_BASE)) {
+            return;
+        }
+
+        redirect(access_service::learner_dashboard_url());
+    }
+
+    /**
      * Check whether the current request is the Moodle site front page.
      *
      * @return bool

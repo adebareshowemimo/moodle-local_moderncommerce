@@ -15,6 +15,9 @@
 import {useEffect, useState} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
+import {FieldError} from "./form";
+import {focusFirstError, lteField, max, min, number, runRules} from "./validation";
+import type {FieldErrorMap} from "./validation";
 
 declare const M: {
     cfg: {
@@ -142,6 +145,7 @@ export default function CourseFeaturesAdmin({courseId, getMethodName, saveMethod
     const [form, setForm] = useState<Form | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [error, setError] = useState("");
 
     useEffect(() => {
@@ -198,6 +202,29 @@ export default function CourseFeaturesAdmin({courseId, getMethodName, saveMethod
         if (!form) {
             return;
         }
+
+        const t = (key: string) => labels[key] ?? key;
+        const found = runRules(form, {
+            durationhours: [number(t("error:invalidnumber")), min(0, t("error:minvalue"))],
+            durationminutes: [
+                number(t("error:invalidnumber")), min(0, t("error:minvalue")), max(59, t("error:maxvalue")),
+            ],
+            passgrade: [
+                number(t("error:invalidnumber")), min(0, t("error:minvalue")), max(100, t("error:maxvalue")),
+            ],
+            price: [number(t("error:invalidnumber")), min(0, t("error:minvalue"))],
+            saleprice: [
+                number(t("error:invalidnumber")), min(0, t("error:minvalue")),
+                lteField("price", t("error:salepriceabovebase")),
+            ],
+        });
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setError("");
+            focusFirstError(found, ["durationhours", "durationminutes", "passgrade", "price", "saleprice"]);
+            return;
+        }
+
         setSaving(true);
         setError("");
 

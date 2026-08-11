@@ -17,6 +17,9 @@ import {useEffect, useState} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import {BodyEditorMode, EmailBodyEditor} from "./email_body_editor";
+import {FieldError} from "./form";
+import {emailList, required, runRules} from "./validation";
+import type {FieldErrorMap} from "./validation";
 
 declare const M: {
     cfg: {
@@ -328,6 +331,7 @@ export default function ContactEmailsAdmin({getMethodName, saveMethodName, label
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [saving, setSaving] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [copied, setCopied] = useState("");
 
     useEffect(() => {
@@ -367,6 +371,17 @@ export default function ContactEmailsAdmin({getMethodName, saveMethodName, label
     };
 
     const save = async() => {
+        const t = (key: string) => labels[key] ?? key;
+        // This is a comma-separated list and previously had no validation at
+        // all, so one typo silently broke every admin notification.
+        const found = runRules(data ?? {}, {
+            recipientemails: [required(t("error:required")), emailList(t("error:invalidemaillist"))],
+        });
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            return;
+        }
+
         if (!data) {
             return;
         }
@@ -423,12 +438,26 @@ export default function ContactEmailsAdmin({getMethodName, saveMethodName, label
                 </div>
                 <div className={mcClasses("mc-card-body")}>
                     <input
+                        aria-describedby={fieldErrors.recipientemails
+                            ? "mc-contact-recipients-error" : undefined}
+                        aria-invalid={fieldErrors.recipientemails ? true : undefined}
                         aria-label={labels.recipients}
-                        className={mcClasses("mc-form-control")}
-                        onChange={(event) => setData({...data, recipientemails: event.target.value})}
+                        aria-required="true"
+                        className={mcClasses("mc-form-control",
+                            fieldErrors.recipientemails ? "mc-field-invalid" : "")}
+                        id="mc-contact-recipients"
+                        name="recipientemails"
+                        onChange={(event) => {
+                            setData({...data, recipientemails: event.target.value});
+                            setFieldErrors({});
+                        }}
                         placeholder="admin@example.com, support@example.com"
                         type="text"
                         value={data.recipientemails}
+                    />
+                    <FieldError
+                        id="mc-contact-recipients-error"
+                        message={fieldErrors.recipientemails}
                     />
                 </div>
             </div>

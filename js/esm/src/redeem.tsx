@@ -15,7 +15,9 @@
 import {useState} from "react";
 import {mcClasses, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
+import {McInput} from "./form";
 import ModernLearnerLayout, {type LearnerLayoutContext} from "./learner_layout";
+import {pattern, required, runRules} from "./validation";
 
 declare const M: {
     cfg: {
@@ -125,10 +127,25 @@ export default function Redeem({
     const [keycode, setKeycode] = useState("");
     const [busy, setBusy] = useState<"idle" | "validating" | "redeeming">("idle");
     const [error, setError] = useState("");
+    const [keyError, setKeyError] = useState("");
     const [preview, setPreview] = useState<ResolveResponse | null>(null);
     const [result, setResult] = useState<RedeemResult | null>(null);
 
     const normalised = keycode.trim().toUpperCase();
+
+    // Previously both actions returned silently on an empty or malformed key,
+    // leaving the user with no idea why nothing happened.
+    const checkKey = (): boolean => {
+        const found = runRules({keycode: normalised}, {
+            keycode: [
+                required(labels["error:required"] ?? labels.enterkeycode),
+                pattern(/^[A-Z0-9-]{4,64}$/, labels["error:invalidkeyformat"] ?? labels.invalidkey
+                    ?? labels["error:required"]),
+            ],
+        });
+        setKeyError(found.keycode ?? "");
+        return !found.keycode;
+    };
 
     const keyTypeLabel = (type: KeyType): string => (
         type === "subscription"
@@ -137,7 +154,7 @@ export default function Redeem({
     );
 
     const validate = async() => {
-        if (normalised === "") {
+        if (!checkKey()) {
             return;
         }
         setBusy("validating");
@@ -159,7 +176,7 @@ export default function Redeem({
     };
 
     const redeem = async() => {
-        if (normalised === "") {
+        if (!checkKey()) {
             return;
         }
         setBusy("redeeming");
@@ -191,6 +208,7 @@ export default function Redeem({
     const reset = () => {
         setKeycode("");
         setError("");
+        setKeyError("");
         setPreview(null);
         setResult(null);
     };
@@ -276,22 +294,25 @@ export default function Redeem({
                         )}
 
                         <div className={mcClasses("mc-redeem__form")}>
-                            <label className={mcClasses("mc-filter-label")} htmlFor="mc-redeem-keycode">{labels.keycode}</label>
-                            <input
+                            <McInput
                                 autoComplete="off"
-                                className={mcClasses("mc-form-control")}
-                                id="mc-redeem-keycode"
-                                onChange={(event) => {
-                                    setKeycode(event.target.value);
-                                    setPreview(null);
-                                    setError("");
-                                }}
+                                error={keyError}
+                                label={labels.keycode}
+                                maxLength={64}
+                                name="keycode"
                                 onKeyDown={(event) => {
                                     if (event.key === "Enter") {
                                         void redeem();
                                     }
                                 }}
+                                onValueChange={(value) => {
+                                    setKeycode(value);
+                                    setPreview(null);
+                                    setError("");
+                                    setKeyError("");
+                                }}
                                 placeholder={labels.enterkeycode}
+                                required
                                 type="text"
                                 value={keycode}
                             />

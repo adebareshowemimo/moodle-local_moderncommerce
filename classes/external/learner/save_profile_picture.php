@@ -165,6 +165,7 @@ class save_profile_picture extends external_api {
             'message' => get_string('profileimageupdatefailed', 'local_moderncommerce'),
             'errors' => [
                 [
+                    'field' => 'profileimage',
                     'name' => 'profileimage',
                     'message' => $message,
                 ],
@@ -180,7 +181,8 @@ class save_profile_picture extends external_api {
      */
     private static function errors_structure(): external_multiple_structure {
         return new external_multiple_structure(new external_single_structure([
-            'name' => new external_value(PARAM_TEXT, 'Field name.'),
+            'field' => new external_value(PARAM_TEXT, 'Field the message belongs to.'),
+            'name' => new external_value(PARAM_TEXT, 'Deprecated alias of field.'),
             'message' => new external_value(PARAM_TEXT, 'Error message.'),
         ]));
     }

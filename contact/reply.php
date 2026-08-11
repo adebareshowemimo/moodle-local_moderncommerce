@@ -44,7 +44,22 @@ if (!$record) {
 }
 
 // Handle reply submission.
-if ($action === 'reply' && $replymessage !== '') {
+$replyerror = '';
+$replyvalue = '';
+
+if ($action === 'reply') {
+    // Previously the whole block was skipped when the message was empty, so
+    // pressing send did nothing and said nothing.
+    $trimmed = trim($replymessage);
+    if ($trimmed === '') {
+        $replyerror = get_string('error:required', 'local_moderncommerce');
+    } else if (core_text::strlen($trimmed) > 5000) {
+        $replyerror = get_string('error:maxlength', 'local_moderncommerce', 5000);
+        $replyvalue = $trimmed;
+    }
+}
+
+if ($action === 'reply' && $replyerror === '' && $replymessage !== '') {
     require_sesskey();
     $replymessage = trim($replymessage);
 
@@ -127,6 +142,9 @@ $contextdata = [
     'replyurl' => (new moodle_url('/local/moderncommerce/contact/reply.php'))->out(false),
     'sitename' => format_string(get_site()->fullname),
 ];
+
+$contextdata['replyerror'] = $replyerror;
+$contextdata['replyvalue'] = $replyvalue;
 
 echo $OUTPUT->header();
 echo $OUTPUT->render_from_template('local_moderncommerce/contact/clientreply', $contextdata);

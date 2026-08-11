@@ -91,22 +91,19 @@
         position: static;
     }
 
-    /* Touch targets: bump interactive controls to >=40px on touch/mobile
+    /* Touch targets: bump interactive controls to >=44px on touch/mobile
        while keeping desktop density (design-system doc section 13). */
-    .mc-form-control,
-    .mc-select,
-    .mc-search-input,
-    .btn-mc-primary,
-    .btn-mc-secondary,
-    .btn-mc-danger,
-    .mc-btn-primary,
-    .mc-btn-soft,
-    .mc-btn-ghost {
-        min-height: 40px;
+    :is(.path-local-moderncommerce, .local-moderncommerce-storefront, .mc-shell, .mc-learner-shell, .mc-react-mount)
+    :is(.mc-form-control, .mc-select, .mc-search-input, .btn-mc-primary, .btn-mc-secondary,
+        .btn-mc-danger, .mc-btn-primary, .mc-btn-soft, .mc-btn-ghost) {
+        // Accessibility guard: legacy theme selectors use multiple :not()
+        // clauses and otherwise beat this mobile touch-target floor.
+        min-height: 44px !important;
     }
 
+    :is(.path-local-moderncommerce, .local-moderncommerce-storefront, .mc-shell, .mc-learner-shell, .mc-react-mount)
     .mc-btn-icon {
-        min-width: 40px;
-        min-height: 40px;
+        min-width: 44px !important;
+        min-height: 44px !important;
     }
 }

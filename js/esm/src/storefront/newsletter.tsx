@@ -14,6 +14,8 @@
 
 import {CSSProperties, FormEvent, useState} from "react";
 import {McButton} from "../button";
+// Shared so every surface agrees on what a valid address looks like.
+import {EMAIL_RE} from "../validation";
 import RecaptchaField, {
     getRecaptchaResponse,
     recaptchaConfigDefaults,
@@ -61,8 +63,6 @@ const callService = async <T, >(methodName: string, args: unknown, serviceErrorM
     }
     return (first.data ?? first) as T;
 };
-
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export default function NewsletterForm({
     method,

@@ -3733,8 +3733,7 @@ body.mc-sidebar-open {
     margin-bottom: 1rem;
 }
 
-.mc-filter-label,
-.mc-field-label {
+.mc-filter-label {
     font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -3742,6 +3741,15 @@ body.mc-sidebar-open {
     color: var(--mc-text-muted);
     margin-bottom: 0.25rem;
     display: block;
+}
+
+.mc-field-label {
+    display: block;
+    margin-bottom: 0.375rem;
+    color: var(--mc-text);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.35;
 }
 
 .mc-field-help {
@@ -3753,6 +3761,12 @@ body.mc-sidebar-open {
 .mc-required {
     color: var(--mc-danger);
     margin-left: 0.25rem;
+
+    // Some labels are flex containers, where a bare span becomes a full-width
+    // flex item and drops the asterisk onto its own line. Keeping it inline
+    // pins it beside the label text in both layouts.
+    display: inline;
+    flex: 0 0 auto;
 }
 
 .mc-form-section {
@@ -3780,14 +3794,9 @@ body.mc-sidebar-open {
 
 .mc-content .form-control,
 .mc-content .form-select,
-.mc-card input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
-.mc-card select,
-.mc-card textarea,
-.mc-form-section input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
-.mc-form-section select,
-.mc-form-section textarea,
-.mc-toolbar input:not([type="checkbox"]):not([type="radio"]),
-.mc-toolbar select,
+.mc-card :where(input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]), select, textarea),
+.mc-form-section :where(input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]), select, textarea),
+.mc-toolbar :where(input:not([type="checkbox"]):not([type="radio"]), select),
 .mc-form-control {
     @include mixins.field-control;
 }
@@ -3800,18 +3809,93 @@ body.mc-sidebar-open {
 
 .mc-content .form-control:focus,
 .mc-content .form-select:focus,
-.mc-card input:focus,
-.mc-card select:focus,
-.mc-card textarea:focus,
-.mc-form-section input:focus,
-.mc-form-section select:focus,
-.mc-form-section textarea:focus,
-.mc-toolbar input:focus,
-.mc-toolbar select:focus,
+.mc-card :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus,
+.mc-form-section :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus,
+.mc-toolbar :where(input:not([type="checkbox"]):not([type="radio"]), select):focus,
 .mc-form-control:focus {
     outline: none;
     border-color: var(--mc-primary);
     box-shadow: 0 0 0 3px var(--mc-focus-ring);
+}
+
+.mc-content :where(.form-control, .form-select):disabled,
+.mc-card :where(input, select, textarea):disabled,
+.mc-form-section :where(input, select, textarea):disabled,
+.mc-toolbar :where(input, select, textarea):disabled,
+.mc-form-control:disabled,
+.mc-select:disabled,
+.mc-textarea:disabled {
+    border-color: var(--mc-border-subtle);
+    background-color: var(--mc-surface-alt);
+    color: var(--mc-text-muted);
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.mc-form-control::placeholder,
+.mc-search-input::placeholder,
+.mc-textarea::placeholder {
+    color: var(--mc-text-muted);
+    opacity: 1;
+}
+
+// Field validation state.
+//
+// .mc-field-invalid is a state class applied to the control itself, not a BEM
+// modifier, because the same state has to win over .mc-form-control, .mc-select,
+// .mc-textarea and the bare input/select/textarea selectors above.
+//
+// Base element selectors use :where(), keeping their specificity low enough
+// for this semantic state to win without repeated attributes or !important.
+// aria-invalid is deliberate: the visual and assistive-technology states
+// cannot drift apart.
+.mc-field-invalid[aria-invalid="true"] {
+    border-color: var(--mc-danger);
+}
+
+.mc-field-invalid[aria-invalid="true"]:focus {
+    outline: none;
+    border-color: var(--mc-danger);
+    box-shadow: 0 0 0 3px var(--mc-danger-ring);
+}
+
+// Checkboxes, radios and switches colour their own box rather than a border.
+.mc-checkbox.mc-field-invalid input,
+.mc-radio.mc-field-invalid input,
+.mc-switch.mc-field-invalid .mc-switch__track {
+    border-color: var(--mc-danger);
+    box-shadow: 0 0 0 1px var(--mc-danger);
+}
+
+// The inline per-field message. Always paired with an icon so the error is
+// never signalled by colour alone.
+.mc-field-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    font-size: var(--mc-fs-caption);
+    line-height: 1.35;
+    color: var(--mc-danger);
+}
+
+.mc-field-error__icon {
+    flex: 0 0 auto;
+    line-height: 1.35;
+}
+
+// Form-level summary banner, shown only for errors that belong to no single
+// field. Focusable so submit handlers can move focus to it.
+.mc-form-summary:focus {
+    @include mixins.focus-ring;
+}
+
+// Compatibility shim for surfaces still emitting Bootstrap's is-invalid.
+// Remove once every form has moved to .mc-field-invalid.
+.mc-form-control.is-invalid,
+.mc-select.is-invalid,
+.mc-textarea.is-invalid {
+    border-color: var(--mc-danger);
 }
 
 .mc-empty {
@@ -4957,6 +5041,7 @@ body.mc-sidebar-open {
 .mc-radio {
     display: inline-flex;
     align-items: center;
+    min-height: 2.75rem;
     gap: 0.5rem;
     font-size: 0.875rem;
     color: var(--mc-text);
@@ -4965,8 +5050,8 @@ body.mc-sidebar-open {
 
 .mc-checkbox > input,
 .mc-radio > input {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     accent-color: var(--mc-primary);
     flex-shrink: 0;
     cursor: pointer;
@@ -4986,45 +5071,51 @@ body.mc-sidebar-open {
     position: relative;
     display: inline-flex;
     align-items: center;
+    min-height: 2.75rem;
+    gap: 0.625rem;
     cursor: pointer;
 }
 
 .mc-switch > input {
     position: absolute;
-    width: 0;
-    height: 0;
+    width: 1px;
+    height: 1px;
     opacity: 0;
+    pointer-events: none;
 }
 
 .mc-switch__track {
-    width: 2.25rem;
-    height: 1.25rem;
+    width: 2.5rem;
+    height: 1.5rem;
+    border: 1px solid var(--mc-border-strong);
     border-radius: var(--mc-radius-pill);
     background: var(--mc-neutral-border);
-    transition: background 0.15s ease;
+    transition: background var(--mc-transition-fast), border-color var(--mc-transition-fast),
+        box-shadow var(--mc-transition-fast);
     flex-shrink: 0;
 }
 
 .mc-switch__thumb {
     position: absolute;
     top: 50%;
-    left: 0.1875rem;
-    width: 0.875rem;
-    height: 0.875rem;
+    left: 0.25rem;
+    width: 1rem;
+    height: 1rem;
     border-radius: 50%;
     background: #fff;
     box-shadow: var(--mc-shadow-sm);
     transform: translateY(-50%);
-    transition: left 0.15s ease;
+    transition: left var(--mc-transition-fast);
     pointer-events: none;
 }
 
 .mc-switch > input:checked ~ .mc-switch__track {
     background: var(--mc-primary);
+    border-color: var(--mc-primary);
 }
 
 .mc-switch > input:checked ~ .mc-switch__thumb {
-    left: 1.1875rem;
+    left: 1.25rem;
 }
 
 .mc-switch > input:focus-visible ~ .mc-switch__track {
@@ -5032,12 +5123,25 @@ body.mc-sidebar-open {
 }
 
 .mc-switch > input:disabled ~ .mc-switch__track {
-    opacity: 0.5;
+    background: var(--mc-surface-alt);
+    border-color: var(--mc-border-subtle);
+    opacity: 1;
+}
+
+.mc-switch > input:disabled ~ .mc-switch__thumb,
+.mc-switch > input:disabled ~ .mc-switch__label {
+    opacity: 0.55;
+}
+
+.mc-switch:has(> input:disabled) {
+    cursor: not-allowed;
 }
 
 .mc-switch__label {
-    margin-left: 0.5rem;
+    margin-left: 0;
     font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.35;
     color: var(--mc-text);
 }
 
@@ -8529,13 +8633,20 @@ body.mc-drawer-open {
     padding-right: 0.5rem;
 }
 
-// A single stacked field wrapper inside the drawer.
+// A single stacked field wrapper inside the drawer. Also the wrapper emitted by
+// the shared <Field> React primitive, so it appears outside drawers too.
 .mc-field {
     display: block;
     margin-bottom: 0.875rem;
+    min-width: 0;
 }
 
 .mc-field:last-child {
+    margin-bottom: 0;
+}
+
+// Field packed into a grid or toolbar row that owns its own spacing.
+.mc-field--inline {
     margin-bottom: 0;
 }
 
@@ -8576,6 +8687,16 @@ body.mc-drawer-open {
 
 .mc-drawer--price-form .mc-product-form__wide {
     grid-column: span 1;
+}
+
+@media (max-width: 767.98px) {
+    .mc-drawer .mc-product-form__grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .mc-drawer .mc-product-form__wide {
+        grid-column: span 1;
+    }
 }
 
 .mc-drawer--invoice-form .mc-invoice-items-table {

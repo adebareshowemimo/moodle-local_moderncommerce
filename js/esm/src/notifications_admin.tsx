@@ -18,6 +18,9 @@ import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McBadge} from "./badge";
 import type {McBadgeVariant} from "./badge";
 import {McButton} from "./button";
+import {FieldError} from "./form";
+import {focusFirstError, integer, min, required, runRules, url as urlRule, when} from "./validation";
+import type {FieldErrorMap} from "./validation";
 import {McTableCard, McTableFooter, McTablePagination} from "./table_components";
 
 declare const M: {
@@ -222,6 +225,8 @@ type ChannelCardProps = {
     secretSet: boolean;
     secretPlaceholder: string;
     disabled: boolean;
+    urlError?: string;
+    urlId: string;
 };
 
 // One operational webhook channel (Slack / Teams). Header carries the brand and a
@@ -245,6 +250,8 @@ function ChannelCard({
     secretSet,
     secretPlaceholder,
     disabled,
+    urlError,
+    urlId,
 }: ChannelCardProps) {
     return (
         <section className={mcClasses("mc-channel-card", enabled && "mc-channel-card--active")}>
@@ -267,16 +274,25 @@ function ChannelCard({
             </div>
             {desc && <p className={mcClasses("mc-channel-card__desc")}>{desc}</p>}
             <div className={mcClasses("mc-channel-card__fields")}>
-                <label>
-                    <span className={mcClasses("mc-field-label")}>{urlLabel}</span>
+                <label htmlFor={urlId}>
+                    <span className={mcClasses("mc-field-label")}>
+                        {urlLabel}
+                        {enabled && <span className={mcClasses("mc-required")} aria-hidden="true">*</span>}
+                    </span>
                     <input
-                        className={mcClasses("mc-form-control")}
+                        aria-describedby={urlError ? `${urlId}-error` : undefined}
+                        aria-invalid={urlError ? true : undefined}
+                        aria-required={enabled ? true : undefined}
+                        className={mcClasses("mc-form-control", urlError ? "mc-field-invalid" : "")}
                         disabled={disabled}
+                        id={urlId}
+                        name={urlId}
                         onChange={(event) => onUrl(event.target.value)}
                         type="url"
                         value={url}
                     />
                     {urlDesc && <small className={mcClasses("mc-field-hint")}>{urlDesc}</small>}
+                    <FieldError id={`${urlId}-error`} message={urlError} />
                 </label>
                 <label>
                     <span className={mcClasses("mc-field-label")}>{secretLabel}</span>
@@ -304,6 +320,7 @@ export default function NotificationsAdmin({methods, settingsUrl, labels}: Props
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [reloadToken, setReloadToken] = useState(0);
     const [filters, setFilters] = useState<Filters>({
         search: "",
@@ -378,6 +395,27 @@ export default function NotificationsAdmin({methods, settingsUrl, labels}: Props
 
     const submit = async(event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+
+        const t = (key: string) => labels[key] ?? key;
+        // An enabled channel with no endpoint fails silently at delivery time,
+        // so the URL is only required once its toggle is on.
+        const found = runRules(form, {
+            batchsize: [integer(t("error:invalidinteger")), min(1, t("error:minvalue"))],
+            slack_url: [
+                when((values) => Boolean(values.slack_enabled), required(t("error:required"))),
+                urlRule(t("error:invalidurl"), {requireHttp: true}),
+            ],
+            teams_url: [
+                when((values) => Boolean(values.teams_enabled), required(t("error:required"))),
+                urlRule(t("error:invalidurl"), {requireHttp: true}),
+            ],
+        });
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setError("");
+            focusFirstError(found, ["batchsize", "slack_url", "teams_url"]);
+            return;
+        }
 
         setSaving(true);
         setError("");
@@ -532,6 +570,8 @@ export default function NotificationsAdmin({methods, settingsUrl, labels}: Props
                                 toggleLabel={labels.slackenabled}
                                 url={form.slack_url}
                                 urlDesc={labels.slackurldesc}
+                                urlError={fieldErrors.slack_url}
+                                urlId="slack_url"
                                 urlLabel={labels.webhookurl}
                             />
                             <ChannelCard
@@ -551,6 +591,8 @@ export default function NotificationsAdmin({methods, settingsUrl, labels}: Props
                                 toggleLabel={labels.teamsenabled}
                                 url={form.teams_url}
                                 urlDesc={labels.teamsurldesc}
+                                urlError={fieldErrors.teams_url}
+                                urlId="teams_url"
                                 urlLabel={labels.webhookurl}
                             />
                         </div>

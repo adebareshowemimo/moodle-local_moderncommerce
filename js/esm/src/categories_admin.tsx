@@ -12,14 +12,16 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {useEffect, useRef, useState} from "react";
-import type {FormEvent} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McBadge} from "./badge";
 import {McButton} from "./button";
 import {McDrawer} from "./drawer";
+import {McCheckbox, McForm, McFormSummary, McInput, McTextarea, useFormValidation} from "./form";
 import {confirmDialog} from "./modal";
 import {McTableActionMenu, McTableCard, McTableFooter} from "./table_components";
+import {maxLength, required} from "./validation";
+import type {RuleMap} from "./validation";
 
 declare const M: {
     cfg: {
@@ -60,7 +62,12 @@ type CategoryForm = {
 };
 
 type ListResponse = {categories: Category[]};
-type SaveResponse = {success: boolean; id: number; message: string};
+type SaveResponse = {
+    success: boolean;
+    id: number;
+    message: string;
+    errors?: Array<{field: string; message: string}>;
+};
 type ReorderResponse = {success: boolean; message: string};
 
 const callMoodleService = async <T, >(methodName: string, args: unknown): Promise<T> => {
@@ -103,7 +110,6 @@ export default function CategoriesAdmin({methods, labels}: Props) {
     const [error, setError] = useState("");
     const [form, setForm] = useState<CategoryForm | null>(null);
     const [saving, setSaving] = useState(false);
-    const [formError, setFormError] = useState("");
     const [dragIndex, setDragIndex] = useState<number | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
@@ -124,9 +130,22 @@ export default function CategoriesAdmin({methods, labels}: Props) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [methods.list]);
 
+    // The hook needs a stable value object, so a closed drawer validates an
+    // empty form that is never submitted.
+    const formValues = form ?? emptyForm();
+
+    const rules = useMemo<RuleMap<CategoryForm>>(() => ({
+        name: [required(t("error:required")), maxLength(255, t("error:maxlength"))],
+        description: maxLength(1000, t("error:maxlength")),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [labels]);
+
+    const validation = useFormValidation<CategoryForm>({values: formValues, rules});
+    const {applyServerErrors, errorFor, formError, registry, reset: resetValidation, setFormError} = validation;
+
     const openNew = () => {
         setForm(emptyForm());
-        setFormError("");
+        resetValidation();
     };
 
     const openEdit = (category: Category) => {
@@ -136,7 +155,7 @@ export default function CategoriesAdmin({methods, labels}: Props) {
             description: category.description,
             visible: category.visible,
         });
-        setFormError("");
+        resetValidation();
     };
 
     // Persist a new display order from a drag-and-drop arrangement (optimistic; reverts on failure).
@@ -172,7 +191,7 @@ export default function CategoriesAdmin({methods, labels}: Props) {
 
     const closeForm = () => {
         setForm(null);
-        setFormError("");
+        resetValidation();
     };
 
     // Wire the shell header buttons (rebound through a ref so listeners stay current).
@@ -191,26 +210,22 @@ export default function CategoriesAdmin({methods, labels}: Props) {
         };
     }, []);
 
-    const submit = async(event: FormEvent) => {
-        event.preventDefault();
-        if (!form) {
-            return;
-        }
-        if (form.name.trim() === "") {
-            setFormError(t("namerequired"));
-            return;
-        }
+    // Client rules run first; anything the browser cannot know (a vanished
+    // record) still comes back as a per-field error and lands on its control.
+    const submit = validation.handleSubmit(async(values) => {
         setSaving(true);
-        setFormError("");
         try {
             const result = await callMoodleService<SaveResponse>(methods.save, {
-                id: form.id,
-                name: form.name.trim(),
-                description: form.description.trim(),
-                visible: form.visible,
+                id: values.id,
+                name: values.name.trim(),
+                description: values.description.trim(),
+                visible: values.visible,
             });
             if (!result.success) {
-                setFormError(result.message);
+                const applied = applyServerErrors(result);
+                if (Object.keys(applied).length === 0) {
+                    setFormError(result.message);
+                }
                 return;
             }
             toast.success(result.message);
@@ -221,7 +236,7 @@ export default function CategoriesAdmin({methods, labels}: Props) {
         } finally {
             setSaving(false);
         }
-    };
+    });
 
     const removeCategory = async(category: Category) => {
         const confirmText = t("deleteconfirm");
@@ -288,14 +303,9 @@ export default function CategoriesAdmin({methods, labels}: Props) {
                         </>
                     )}
                 >
-                    {formError && (
-                        <div className={mcClasses("mc-alert mc-alert--danger")} role="alert">
-                            <i className="bi bi-exclamation-triangle mc-alert__icon" aria-hidden="true" />
-                            <div className={mcClasses("mc-alert__body")}>{formError}</div>
-                        </div>
-                    )}
+                    <McFormSummary message={formError} />
 
-                    <form id="mc-category-drawer-form" onSubmit={submit}>
+                    <McForm id="mc-category-drawer-form" onSubmit={submit} registry={registry}>
                         <div className={mcClasses("mc-form-section")}>
                             <div className={mcClasses("mc-form-section__header")}>
                                 <h4 className={mcClasses("mc-form-section__title")}>
@@ -304,40 +314,38 @@ export default function CategoriesAdmin({methods, labels}: Props) {
                             </div>
                             <div className={mcClasses("mc-form-section__body")}>
                                 <div className={mcClasses("mc-product-form__grid")}>
-                                    <label>
-                                        <span>{t("name")}</span>
-                                        <input
-                                            autoFocus
-                                            className={mcClasses("mc-form-control")}
-                                            onChange={(event) => update({name: event.target.value})}
-                                            required
-                                            type="text"
-                                            value={form.name}
-                                        />
-                                    </label>
-                                    <label className={mcClasses("mc-product-form__wide")}>
-                                        <span>{t("description")}</span>
-                                        <textarea
-                                            className={mcClasses("mc-form-control")}
-                                            onChange={(event) => update({description: event.target.value})}
-                                            rows={3}
-                                            value={form.description}
-                                        />
-                                    </label>
-                                </div>
-                                <label className={mcClasses("mc-switch mt-2")}>
-                                    <input
-                                        checked={form.visible}
-                                        onChange={(event) => update({visible: event.target.checked})}
-                                        type="checkbox"
+                                    <McInput
+                                        autoFocus
+                                        error={errorFor("name")}
+                                        label={t("name")}
+                                        maxLength={255}
+                                        name="name"
+                                        onValueChange={(value) => update({name: value})}
+                                        required
+                                        type="text"
+                                        value={form.name}
                                     />
-                                    <span className={mcClasses("mc-switch__track")} />
-                                    <span className={mcClasses("mc-switch__thumb")} />
-                                    <span className={mcClasses("mc-switch__label")}>{t("visible")}</span>
-                                </label>
+                                    <McTextarea
+                                        className={mcClasses("mc-product-form__wide")}
+                                        error={errorFor("description")}
+                                        label={t("description")}
+                                        name="description"
+                                        onValueChange={(value) => update({description: value})}
+                                        rows={3}
+                                        value={form.description}
+                                    />
+                                </div>
+                                <McCheckbox
+                                    checked={form.visible}
+                                    className={mcClasses("mt-2")}
+                                    label={t("visible")}
+                                    name="visible"
+                                    onCheckedChange={(checked) => update({visible: checked})}
+                                    variant="switch"
+                                />
                             </div>
                         </div>
-                    </form>
+                    </McForm>
                 </McDrawer>
             )}
 

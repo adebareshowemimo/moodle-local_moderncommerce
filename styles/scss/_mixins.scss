@@ -57,12 +57,13 @@
 
 @mixin field-control($prefix: "mc") {
     width: 100%;
+    min-height: 2.5rem;
     font-size: 0.875rem;
     color: var(--#{$prefix}-text);
     background-color: var(--#{$prefix}-surface);
     border: 1px solid var(--#{$prefix}-border);
     border-radius: var(--#{$prefix}-radius);
-    padding: 0.4375rem 0.625rem;
+    padding: 0.5625rem 0.75rem;
     line-height: 1.4;
     transition: border-color var(--mc-transition-fast), box-shadow var(--mc-transition-fast);
     box-shadow: none;

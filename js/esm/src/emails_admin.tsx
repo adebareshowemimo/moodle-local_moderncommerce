@@ -13,10 +13,14 @@
  */
 
 import {useEffect, useState} from "react";
+import type {FormEvent} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import {McBadge} from "./badge";
 import {McDrawer} from "./drawer";
+import {FieldError} from "./form";
+import {focusFirstError, maxLength, required, runRules} from "./validation";
+import type {FieldErrorMap} from "./validation";
 import {McTableActionMenu, McTableCard, McTableFooter, McTablePagination} from "./table_components";
 import {BodyEditorMode, EmailBodyEditor} from "./email_body_editor";
 
@@ -151,6 +155,7 @@ export default function EmailsAdmin({
     const [data, setData] = useState<ListResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [form, setForm] = useState<EmailForm | null>(null);
     const [saving, setSaving] = useState(false);
     const [copied, setCopied] = useState("");
@@ -272,10 +277,24 @@ export default function EmailsAdmin({
         });
     };
 
-    const submitForm = async() => {
+    const submitForm = async(event?: FormEvent<HTMLFormElement>) => {
+        event?.preventDefault();
         if (!form) {
             return;
         }
+
+        const t = (key: string) => labels[key] ?? key;
+        const found = runRules(form, {
+            subject: [required(t("error:required")), maxLength(255, t("error:maxlength"))],
+            body: required(t("error:required")),
+        });
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setError("");
+            focusFirstError(found, ["subject", "body"]);
+            return;
+        }
+
         setSaving(true);
         setError("");
 
@@ -488,9 +507,9 @@ export default function EmailsAdmin({
                             <McButton
                                 className={mcClasses("btn-mc-primary")}
                                 loading={saving}
+                                form="mc-email-drawer-form"
                                 loadingLabel={labels.saving || "Saving..."}
-                                onClick={submitForm}
-                                type="button"
+                                type="submit"
                             >
                                 {labels.save}
                             </McButton>
@@ -507,6 +526,7 @@ export default function EmailsAdmin({
                         </div>
                     )}
 
+                    <form id="mc-email-drawer-form" noValidate onSubmit={submitForm}>
                     <div className={mcClasses("mc-product-form__section")}>
                         <div className={mcClasses("mc-product-form__checks")}>
                             <label className={mcClasses("mc-switch")}>
@@ -539,17 +559,32 @@ export default function EmailsAdmin({
                                     </small>
                                 </label>
                             )}
-                            <label className={mcClasses("mc-product-form__wide")}>
-                                <span>{labels.subject}</span>
+                            <label className={mcClasses("mc-product-form__wide")} htmlFor="mc-email-subject">
+                                <span>
+                                    {labels.subject}
+                                    <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                </span>
                                 <input
-                                    className={mcClasses("mc-form-control")}
+                                    aria-describedby={fieldErrors.subject ? "mc-email-subject-error" : undefined}
+                                    aria-invalid={fieldErrors.subject ? true : undefined}
+                                    aria-required="true"
+                                    className={mcClasses("mc-form-control",
+                                        fieldErrors.subject ? "mc-field-invalid" : "")}
+                                    id="mc-email-subject"
+                                    maxLength={255}
+                                    name="subject"
                                     onChange={(event) => updateForm({subject: event.target.value})}
                                     type="text"
                                     value={form.subject}
                                 />
+                                <FieldError id="mc-email-subject-error" message={fieldErrors.subject} />
                             </label>
                             <div className={mcClasses("mc-product-form__wide")}>
-                                <span>{labels.body}</span>
+                                <span>
+                                    {labels.body}
+                                    <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                </span>
+                                <FieldError id="mc-email-body-error" message={fieldErrors.body} />
                                 <EmailBodyEditor
                                     labels={labels}
                                     mode={bodyMode}
@@ -578,6 +613,7 @@ export default function EmailsAdmin({
                             ))}
                         </div>
                     </div>
+                    </form>
                 </McDrawer>
             )}
         </section>

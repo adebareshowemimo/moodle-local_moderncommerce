@@ -22,6 +22,9 @@ import {useEffect, useMemo, useState} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import EmailBrandingAdmin from "./email_branding_admin";
+import {FieldError} from "./form";
+import {focusFirstError} from "./validation";
+import type {FieldErrorMap} from "./validation";
 
 declare const M: {
     cfg: {
@@ -114,6 +117,7 @@ function BrandColorsEditor({getMethodName, saveMethodName, labels}: ColorsProps)
     const [saved, setSaved] = useState<Record<string, string> | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [error, setError] = useState("");
 
     useEffect(() => {
@@ -226,6 +230,21 @@ function BrandColorsEditor({getMethodName, saveMethodName, labels}: ColorsProps)
     };
 
     const submit = async() => {
+        // isHex6 previously only drove the preview swatch: an invalid value
+        // rendered as black locally and was still sent to the server.
+        const found: FieldErrorMap = {};
+        fields.forEach((field) => {
+            if (field.type === "colour" && String(form[field.key] ?? "").trim() !== ""
+                && !isHex6(String(form[field.key]))) {
+                found[field.key] = labels["error:invalidcolour"] ?? "";
+            }
+        });
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            focusFirstError(found, fields.map((field) => field.key));
+            return;
+        }
+
         setSaving(true);
         try {
             const payload = Object.keys(form).map((key) => ({key, value: form[key]}));
@@ -308,13 +327,19 @@ function BrandColorsEditor({getMethodName, saveMethodName, labels}: ColorsProps)
                         />
                     )}
                     <input
-                        className={mcClasses("mc-form-control", "mc-brand-field__text")}
+                        aria-describedby={fieldErrors[field.key] ? `mc-brand-${field.key}-error` : undefined}
+                        aria-invalid={fieldErrors[field.key] ? true : undefined}
+                        className={mcClasses("mc-form-control", "mc-brand-field__text",
+                            fieldErrors[field.key] ? "mc-field-invalid" : "")}
+                        id={`mc-brand-${field.key}`}
+                        name={field.key}
                         onChange={(e) => update(field.key, e.target.value)}
                         placeholder={field.default}
                         type="text"
                         value={value}
                     />
                 </div>
+                <FieldError id={`mc-brand-${field.key}-error`} message={fieldErrors[field.key]} />
             </div>
         );
     };

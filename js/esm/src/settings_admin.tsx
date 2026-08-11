@@ -21,6 +21,19 @@ import {useEffect, useMemo, useState} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import ContactEmailsAdmin from "./contact_emails_admin";
+import {
+    email as emailRule,
+    integer,
+    max,
+    maxLength,
+    min,
+    normaliseServerErrors,
+    percent,
+    required,
+    runRules,
+    url as urlRule,
+} from "./validation";
+import type {FieldErrorMap, RuleMap} from "./validation";
 
 declare const M: {
     cfg: {
@@ -173,6 +186,10 @@ const FIELD_TAB: Record<string, string> = {
     reviews_enabled: "reviews",
     product_show_sku: "products", product_show_slug: "products",
     course_detail_sidebar_position: "products",
+    // Owned by the webhooks screen, which saves through this same endpoint.
+    // Without an entry here their errors fall through to a toast instead of
+    // revealing the panel that holds them.
+    enable_webhook_ip_whitelist: "store", payment_max_retries: "store",
 };
 
 const callMoodleService = async <T, >(methodName: string, args: unknown): Promise<T> => {
@@ -318,7 +335,14 @@ export default function SettingsAdmin({
     );
     const onContactEmailsTab = active === CONTACT_EMAILS_TAB_ID;
 
-    const update = (changes: Partial<Form>) => setForm((c) => c ? {...c, ...changes} : c);
+    const update = (changes: Partial<Form>) => {
+        setForm((current) => current ? {...current, ...changes} : current);
+        setFieldErrors((current) => {
+            const next = {...current};
+            Object.keys(changes).forEach((field) => delete next[field]);
+            return next;
+        });
+    };
 
     const discard = () => {
         if (saved) {
@@ -328,27 +352,79 @@ export default function SettingsAdmin({
         setError("");
     };
 
+    // Mirrors commerce_settings_service::validate_admin_settings so an obvious
+    // mistake is caught before the round trip. The server stays authoritative.
+    const rules = useMemo<RuleMap<Form>>(() => {
+        const t = (key: string) => labels[key] ?? key;
+        return {
+            business_name: [required(t("error:required")), maxLength(255, t("error:maxlength"))],
+            support_email: emailRule(t("error:invalidemail")),
+            support_url: urlRule(t("error:invalidurl"), {requireHttp: true}),
+            primary_currency: required(t("error:selectoption")),
+            decimal_places: [integer(t("error:invalidinteger")), min(0, t("error:minvalue")), max(6, t("error:maxvalue"))],
+            thousand_separator: maxLength(1, t("error:maxlength")),
+            decimal_separator: [required(t("error:required")), maxLength(1, t("error:maxlength"))],
+            default_tax_rate: percent(t("error:invalidpercent")),
+            invoice_prefix: maxLength(20, t("error:maxlength")),
+            receipt_prefix: maxLength(20, t("error:maxlength")),
+            adminnavlabel: maxLength(50, t("error:maxlength")),
+            learnernavlabel: maxLength(50, t("error:maxlength")),
+            notification_autodismiss: [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))],
+            payment_max_retries: [
+                integer(t("error:invalidinteger")), min(0, t("error:minvalue")), max(10, t("error:maxvalue")),
+            ],
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [labels]);
+
+    /** Show the errors and reveal the tab holding the first one. */
+    const applyFieldErrors = (map: FieldErrorMap, fallbackMessage = ""): void => {
+        setFieldErrors(map);
+        const order = [...Object.keys(rules), ...Object.keys(FIELD_TAB)];
+        const first = order.find((field) => map[field]) ?? Object.keys(map)[0];
+        const tab = first ? FIELD_TAB[first] : undefined;
+        if (tab) {
+            setActive(tab);
+        } else if (fallbackMessage) {
+            toast.error(fallbackMessage);
+        }
+
+        if (first) {
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    const control = document.getElementById(`mc-setting-${first}`);
+                    control?.scrollIntoView({block: "center", behavior: "smooth"});
+                    control?.focus({preventScroll: true});
+                });
+            });
+        }
+    };
+
     const submit = async() => {
         if (!form) {
             return;
         }
+
+        const clientErrors = runRules(form, rules);
+        // The thousands and decimal separators must differ or prices become
+        // unparseable; neither field alone is wrong, so it is checked here.
+        if (!clientErrors.decimal_separator
+            && String(form.decimal_separator) === String(form.thousand_separator)) {
+            clientErrors.decimal_separator = labels.separatorsmustdiffer
+                ?? labels["error:required"] ?? "separatorsmustdiffer";
+        }
+        if (Object.keys(clientErrors).length > 0) {
+            applyFieldErrors(clientErrors);
+            return;
+        }
+
         setSaving(true);
         setError("");
         setFieldErrors({});
         try {
             const result = await callMoodleService<SaveResponse>(saveMethodName, formToArgs(form));
             if (!result.success) {
-                const map: Record<string, string> = {};
-                result.errors.forEach((e) => {
-                    map[e.field] = e.message;
-                });
-                setFieldErrors(map);
-                const firstErrorTab = result.errors.length ? FIELD_TAB[result.errors[0].field] : undefined;
-                if (firstErrorTab) {
-                    setActive(firstErrorTab);
-                } else {
-                    toast.error(result.message);
-                }
+                applyFieldErrors(normaliseServerErrors(result.errors), result.message);
                 return;
             }
             // Refresh server-computed data (metric tiles, price preview, option lists)
@@ -385,31 +461,74 @@ export default function SettingsAdmin({
         return null;
     }
 
+    // Required flags come from the rule map so the asterisk cannot drift away
+    // from what is actually enforced.
+    const isRequired = (key: keyof Form): boolean => {
+        const entry = rules[key as Extract<keyof Form, string>];
+        const list = Array.isArray(entry) ? entry : (entry ? [entry] : []);
+        return list.some((rule) => rule("", form) !== undefined);
+    };
+
+    const fieldError = (key: keyof Form) => fieldErrors[key as string];
+
+    const controlProps = (key: keyof Form) => {
+        const message = fieldError(key);
+        const id = `mc-setting-${String(key)}`;
+        return {
+            id,
+            "aria-describedby": message ? `${id}-error` : undefined,
+            "aria-invalid": message ? true : undefined,
+            "aria-required": isRequired(key) ? true : undefined,
+        };
+    };
+
+    const fieldMessage = (key: keyof Form) => {
+        const message = fieldError(key);
+        if (!message) {
+            return null;
+        }
+        return (
+            <div className={mcClasses("mc-field-error")} id={`mc-setting-${String(key)}-error`} role="alert">
+                <i className={mcClasses("bi bi-exclamation-circle mc-field-error__icon")} aria-hidden="true" />
+                <span>{message}</span>
+            </div>
+        );
+    };
+
+    const fieldLabel = (key: keyof Form, label: string) => (
+        <span>
+            {label}
+            {isRequired(key) && <span className={mcClasses("mc-required")} aria-hidden="true">*</span>}
+        </span>
+    );
+
     const textField = (key: keyof Form, label: string, type = "text", attrs: Record<string, string> = {}) => (
-        <label key={key}>
-            <span>{label}</span>
+        <label htmlFor={`mc-setting-${String(key)}`} key={key}>
+            {fieldLabel(key, label)}
             <input
-                className={mcClasses("mc-form-control", fieldErrors[key] ? "is-invalid" : "")}
+                {...controlProps(key)}
+                className={mcClasses("mc-form-control", fieldError(key) ? "mc-field-invalid" : "")}
                 onChange={(e) => update({[key]: e.target.value} as Partial<Form>)}
                 type={type}
                 value={String(form[key])}
                 {...attrs}
             />
-            {fieldErrors[key] && <small className="text-danger">{fieldErrors[key]}</small>}
+            {fieldMessage(key)}
         </label>
     );
 
     const selectField = (key: keyof Form, label: string, options: Option[]) => (
-        <label key={key}>
-            <span>{label}</span>
+        <label htmlFor={`mc-setting-${String(key)}`} key={key}>
+            {fieldLabel(key, label)}
             <select
-                className={mcClasses("mc-select", fieldErrors[key] ? "is-invalid" : "")}
+                {...controlProps(key)}
+                className={mcClasses("mc-select", fieldError(key) ? "mc-field-invalid" : "")}
                 onChange={(e) => update({[key]: e.target.value} as Partial<Form>)}
                 value={String(form[key])}
             >
                 {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-            {fieldErrors[key] && <small className="text-danger">{fieldErrors[key]}</small>}
+            {fieldMessage(key)}
         </label>
     );
 

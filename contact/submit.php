@@ -26,6 +26,7 @@
 require_once(__DIR__ . '/../../../config.php');
 
 use local_moderncommerce\services\captcha_service;
+use local_moderncommerce\services\contact_service;
 
 // Set page context (required for email functions).
 $PAGE->set_context(context_system::instance());
@@ -40,8 +41,28 @@ $phone    = trim(optional_param('phone', '', PARAM_TEXT));
 $message  = trim(optional_param('message', '', PARAM_TEXT));
 $returnurl = new moodle_url(optional_param('returnurl', '/', PARAM_URL));
 
-if ($fullname === '' || $email === '' || $message === '') {
-    redirect($returnurl, get_string('contact_error', 'local_moderncommerce'), 5);
+$errors = contact_service::validate_enquiry([
+    'fullname' => $fullname,
+    'email' => $email,
+    'subject' => $subject,
+    'phone' => $phone,
+    'message' => $message,
+]);
+
+if (!empty($errors)) {
+    // Stash the per-field messages plus what was typed, so the page the user
+    // lands back on can highlight the offending fields instead of showing one
+    // generic sentence and discarding their message.
+    global $SESSION;
+    $SESSION->local_moderncommerce_contact_errors = $errors;
+    $SESSION->local_moderncommerce_contact_values = [
+        'fullname' => $fullname,
+        'email' => $email,
+        'subject' => $subject,
+        'phone' => $phone,
+        'message' => $message,
+    ];
+    redirect($returnurl, reset($errors), 5, \core\output\notification::NOTIFY_ERROR);
 }
 
 $captcharesult = captcha_service::verify(captcha_service::request_response());

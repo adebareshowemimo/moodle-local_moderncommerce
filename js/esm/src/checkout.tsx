@@ -18,6 +18,9 @@ import {callMoodleService, Labels} from "./learner_common";
 import {mcClasses, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import ModernLearnerLayout, {type LearnerLayoutContext} from "./learner_layout";
+import {FieldError} from "./form";
+import {email as emailRule, focusFirstError, required, runRules} from "./validation";
+import type {FieldErrorMap, RuleMap} from "./validation";
 
 type CheckoutItem = {
     id: number;
@@ -250,6 +253,7 @@ function BillingFields({
     required,
     labels,
     onChange,
+    errors = {},
 }: {
     fields: BillingField[];
     countries: Country[];
@@ -257,6 +261,7 @@ function BillingFields({
     required: boolean;
     labels: Labels;
     onChange: CallableFunction;
+    errors?: FieldErrorMap;
 }) {
     if (!required || fields.length === 0) {
         return null;
@@ -280,8 +285,12 @@ function BillingFields({
                             </label>
                             {field.field === "country" ? (
                                 <select
-                                    className={mcClasses("mc-select")}
+                                    aria-describedby={errors[field.field] ? `${field.field}-error` : undefined}
+                                    aria-invalid={errors[field.field] ? true : undefined}
+                                    aria-required={field.required ? true : undefined}
+                                    className={mcClasses("mc-select", errors[field.field] ? "mc-field-invalid" : "")}
                                     id={field.field}
+                                    name={field.field}
                                     value={billing.country}
                                     required={field.required}
                                     onChange={(event) => onChange("country", event.currentTarget.value)}
@@ -294,9 +303,14 @@ function BillingFields({
                                 </select>
                             ) : (
                                 <input
+                                    aria-describedby={errors[field.field] ? `${field.field}-error` : undefined}
+                                    aria-invalid={errors[field.field] ? true : undefined}
+                                    aria-required={field.required ? true : undefined}
                                     type={field.type}
-                                    className={mcClasses("mc-form-control")}
+                                    className={mcClasses("mc-form-control",
+                                        errors[field.field] ? "mc-field-invalid" : "")}
                                     id={field.field}
+                                    name={field.field}
                                     value={String(billing[field.field as keyof CheckoutUser] ?? "")}
                                     required={field.required}
                                     onChange={(event) => (
@@ -307,6 +321,7 @@ function BillingFields({
                                     )}
                                 />
                             )}
+                            <FieldError id={`${field.field}-error`} message={errors[field.field]} />
                         </div>
                     ))}
                 </div>
@@ -447,6 +462,7 @@ export default function Checkout({
     const [couponInput, setCouponInput] = useState("");
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [couponBusy, setCouponBusy] = useState(false);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
@@ -527,6 +543,32 @@ export default function Checkout({
 
         if (!data || !billing || !selectedPayment) {
             setError(labels.nopaymentmethodsenabled);
+            return;
+        }
+
+        // The server decides which billing fields apply, so the rules are built
+        // from that same list rather than hard-coded here.
+        const t = (key: string) => labels[key] ?? key;
+        const rules: RuleMap<Record<string, unknown>> = {};
+        if (!["manual", "enrollkey"].includes(selectedPayment)) {
+            (data.billingfields || []).forEach((field) => {
+                const list = [];
+                if (field.required) {
+                    list.push(required(t("error:required")));
+                }
+                if (field.type === "email" || field.field === "email") {
+                    list.push(emailRule(t("error:invalidemail")));
+                }
+                if (list.length) {
+                    rules[field.field] = list;
+                }
+            });
+        }
+        const found = runRules(billing as unknown as Record<string, unknown>, rules);
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setError("");
+            focusFirstError(found, (data.billingfields || []).map((field) => field.field));
             return;
         }
 
@@ -642,6 +684,7 @@ export default function Checkout({
                                 required={requiresBilling}
                                 labels={labels}
                                 onChange={handleBillingChange}
+                                errors={fieldErrors}
                             />
 
                             {data.haspaymentmethods && (

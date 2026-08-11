@@ -29,6 +29,12 @@ import RecaptchaField, {getRecaptchaResponse, recaptchaConfigDefaults, Recaptcha
 import VideoHero, {VideoHeroData} from "./storefront/videohero";
 import Footer, {FooterData, footerDataDefaults} from "./storefront/footer";
 import Catalog from "./catalog";
+import {FieldError} from "./form";
+import {
+    email as emailRule, hexColour, integer, max, maxLength, min, minLength, number, required,
+    runRules, slug as slugRule, url as urlRule, when,
+} from "./validation";
+import type {FieldErrorMap, Rule, RuleMap} from "./validation";
 
 declare const M: { cfg: { sesskey: string; wwwroot: string } };
 
@@ -61,6 +67,13 @@ export type FieldDef = {
     name: string; label: string; type: string; default?: unknown;
     choices?: Record<string, string>; fields?: FieldDef[];
     showwhen?: FieldVisibilityRule | FieldVisibilityRule[];
+    // Optional validation metadata, supplied by the PHP widget schema. Declaring
+    // it here rather than hand-writing rules per widget means every widget type
+    // gains validation from one place.
+    required?: boolean;
+    minlength?: number; maxlength?: number;
+    min?: number; max?: number;
+    format?: "email" | "url" | "hex" | "integer" | "number" | "slug";
 };
 type FieldVisibilityValue = string | number | boolean;
 type FieldVisibilityRule = {
@@ -894,6 +907,81 @@ const shouldShowField = (field: FieldDef, values: Record<string, unknown>): bool
         }
         return true;
     });
+};
+
+/**
+ * Compile a widget's field schema into a rule map.
+ *
+ * Hidden fields (showwhen) are skipped: a value the admin cannot see must never
+ * block the save. Repeatable rows are keyed `${field}_${index}_${sub}` with
+ * underscores, because the wire format types the key as PARAM_ALPHANUMEXT and a
+ * dot would be silently stripped.
+ */
+export const rulesFromSchema = (
+    fields: FieldDef[],
+    messages: Record<string, string>
+): RuleMap<Record<string, unknown>> => {
+    const t = (key: string) => messages[key] ?? key;
+    const rules: RuleMap<Record<string, unknown>> = {};
+
+    fields.forEach((field) => {
+        const list: Array<Rule<Record<string, unknown>>> = [];
+
+        if (field.required) {
+            list.push(required(t("error:required")));
+        }
+        if (typeof field.minlength === "number") {
+            list.push(minLength(field.minlength, t("error:minlength")));
+        }
+        if (typeof field.maxlength === "number") {
+            list.push(maxLength(field.maxlength, t("error:maxlength")));
+        }
+        if (typeof field.min === "number") {
+            list.push(min(field.min, t("error:minvalue")));
+        }
+        if (typeof field.max === "number") {
+            list.push(max(field.max, t("error:maxvalue")));
+        }
+        // A field's own type already carries the intent, so `url` and `color`
+        // fields validate without every schema entry having to say so. An
+        // explicit `format` still wins.
+        const format = field.format
+            ?? (field.type === "url" ? "url" : (field.type === "color" ? "hex" : undefined));
+
+        switch (format) {
+            case "email":
+                list.push(emailRule(t("error:invalidemail")));
+                break;
+            case "url":
+                list.push(urlRule(t("error:invalidurl")));
+                break;
+            case "hex":
+                list.push(hexColour(t("error:invalidcolour")));
+                break;
+            case "integer":
+                list.push(integer(t("error:invalidinteger")));
+                break;
+            case "number":
+                list.push(number(t("error:invalidnumber")));
+                break;
+            case "slug":
+                list.push(slugRule(t("error:invalidslug")));
+                break;
+            default:
+                break;
+        }
+
+        if (list.length === 0) {
+            return;
+        }
+
+        rules[field.name] = when(
+            (values) => shouldShowField(field, values as Record<string, unknown>),
+            ...list
+        );
+    });
+
+    return rules;
 };
 
 const genericFieldGroup = (field: FieldDef): GenericEditorItem => {
@@ -2118,11 +2206,36 @@ type FieldControlLabels = {
     videouploaded?: string;
 };
 
-function Field(
-    {field, value, onChange, iconOptions, uploadMethod = "", videoUploadUrl = "", contextValues = {}, controlLabels = {}}:
-    {field: FieldDef; value: unknown; onChange: (v: unknown) => void; iconOptions?: IconOption[];
-        uploadMethod?: string; videoUploadUrl?: string; contextValues?: Record<string, unknown>;
-        controlLabels?: FieldControlLabels}
+/**
+ * Wraps the schema-driven control with its inline error. Field has a branch per
+ * field type, so decorating the rendered output once is the only way to give
+ * every widget type the same treatment without touching each branch.
+ */
+function Field(props: FieldProps) {
+    const {field, error} = props;
+    const rendered = FieldControl(props);
+    if (!error) {
+        return rendered;
+    }
+
+    const id = `mc-sf-f-${field.name}`;
+    return (
+        <div className="mc-sf-field-wrap" data-mc-invalid="true">
+            {rendered}
+            <FieldError id={`${id}-error`} message={error} />
+        </div>
+    );
+}
+
+type FieldProps = {
+    field: FieldDef; value: unknown; onChange: (v: unknown) => void; iconOptions?: IconOption[];
+    uploadMethod?: string; videoUploadUrl?: string; contextValues?: Record<string, unknown>;
+    controlLabels?: FieldControlLabels; error?: string;
+};
+
+function FieldControl(
+    {field, value, onChange, iconOptions, uploadMethod = "", videoUploadUrl = "", contextValues = {},
+        controlLabels = {}}: FieldProps
 ) {
     const id = `mc-sf-f-${field.name}`;
     const controls = {
@@ -2509,6 +2622,7 @@ export default function Storefront(props: Props) {
     const [editorId, setEditorId] = useState<number | null>(null);
     const [editor, setEditor] = useState<WidgetEditorData | null>(null);
     const [editorBusy, setEditorBusy] = useState(false);
+    const [editorFieldErrors, setEditorFieldErrors] = useState<FieldErrorMap>({});
     const [editorPresets, setEditorPresets] = useState<WidgetPreset[]>([]);
     const [editorPresetsLoading, setEditorPresetsLoading] = useState(false);
     const [selectedPresetId, setSelectedPresetId] = useState(0);
@@ -2773,6 +2887,16 @@ export default function Storefront(props: Props) {
         if (!editor) {
             return;
         }
+
+        // Rules are compiled from the widget's own schema, so a new widget type
+        // gains validation by declaring it in PHP, with no JavaScript change.
+        const found = runRules(editor.values, rulesFromSchema(editor.fields, labels));
+        setEditorFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setError("");
+            return;
+        }
+
         setEditorBusy(true);
         callService(widgetSaveMethod, {
             id: editor.id,
@@ -2956,6 +3080,7 @@ export default function Storefront(props: Props) {
                 onChange={(value) => setValue(name, value)} />;
         }
         return <Field key={name} field={field} value={editor.values[name]}
+            error={editorFieldErrors[name]}
             iconOptions={iconOptions}
             uploadMethod={uploadMethod}
             videoUploadUrl={videoUploadUrl}
@@ -2981,6 +3106,7 @@ export default function Storefront(props: Props) {
                 onChange={(value) => setValue(field.name, value)} />;
         }
         return <Field key={field.name} field={field} value={editor.values[field.name]}
+            error={editorFieldErrors[field.name]}
             iconOptions={iconOptions}
             uploadMethod={uploadMethod}
             videoUploadUrl={videoUploadUrl}

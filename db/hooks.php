@@ -36,6 +36,11 @@ $callbacks = [
         'priority' => 400,
     ],
     [
+        'hook' => \core\hook\output\before_http_headers::class,
+        'callback' => \local_moderncommerce\hook\callbacks::class . '::redirect_my_to_learner_dashboard',
+        'priority' => 300,
+    ],
+    [
         'hook' => \core_user\hook\extend_user_menu::class,
         'callback' => \local_moderncommerce\hook\callbacks::class . '::add_learner_dashboard_link',
         'priority' => 100,

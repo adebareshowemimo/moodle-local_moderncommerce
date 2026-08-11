@@ -52,7 +52,8 @@ class redeem_react {
                 'coursesUrl' => (new moodle_url('/local/moderncommerce/learner/index.php'))->out(false) . '#/courses',
                 'layout' => $layout,
                 'activeNav' => $activenav,
-                'labels' => [
+                'labels' => validation_labels::all() + [
+                    'error:invalidkeyformat' => get_string('error:invalidkeyformat', 'local_moderncommerce'),
                     'title' => get_string('redeemkey', 'local_moderncommerce'),
                     'intro' => get_string('redeemintro', 'local_moderncommerce'),
                     'help' => get_string('redeemhelp', 'local_moderncommerce'),

@@ -13,6 +13,7 @@
  */
 
 import {useEffect, useState} from "react";
+import type {FormEvent} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import {McBadge} from "./badge";
@@ -20,6 +21,9 @@ import type {McBadgeVariant} from "./badge";
 import {McDrawer} from "./drawer";
 import {McTableActionMenu, McTableCard, McTableFooter, McTablePagination} from "./table_components";
 import {confirmDialog} from "./modal";
+import {FieldError} from "./form";
+import {focusFirstError, integer, max, min, requiredId, runRules} from "./validation";
+import type {FieldErrorMap} from "./validation";
 
 declare const M: {
     cfg: {
@@ -221,6 +225,7 @@ export default function KeysAdmin({
     });
     const [genOptions, setGenOptions] = useState<TargetOption[]>([]);
     const [genGenerated, setGenGenerated] = useState<string[]>([]);
+    const [genFieldErrors, setGenFieldErrors] = useState<FieldErrorMap>({});
 
     useEffect(() => {
         const timer = window.setTimeout(() => {
@@ -413,9 +418,25 @@ export default function KeysAdmin({
         </div>
     );
 
-    const submitGenerate = async() => {
-        if (genForm.targetid <= 0) {
-            setError(labels.selecttarget);
+    const submitGenerate = async(event?: FormEvent<HTMLFormElement>) => {
+        event?.preventDefault();
+
+        const t = (key: string) => labels[key] ?? key;
+        const found = runRules(genForm, {
+            targetid: requiredId(labels.selecttarget ?? t("error:required")),
+            quantity: [
+                integer(t("error:invalidinteger")), min(1, t("error:minvalue")), max(500, t("error:maxvalue")),
+            ],
+            maxuses: genForm.keytype === "multi"
+                ? [integer(t("error:invalidinteger")), min(1, t("error:minvalue"))]
+                : [],
+            validdays: [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))],
+        });
+
+        setGenFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setError("");
+            focusFirstError(found, ["targetid", "quantity", "maxuses", "validdays"]);
             return;
         }
 
@@ -470,9 +491,9 @@ export default function KeysAdmin({
                             <McButton
                                 className={mcClasses("btn-mc-primary")}
                                 loading={busyId === -1}
+                                form="mc-key-generate-form"
                                 loadingLabel={labels.loading || "Generating..."}
-                                onClick={submitGenerate}
-                                type="button"
+                                type="submit"
                             >
                                 {labels.generate}
                             </McButton>
@@ -487,6 +508,7 @@ export default function KeysAdmin({
                         </>
                     )}
                 >
+                    <form id="mc-key-generate-form" noValidate onSubmit={submitGenerate}>
                     <div className={mcClasses("mc-product-form__section")}>
                         <div className={mcClasses("mc-product-form__grid")}>
                             {showTargetTypePicker && (
@@ -504,16 +526,32 @@ export default function KeysAdmin({
                             )}
                             <div className={mcClasses("mc-course-picker mc-product-form__wide")}>
                                 <label htmlFor="mc-key-target-input">
-                                    <span>{targetPickerLabel}</span>
+                                    <span>
+                                        {targetPickerLabel}
+                                        <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                    </span>
                                     <input
                                         autoComplete="off"
-                                        className={mcClasses("mc-form-control")}
+                                        aria-describedby={genFieldErrors.targetid ? "mc-key-target-error" : undefined}
+                                        aria-invalid={genFieldErrors.targetid ? true : undefined}
+                                        aria-required="true"
+                                        className={mcClasses("mc-form-control",
+                                            genFieldErrors.targetid ? "mc-field-invalid" : "")}
                                         id="mc-key-target-input"
+                                        name="targetid"
+                                        // Search box inside the generate form: Enter must filter,
+                                        // not generate a batch of keys.
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter") {
+                                                event.preventDefault();
+                                            }
+                                        }}
                                         onChange={(event) => updateGen({query: event.target.value, targetid: 0, targetname: ""})}
                                         placeholder={genForm.targettype === "course" ? labels.searchcoursesplaceholder : labels.searchbundles}
                                         type="search"
                                         value={genForm.targetid > 0 ? genForm.targetname : genForm.query}
                                     />
+                                    <FieldError id="mc-key-target-error" message={genFieldErrors.targetid} />
                                 </label>
                                 {genOptions.length > 0 && genForm.targetid <= 0 && (
                                     <div className={mcClasses("mc-course-picker__results")} role="listbox">
@@ -535,16 +573,26 @@ export default function KeysAdmin({
                                     </div>
                                 )}
                             </div>
-                            <label>
-                                <span>{labels.quantity}</span>
+                            <label htmlFor="mc-key-quantity">
+                                <span>
+                                    {labels.quantity}
+                                    <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                </span>
                                 <input
-                                    className={mcClasses("mc-form-control")}
+                                    aria-describedby={genFieldErrors.quantity ? "mc-key-quantity-error" : undefined}
+                                    aria-invalid={genFieldErrors.quantity ? true : undefined}
+                                    aria-required="true"
+                                    className={mcClasses("mc-form-control",
+                                        genFieldErrors.quantity ? "mc-field-invalid" : "")}
+                                    id="mc-key-quantity"
                                     max="500"
                                     min="1"
+                                    name="quantity"
                                     onChange={(event) => updateGen({quantity: event.target.value})}
                                     type="number"
                                     value={genForm.quantity}
                                 />
+                                <FieldError id="mc-key-quantity-error" message={genFieldErrors.quantity} />
                             </label>
                             <label>
                                 <span>{labels.keytype}</span>
@@ -581,6 +629,7 @@ export default function KeysAdmin({
                             </label>
                         </div>
                     </div>
+                    </form>
 
                     {genGenerated.length > 0 && (
                         <div className={mcClasses("mc-product-form__section")}>

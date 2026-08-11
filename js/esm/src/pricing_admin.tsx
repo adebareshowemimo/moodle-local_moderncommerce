@@ -21,6 +21,12 @@ import type {McBadgeVariant} from "./badge";
 import {McDrawer} from "./drawer";
 import {McTableActionMenu, McTableCard, McTableFooter, McTableFrame, McTablePagination} from "./table_components";
 import {confirmDialog} from "./modal";
+import {FieldError} from "./form";
+import {
+    afterField, focusFirstError, gteField, integer, lteField, maxLength, min, normaliseServerErrors, number,
+    pattern, required, runRules,
+} from "./validation";
+import type {FieldErrorMap, WithFieldErrors} from "./validation";
 
 declare const M: {
     cfg: {
@@ -170,7 +176,7 @@ type PricesResponse = {
     items: PriceRow[];
 };
 
-type SaveResponse = {
+type SaveResponse = WithFieldErrors & {
     success: boolean;
     productid: number;
     message: string;
@@ -552,6 +558,8 @@ export default function PricingAdmin({
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [formError, setFormError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
+    const [priceFieldErrors, setPriceFieldErrors] = useState<FieldErrorMap>({});
     const [reloadToken, setReloadToken] = useState(0);
     const [form, setForm] = useState<ProductForm | null>(null);
     const [courseSearch, setCourseSearch] = useState("");
@@ -813,8 +821,10 @@ export default function PricingAdmin({
         setCourseOptions([]);
         setCourseError("");
         setFormError("");
+        setFieldErrors({});
         setPriceForm(null);
         setPriceFormError("");
+        setPriceFieldErrors({});
     };
 
     const openEditForm = (product: Product) => {
@@ -823,8 +833,10 @@ export default function PricingAdmin({
         setCourseOptions([]);
         setCourseError("");
         setFormError("");
+        setFieldErrors({});
         setPriceForm(null);
         setPriceFormError("");
+        setPriceFieldErrors({});
     };
 
     const closeForm = () => {
@@ -833,6 +845,7 @@ export default function PricingAdmin({
         setCourseOptions([]);
         setCourseError("");
         setFormError("");
+        setFieldErrors({});
         setPrices([]);
         setPricesError("");
         setPriceForm(null);
@@ -897,11 +910,13 @@ export default function PricingAdmin({
 
         setPriceForm(emptyPriceForm(form.id));
         setPriceFormError("");
+        setPriceFieldErrors({});
     };
 
     const openEditPriceForm = (price: PriceRow) => {
         setPriceForm(priceToForm(price));
         setPriceFormError("");
+        setPriceFieldErrors({});
     };
 
     const closePriceForm = () => {
@@ -940,6 +955,36 @@ export default function PricingAdmin({
             return;
         }
 
+        const t = (key: string) => labels[key] ?? key;
+        const found = runRules(form, {
+            name: [required(t("error:required")), maxLength(255, t("error:maxlength"))],
+            sku: showSku ? pattern(/^[A-Za-z0-9_-]{0,64}$/, t("error:invalidsku")) : [],
+            slug: showSlug ? pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, t("error:invalidslug")) : [],
+            regularprice: form.priceenabled
+                ? [number(t("error:invalidnumber")), min(0, t("error:minvalue"))]
+                : [],
+            compareamount: form.saleenabled
+                ? [number(t("error:invalidnumber")), min(0, t("error:minvalue")),
+                    lteField("regularprice", t("error:salepriceabovebase"))]
+                : [],
+            stock: form.stockmanaged ? [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))] : [],
+            reservedstock: form.stockmanaged
+                ? [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))]
+                : [],
+            displayorder: integer(t("error:invalidinteger")),
+        });
+        // A course product without a course would be unbuyable.
+        if (form.producttype === "course" && Number(form.courseid) <= 0) {
+            found.courseid = t("error:required");
+        }
+
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setFormError("");
+            focusFirstError(found, ["name", "courseid", "sku", "slug", "regularprice", "compareamount", "stock"]);
+            return;
+        }
+
         setSaving(true);
         setFormError("");
 
@@ -950,7 +995,13 @@ export default function PricingAdmin({
             );
 
             if (!result.success) {
-                setFormError(result.message);
+                const serverErrors = normaliseServerErrors(result.errors);
+                if (Object.keys(serverErrors).length > 0) {
+                    setFieldErrors(serverErrors);
+                    focusFirstError(serverErrors, ["name", "courseid", "sku", "slug", "regularprice"]);
+                } else {
+                    setFormError(result.message);
+                }
                 return;
             }
 
@@ -1027,6 +1078,22 @@ export default function PricingAdmin({
         event.preventDefault();
 
         if (!priceForm) {
+            return;
+        }
+
+        const t = (key: string) => labels[key] ?? key;
+        const found = runRules(priceForm, {
+            amount: [required(t("error:required")), number(t("error:invalidnumber")), min(0, t("error:minvalue"))],
+            compareamount: [number(t("error:invalidnumber")), min(0, t("error:minvalue"))],
+            minquantity: [integer(t("error:invalidinteger")), min(1, t("error:minvalue"))],
+            maxquantity: [integer(t("error:invalidinteger")), gteField("minquantity", t("error:maxqtybelowmin"))],
+            enddate: afterField("startdate", t("error:enddatebeforestart")),
+        });
+
+        setPriceFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setPriceFormError("");
+            focusFirstError(found, ["amount", "compareamount", "minquantity", "maxquantity", "enddate"]);
             return;
         }
 
@@ -1209,28 +1276,37 @@ export default function PricingAdmin({
         id: string,
         value: string,
         onChange: StringChange,
-        disabled = false
+        disabled = false,
+        options: {name?: string; error?: string; required?: boolean} = {}
     ) => {
         const after = currentCurrency.position === "after";
+        const {name, error, required: isRequired} = options;
         return (
-            <div className={mcClasses(after ? "mc-price-input mc-price-input--after" : "mc-price-input")}>
-                <span
-                    className={mcClasses(after ? "mc-price-input__symbol mc-price-input__symbol--after" : "mc-price-input__symbol")}
-                    aria-hidden="true"
-                >
-                    {currentCurrency.symbol}
-                </span>
-                <input
-                    className={mcClasses("mc-form-control")}
-                    disabled={disabled}
-                    id={id}
-                    min="0"
-                    onChange={(event) => onChange(event.target.value)}
-                    step="0.01"
-                    type="number"
-                    value={value}
-                />
-            </div>
+            <>
+                <div className={mcClasses(after ? "mc-price-input mc-price-input--after" : "mc-price-input")}>
+                    <span
+                        className={mcClasses(after ? "mc-price-input__symbol mc-price-input__symbol--after" : "mc-price-input__symbol")}
+                        aria-hidden="true"
+                    >
+                        {currentCurrency.symbol}
+                    </span>
+                    <input
+                        aria-describedby={error ? `${id}-error` : undefined}
+                        aria-invalid={error ? true : undefined}
+                        aria-required={isRequired ? true : undefined}
+                        className={mcClasses("mc-form-control", error ? "mc-field-invalid" : "")}
+                        disabled={disabled}
+                        id={id}
+                        min="0"
+                        name={name}
+                        onChange={(event) => onChange(event.target.value)}
+                        step="0.01"
+                        type="number"
+                        value={value}
+                    />
+                </div>
+                <FieldError id={`${id}-error`} message={error} />
+            </>
         );
     };
 
@@ -1278,7 +1354,7 @@ export default function PricingAdmin({
                             </div>
                         )}
 
-                        <form id="mc-price-drawer-form" onSubmit={submitPriceForm}>
+                        <form id="mc-price-drawer-form" noValidate onSubmit={submitPriceForm}>
                             <div className={mcClasses("mc-form-section")}>
                                 <div className={mcClasses("mc-form-section__header")}>
                                     <h4 className={mcClasses("mc-form-section__title")}>{labels.pricing}</h4>
@@ -1301,11 +1377,14 @@ export default function PricingAdmin({
                                         <div className={mcClasses("mc-field")}>
                                             <label className={mcClasses("mc-field-label")} htmlFor="mc-price-drawer-amount">
                                                 {labels.amount}
+                                                <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
                                             </label>
                                             {renderPriceInput(
                                                 "mc-price-drawer-amount",
                                                 priceForm.amount,
-                                                (value) => updatePriceForm({amount: value})
+                                                (value) => updatePriceForm({amount: value}),
+                                                false,
+                                                {name: "amount", error: priceFieldErrors.amount, required: true}
                                             )}
                                         </div>
                                         <div className={mcClasses("mc-field")}>
@@ -1315,7 +1394,9 @@ export default function PricingAdmin({
                                             {renderPriceInput(
                                                 "mc-price-drawer-compare",
                                                 priceForm.compareamount,
-                                                (value) => updatePriceForm({compareamount: value})
+                                                (value) => updatePriceForm({compareamount: value}),
+                                                false,
+                                                {name: "compareamount", error: priceFieldErrors.compareamount}
                                             )}
                                         </div>
                                         <label>
@@ -1417,46 +1498,70 @@ export default function PricingAdmin({
                             </div>
                         )}
 
-                        <form id="mc-product-drawer-form" onSubmit={submitForm}>
+                        <form id="mc-product-drawer-form" noValidate onSubmit={submitForm}>
                             <div className={mcClasses("mc-form-section")}>
                                 <div className={mcClasses("mc-form-section__header")}>
                                     <h4 className={mcClasses("mc-form-section__title")}>{labels.productbasics}</h4>
                                 </div>
                                 <div className={mcClasses("mc-form-section__body")}>
                                     <div className={mcClasses("mc-product-form__grid")}>
-                                        <label>
-                                            <span>{labels.productname}</span>
+                                        <label htmlFor="mc-product-name">
+                                            <span>
+                                                {labels.productname}
+                                                <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                            </span>
                                             <input
                                                 autoFocus
-                                                className={mcClasses("mc-form-control")}
+                                                aria-describedby={fieldErrors.name ? "mc-product-name-error" : undefined}
+                                                aria-invalid={fieldErrors.name ? true : undefined}
+                                                aria-required="true"
+                                                className={mcClasses("mc-form-control",
+                                                    fieldErrors.name ? "mc-field-invalid" : "")}
+                                                id="mc-product-name"
+                                                maxLength={255}
+                                                name="name"
                                                 onChange={(event) => updateForm({name: event.target.value})}
                                                 required
                                                 type="text"
                                                 value={form.name}
                                             />
+                                            <FieldError id="mc-product-name-error" message={fieldErrors.name} />
                                         </label>
                                         {showSku && (
-                                            <label>
+                                            <label htmlFor="mc-product-sku">
                                                 <span>{labels.sku}</span>
                                                 <input
-                                                    className={mcClasses("mc-form-control")}
+                                                    aria-describedby={fieldErrors.sku ? "mc-product-sku-error" : undefined}
+                                                    aria-invalid={fieldErrors.sku ? true : undefined}
+                                                    className={mcClasses("mc-form-control",
+                                                        fieldErrors.sku ? "mc-field-invalid" : "")}
+                                                    id="mc-product-sku"
+                                                    maxLength={64}
+                                                    name="sku"
                                                     onChange={(event) => updateForm({sku: event.target.value})}
                                                     placeholder={labels.autogeneratedhint}
                                                     type="text"
                                                     value={form.sku}
                                                 />
+                                                <FieldError id="mc-product-sku-error" message={fieldErrors.sku} />
                                             </label>
                                         )}
                                         {showSlug && (
-                                            <label>
+                                            <label htmlFor="mc-product-slug">
                                                 <span>{labels.slug}</span>
                                                 <input
-                                                    className={mcClasses("mc-form-control")}
+                                                    aria-describedby={fieldErrors.slug ? "mc-product-slug-error" : undefined}
+                                                    aria-invalid={fieldErrors.slug ? true : undefined}
+                                                    className={mcClasses("mc-form-control",
+                                                        fieldErrors.slug ? "mc-field-invalid" : "")}
+                                                    id="mc-product-slug"
+                                                    name="slug"
                                                     onChange={(event) => updateForm({slug: event.target.value})}
                                                     placeholder={labels.autogeneratedhint}
                                                     type="text"
                                                     value={form.slug}
                                                 />
+                                                <FieldError id="mc-product-slug-error" message={fieldErrors.slug} />
                                             </label>
                                         )}
                                         <label>
@@ -1498,11 +1603,27 @@ export default function PricingAdmin({
                                         {form.producttype === "course" && (
                                             <div className={mcClasses("mc-course-picker mc-product-form__wide")}>
                                                 <label htmlFor="mc-course-picker-input">
-                                                    <span>{labels.selectmoodlecourse}</span>
+                                                    <span>
+                                                        {labels.selectmoodlecourse}
+                                                        <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                                    </span>
                                                     <input
                                                         autoComplete="off"
-                                                        className={mcClasses("mc-form-control")}
+                                                        aria-describedby={fieldErrors.courseid
+                                                            ? "mc-product-courseid-error" : undefined}
+                                                        aria-invalid={fieldErrors.courseid ? true : undefined}
+                                                        aria-required="true"
+                                                        className={mcClasses("mc-form-control",
+                                                            fieldErrors.courseid ? "mc-field-invalid" : "")}
                                                         id="mc-course-picker-input"
+                                                        name="courseid"
+                                                        // Search box inside the save form: Enter must
+                                                        // filter, not submit the product.
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === "Enter") {
+                                                                event.preventDefault();
+                                                            }
+                                                        }}
                                                         onChange={(event) => {
                                                             setCourseSearch(event.target.value);
                                                             if (form.courseid > 0) {
@@ -1519,9 +1640,19 @@ export default function PricingAdmin({
                                                         type="search"
                                                         value={courseSearch}
                                                     />
+                                                    <FieldError
+                                                        id="mc-product-courseid-error"
+                                                        message={fieldErrors.courseid}
+                                                    />
                                                 </label>
                                                 {courseError && (
-                                                    <div className={mcClasses("mc-course-picker__message text-danger")}>{courseError}</div>
+                                                    <div className={mcClasses("mc-course-picker__message mc-field-error")} role="alert">
+                                                        <i
+                                                            className={mcClasses("bi bi-exclamation-circle mc-field-error__icon")}
+                                                            aria-hidden="true"
+                                                        />
+                                                        <span>{courseError}</span>
+                                                    </div>
                                                 )}
                                                 {courseLoading && (
                                                     <div className={mcClasses("mc-course-picker__message")}>{labels.loading}</div>
@@ -1614,7 +1745,7 @@ export default function PricingAdmin({
 
                                     <div className={mcClasses("mc-field mt-3")}>
                                         <label className={mcClasses("mc-field-label")} htmlFor="mc-base-price">{labels.baseprice}</label>
-                                        {renderPriceInput("mc-base-price", form.regularprice, (value) => updateForm({regularprice: value}), !form.priceenabled)}
+                                        {renderPriceInput("mc-base-price", form.regularprice, (value) => updateForm({regularprice: value}), !form.priceenabled, {name: "regularprice", error: fieldErrors.regularprice})}
                                     </div>
 
                                     <div className={mcClasses("mc-field")}>
@@ -1630,7 +1761,7 @@ export default function PricingAdmin({
                                         <div className={mcClasses("mc-sale-panel")}>
                                             <div className={mcClasses("mc-field")}>
                                                 <label className={mcClasses("mc-field-label")} htmlFor="mc-compare-price">{labels.compareatprice}</label>
-                                                {renderPriceInput("mc-compare-price", form.compareamount, (value) => updateForm({compareamount: value}))}
+                                                {renderPriceInput("mc-compare-price", form.compareamount, (value) => updateForm({compareamount: value}), false, {name: "compareamount", error: fieldErrors.compareamount})}
                                                 <div className={mcClasses("mc-field-help")}>{labels.salehint}</div>
                                             </div>
                                         </div>
@@ -1909,7 +2040,12 @@ export default function PricingAdmin({
                 className={mcClasses("mc-pricing-table-card")}
                 title={<h2 className={mcClasses("mc-card-title")}>{labels.title}</h2>}
                 actions={(
-                    <button className={mcClasses("mc-button btn-mc-primary")} onClick={openNewForm} type="button">
+                    <button
+                        className={mcClasses("mc-button btn-mc-primary")}
+                        id="moderncommerce-pricing-new-product"
+                        onClick={openNewForm}
+                        type="button"
+                    >
                         <i className="bi bi-plus-lg me-1" aria-hidden="true" />
                         {labels.newproduct}
                     </button>

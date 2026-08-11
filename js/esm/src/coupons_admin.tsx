@@ -21,6 +21,12 @@ import type {McBadgeVariant} from "./badge";
 import {McTableActionMenu, McTableCard, McTableFooter, McTableFrame, McTablePagination} from "./table_components";
 import {confirmDialog} from "./modal";
 import {McDrawer} from "./drawer";
+import {FieldError} from "./form";
+import {
+    afterField, focusFirstError, integer, lteField, maxLength, min, normaliseServerErrors, number, pattern,
+    percent, required, runRules, when,
+} from "./validation";
+import type {FieldErrorMap, WithFieldErrors} from "./validation";
 
 declare const M: {
     cfg: {
@@ -104,7 +110,7 @@ type CouponsResponse = {
     stats: Stats;
 };
 
-type SaveResponse = {
+type SaveResponse = WithFieldErrors & {
     success: boolean;
     couponid: number;
     message: string;
@@ -393,6 +399,7 @@ export default function CouponsAdmin({
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [formError, setFormError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [reloadToken, setReloadToken] = useState(0);
     const [form, setForm] = useState<CouponForm | null>(null);
     const [targets, setTargets] = useState<CouponTarget[]>([]);
@@ -601,6 +608,7 @@ export default function CouponsAdmin({
     const openNewForm = () => {
         setForm(emptyForm());
         setFormError("");
+        setFieldErrors({});
         setTargetError("");
         setTargetNotice("");
         setTargetForm(emptyTargetForm(targetTypes));
@@ -609,6 +617,7 @@ export default function CouponsAdmin({
     const openEditForm = (coupon: Coupon) => {
         setForm(couponToForm(coupon));
         setFormError("");
+        setFieldErrors({});
         setTargetError("");
         setTargetNotice("");
         setTargetForm(emptyTargetForm(targetTypes));
@@ -617,6 +626,7 @@ export default function CouponsAdmin({
     const closeForm = () => {
         setForm(null);
         setFormError("");
+        setFieldErrors({});
         setTargetError("");
         setTargetNotice("");
         setTargetOptions([]);
@@ -636,6 +646,45 @@ export default function CouponsAdmin({
     const submitForm = async(event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!form) {
+            return;
+        }
+
+        const t = (key: string) => labels[key] ?? key;
+        const found = runRules(form, {
+            code: [
+                required(t("error:required")),
+                pattern(/^[A-Za-z0-9_-]{3,50}$/, t("error:invalidcouponcode")),
+            ],
+            name: maxLength(255, t("error:maxlength")),
+            discounttype: required(t("error:selectoption")),
+            value: [
+                required(t("error:required")),
+                number(t("error:invalidnumber")),
+                min(0, t("error:minvalue")),
+                // A percentage discount above 100 would pay the customer.
+                when((values) => values.discounttype === "percentage", percent(t("error:invalidpercent"))),
+            ],
+            maxdiscount: [number(t("error:invalidnumber")), min(0, t("error:minvalue"))],
+            minpurchase: [number(t("error:invalidnumber")), min(0, t("error:minvalue"))],
+            minitems: [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))],
+            maxuses: [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))],
+            maxusesperuser: [
+                integer(t("error:invalidinteger")),
+                min(0, t("error:minvalue")),
+                // 0 means unlimited on both fields, so only compare real caps.
+                when(
+                    (values) => Number(values.maxuses) > 0 && Number(values.maxusesperuser) > 0,
+                    lteField("maxuses", t("error:peruserlimitaboveusagelimit"))
+                ),
+            ],
+            enddate: afterField("startdate", t("error:enddatebeforestart")),
+        });
+
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setFormError("");
+            focusFirstError(found, ["code", "name", "discounttype", "value", "maxdiscount", "minpurchase",
+                "minitems", "maxuses", "maxusesperuser", "enddate"]);
             return;
         }
 
@@ -661,7 +710,13 @@ export default function CouponsAdmin({
             });
 
             if (!result.success) {
-                setFormError(result.message);
+                const serverErrors = normaliseServerErrors(result.errors);
+                if (Object.keys(serverErrors).length > 0) {
+                    setFieldErrors(serverErrors);
+                    focusFirstError(serverErrors, ["code", "name", "discounttype", "value"]);
+                } else {
+                    setFormError(result.message);
+                }
                 return;
             }
 
@@ -942,21 +997,30 @@ export default function CouponsAdmin({
                         </div>
                     )}
 
-                    <form id="mc-coupon-drawer-form" onSubmit={submitForm}>
+                    <form id="mc-coupon-drawer-form" noValidate onSubmit={submitForm}>
                     <div className={mcClasses("mc-product-form__section")}>
                         <h4>{labels.managecoupons}</h4>
                         <div className={mcClasses("mc-product-form__grid")}>
-                            <label>
-                                <span>{labels.code}</span>
+                            <label htmlFor="mc-coupon-code">
+                                <span>
+                                    {labels.code}
+                                    <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                </span>
                                 <input
                                     autoComplete="off"
-                                    className={mcClasses("mc-form-control")}
+                                    aria-describedby={fieldErrors.code ? "mc-coupon-code-error" : undefined}
+                                    aria-invalid={fieldErrors.code ? true : undefined}
+                                    aria-required="true"
+                                    className={mcClasses("mc-form-control", fieldErrors.code ? "mc-field-invalid" : "")}
+                                    id="mc-coupon-code"
                                     maxLength={50}
+                                    name="code"
                                     onChange={(event) => updateForm({code: event.target.value.toUpperCase()})}
                                     required
                                     type="text"
                                     value={form.code}
                                 />
+                                <FieldError id="mc-coupon-code-error" message={fieldErrors.code} />
                             </label>
                             <label className={mcClasses("mc-product-form__wide")}>
                                 <span>{labels.name}</span>
@@ -991,17 +1055,26 @@ export default function CouponsAdmin({
                                     ))}
                                 </select>
                             </label>
-                            <label>
-                                <span>{labels.value}</span>
+                            <label htmlFor="mc-coupon-value">
+                                <span>
+                                    {labels.value}
+                                    <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                </span>
                                 <input
-                                    className={mcClasses("mc-form-control")}
+                                    aria-describedby={fieldErrors.value ? "mc-coupon-value-error" : undefined}
+                                    aria-invalid={fieldErrors.value ? true : undefined}
+                                    aria-required="true"
+                                    className={mcClasses("mc-form-control", fieldErrors.value ? "mc-field-invalid" : "")}
+                                    id="mc-coupon-value"
                                     min="0"
+                                    name="value"
                                     onChange={(event) => updateForm({value: event.target.value})}
                                     required
                                     step="0.01"
                                     type="number"
                                     value={form.value}
                                 />
+                                <FieldError id="mc-coupon-value-error" message={fieldErrors.value} />
                             </label>
                             <label>
                                 <span>{labels.maxdiscount}</span>
@@ -1064,14 +1137,20 @@ export default function CouponsAdmin({
                                     value={form.startdate}
                                 />
                             </label>
-                            <label>
+                            <label htmlFor="mc-coupon-enddate">
                                 <span>{labels.enddate}</span>
                                 <input
-                                    className={mcClasses("mc-form-control")}
+                                    aria-describedby={fieldErrors.enddate ? "mc-coupon-enddate-error" : undefined}
+                                    aria-invalid={fieldErrors.enddate ? true : undefined}
+                                    className={mcClasses("mc-form-control",
+                                        fieldErrors.enddate ? "mc-field-invalid" : "")}
+                                    id="mc-coupon-enddate"
+                                    name="enddate"
                                     onChange={(event) => updateForm({enddate: event.target.value})}
                                     type="date"
                                     value={form.enddate}
                                 />
+                                <FieldError id="mc-coupon-enddate-error" message={fieldErrors.enddate} />
                             </label>
                         </div>
                         <div className={mcClasses("mc-product-form__checks")}>
@@ -1196,6 +1275,14 @@ export default function CouponsAdmin({
                                                 autoComplete="off"
                                                 className={mcClasses("mc-form-control")}
                                                 id="mc-coupon-target-picker-input"
+                                                // This sits INSIDE the coupon form (a nested <form>
+                                                // would be invalid HTML), so Enter here would save
+                                                // the coupon instead of filtering targets.
+                                                onKeyDown={(event) => {
+                                                    if (event.key === "Enter") {
+                                                        event.preventDefault();
+                                                    }
+                                                }}
                                                 onChange={(event) => {
                                                     updateTargetForm({
                                                         query: event.target.value,

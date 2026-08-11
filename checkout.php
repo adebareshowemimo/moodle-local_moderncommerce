@@ -52,11 +52,27 @@ if (!isloggedin() || isguestuser()) {
     $PAGE->set_title(get_string('checkout', 'local_moderncommerce'));
     $PAGE->set_heading(get_string('checkout', 'local_moderncommerce'));
 
+    // Read optionally rather than with required_param, which would answer a
+    // blank or malformed address with a fatal error page instead of a message
+    // beside the field.
+    $emailerror = '';
+    $emailvalue = '';
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         require_sesskey();
-        $email = required_param('email', PARAM_EMAIL);
-        $SESSION->moderncommerce_checkout_email = $email;
-        redirect(new moodle_url('/login/index.php', ['wantsurl' => $checkouturl->out(false)]));
+        $email = trim(optional_param('email', '', PARAM_RAW_TRIMMED));
+        $emailvalue = $email;
+
+        if ($email === '') {
+            $emailerror = get_string('error:required', 'local_moderncommerce');
+        } else if (!validate_email($email)) {
+            $emailerror = get_string('error:invalidemail', 'local_moderncommerce');
+        }
+
+        if ($emailerror === '') {
+            $SESSION->moderncommerce_checkout_email = $email;
+            redirect(new moodle_url('/login/index.php', ['wantsurl' => $checkouturl->out(false)]));
+        }
     }
 
     $loginurl = new moodle_url('/login/index.php', ['wantsurl' => $checkouturl->out(false)]);
@@ -78,20 +94,40 @@ if (!isloggedin() || isguestuser()) {
         ),
         ['class' => 'mc-public-hero']
     );
+    $emailattributes = [
+        'class' => 'form-control form-control-lg' . ($emailerror !== '' ? ' mc-field-invalid' : ''),
+        'id' => 'mc-checkout-email',
+        'name' => 'email',
+        'type' => 'email',
+        'required' => 'required',
+        'aria-required' => 'true',
+        'autocomplete' => 'email',
+        'value' => $emailvalue,
+        'placeholder' => get_string('emailplaceholder', 'local_moderncommerce'),
+    ];
+
+    if ($emailerror !== '') {
+        $emailattributes['aria-invalid'] = 'true';
+        $emailattributes['aria-describedby'] = 'mc-checkout-email-error';
+    }
+
+    $emailmessage = $emailerror === '' ? '' : html_writer::div(
+        html_writer::tag('i', '', ['class' => 'bi bi-exclamation-circle mc-field-error__icon',
+            'aria-hidden' => 'true']) .
+        html_writer::tag('span', s($emailerror)),
+        'mc-field-error',
+        ['id' => 'mc-checkout-email-error', 'role' => 'alert']
+    );
+
     $emailfield = html_writer::div(
-        html_writer::tag('label', get_string('p1_checkout_emailaddress', 'local_moderncommerce'), [
-            'class' => 'form-label',
-            'for' => 'mc-checkout-email',
-        ]) .
-        html_writer::empty_tag('input', [
-            'class' => 'form-control form-control-lg',
-            'id' => 'mc-checkout-email',
-            'name' => 'email',
-            'type' => 'email',
-            'required' => 'required',
-            'autocomplete' => 'email',
-            'placeholder' => get_string('emailplaceholder', 'local_moderncommerce'),
-        ]),
+        html_writer::tag(
+            'label',
+            get_string('p1_checkout_emailaddress', 'local_moderncommerce') .
+            html_writer::tag('span', '*', ['class' => 'mc-required', 'aria-hidden' => 'true']),
+            ['class' => 'form-label', 'for' => 'mc-checkout-email']
+        ) .
+        html_writer::empty_tag('input', $emailattributes) .
+        $emailmessage,
         'mb-3'
     );
     $actions = html_writer::div(

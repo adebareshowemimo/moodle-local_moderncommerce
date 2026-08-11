@@ -335,6 +335,51 @@ class category_service {
     }
 
     /**
+     * Validate and normalise submitted category data.
+     *
+     * Collects every problem rather than stopping at the first, and never
+     * throws, so the caller can return one message per field and the UI can
+     * highlight them all at once.
+     *
+     * @param array $data Submitted data keyed by field name.
+     * @param int $existingid Category being edited, or 0 when creating.
+     * @return array Tuple of [normalised data, errors keyed by field name].
+     */
+    public static function validate_category(array $data, int $existingid = 0): array {
+        global $DB;
+
+        $component = 'local_moderncommerce';
+        $errors = [];
+
+        $name = trim((string) ($data['name'] ?? ''));
+        if ($name === '') {
+            $errors['name'] = get_string('error:required', $component);
+        } else if (\core_text::strlen($name) > 255) {
+            $errors['name'] = get_string('error:maxlength', $component, 255);
+        }
+
+        $description = trim((string) ($data['description'] ?? ''));
+        if (\core_text::strlen($description) > 1000) {
+            $errors['description'] = get_string('error:maxlength', $component, 1000);
+        }
+
+        // A vanished record is not something the user can retype, so it stays a
+        // form-level message rather than a field error.
+        if ($existingid > 0 && !$DB->record_exists(self::TABLE, ['id' => $existingid])) {
+            $errors['_form'] = get_string('categorynotfound', $component);
+        }
+
+        $normalised = [
+            'id' => max(0, $existingid),
+            'name' => $name,
+            'description' => $description,
+            'visible' => !empty($data['visible']),
+        ];
+
+        return [$normalised, $errors];
+    }
+
+    /**
      * Create or update a product category.
      *
      * @param int $id Category id, or 0 to create.
@@ -355,6 +400,8 @@ class category_service {
         $name = trim($name);
         $description = trim($description);
 
+        // Kept as a guard for non-webservice callers; save_category's own
+        // endpoint validates through validate_category() before reaching here.
         if ($name === '') {
             return ['success' => false, 'id' => 0, 'message' => get_string('categorynamerequired', 'local_moderncommerce')];
         }

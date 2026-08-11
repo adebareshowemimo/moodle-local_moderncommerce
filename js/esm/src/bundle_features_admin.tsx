@@ -15,6 +15,9 @@
 import {useEffect, useState} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
+import {FieldError} from "./form";
+import {afterField, focusFirstError, max, min, number, runRules} from "./validation";
+import type {FieldErrorMap} from "./validation";
 
 declare const M: {
     cfg: {
@@ -168,6 +171,7 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
     const [form, setForm] = useState<Form | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [error, setError] = useState("");
     const [tagInput, setTagInput] = useState("");
 
@@ -238,6 +242,26 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
         if (!form) {
             return;
         }
+
+        const t = (key: string) => labels[key] ?? key;
+        const found = runRules(form, {
+            durationhours: [number(t("error:invalidnumber")), min(0, t("error:minvalue"))],
+            durationminutes: [
+                number(t("error:invalidnumber")), min(0, t("error:minvalue")), max(59, t("error:maxvalue")),
+            ],
+            assessmentscount: [number(t("error:invalidnumber")), min(0, t("error:minvalue"))],
+            passgrade: [
+                number(t("error:invalidnumber")), min(0, t("error:minvalue")), max(100, t("error:maxvalue")),
+            ],
+            availend: afterField("availstart", t("error:enddatebeforestart")),
+        });
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setError("");
+            focusFirstError(found, ["durationhours", "durationminutes", "assessmentscount", "passgrade", "availend"]);
+            return;
+        }
+
         setSaving(true);
         setError("");
         try {

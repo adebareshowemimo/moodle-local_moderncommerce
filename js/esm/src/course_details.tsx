@@ -1121,6 +1121,17 @@ export default function CourseDetails({
             return;
         }
 
+        // A one-character review is noise; the server caps the upper bound too.
+        if (reviewComment.trim().length < 10) {
+            setReviewError(label(labels, "error:minlength").replace("{$a}", "10"));
+            return;
+        }
+
+        if (reviewComment.trim().length > 2000) {
+            setReviewError(label(labels, "error:maxlength").replace("{$a}", "2000"));
+            return;
+        }
+
         setReviewBusy(true);
         setReviewError("");
         setReviewMessage("");

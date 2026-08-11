@@ -824,6 +824,10 @@ class learner_profile_service {
         $formatted = [];
         foreach ($errors as $name => $message) {
             $formatted[] = [
+                // Field is the plugin-wide key; name is still emitted for any
+                // consumer that has not been rebuilt yet. The React side
+                // accepts either, so the alias can be dropped independently.
+                'field' => (string)$name,
                 'name' => (string)$name,
                 'message' => (string)$message,
             ];

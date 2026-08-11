@@ -13,11 +13,15 @@
  */
 
 import {useEffect, useId, useMemo, useRef, useState} from "react";
+import type {FormEvent} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McBadge} from "./badge";
 import type {McBadgeVariant} from "./badge";
 import {McButton} from "./button";
 import {McDrawer} from "./drawer";
+import {FieldError} from "./form";
+import {focusFirstError, integer, maxLength, min, required, runRules, url as urlRule, when} from "./validation";
+import type {FieldErrorMap, RuleMap} from "./validation";
 import {McTableActionMenu, McTableCard, McTableFooter} from "./table_components";
 import {formatCount} from "./learner_common";
 
@@ -390,6 +394,7 @@ export default function GatewaysAdmin({
     const [data, setData] = useState<ListResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [saving, setSaving] = useState(false);
     const [editing, setEditing] = useState("");
     const [form, setForm] = useState<GatewayForm | null>(null);
@@ -472,8 +477,31 @@ export default function GatewaysAdmin({
         setForm((current) => current ? {...current, ...changes} : current);
     };
 
-    const submitForm = async() => {
+    const submitForm = async(event?: FormEvent<HTMLFormElement>) => {
+        event?.preventDefault();
         if (!form) {
+            return;
+        }
+
+        const t = (key: string) => labels[key] ?? key;
+        // Credentials only matter once the gateway is switched on, so those
+        // checks are conditional on `enabled`.
+        const rules: RuleMap<GatewayForm> = {
+            gateway: [required(t("error:required")), maxLength(64, t("error:maxlength"))],
+            displayname: [required(t("error:required")), maxLength(255, t("error:maxlength"))],
+            displayorder: integer(t("error:invalidinteger")),
+            publickey: when((values) => Boolean(values.enabled), required(t("error:required"))),
+            secretkey: when((values) => Boolean(values.enabled), required(t("error:required"))),
+            webhooksecret: when(
+                (values) => Boolean(values.enabled) && Boolean(values.supportswebhooks),
+                required(t("error:required"))
+            ),
+        };
+        const found = runRules(form, rules);
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setError("");
+            focusFirstError(found, ["gateway", "displayname", "publickey", "secretkey", "webhooksecret"]);
             return;
         }
 
@@ -533,21 +561,35 @@ export default function GatewaysAdmin({
         label: string,
         type = "text",
         help = "",
-        placeholder = ""
-    ) => (
-        <label className={mcClasses("mc-gateway-field")}>
-            <span>{label}</span>
-            <input
-                autoComplete="off"
-                className={mcClasses("mc-form-control")}
-                onChange={(event) => updateForm({[key]: event.target.value} as Partial<GatewayForm>)}
-                placeholder={placeholder}
-                type={type}
-                value={String(form?.[key] ?? "")}
-            />
-            {help && <small className={mcClasses("mc-cell-muted")}>{help}</small>}
-        </label>
-    );
+        placeholder = "",
+        isRequired = false
+    ) => {
+        const message = fieldErrors[key as string];
+        const id = `mc-gateway-${String(key)}`;
+        return (
+            <label className={mcClasses("mc-gateway-field")} htmlFor={id}>
+                <span>
+                    {label}
+                    {isRequired && <span className={mcClasses("mc-required")} aria-hidden="true">*</span>}
+                </span>
+                <input
+                    aria-describedby={message ? `${id}-error` : undefined}
+                    aria-invalid={message ? true : undefined}
+                    aria-required={isRequired ? true : undefined}
+                    autoComplete="off"
+                    className={mcClasses("mc-form-control", message ? "mc-field-invalid" : "")}
+                    id={id}
+                    name={String(key)}
+                    onChange={(event) => updateForm({[key]: event.target.value} as Partial<GatewayForm>)}
+                    placeholder={placeholder}
+                    type={type}
+                    value={String(form?.[key] ?? "")}
+                />
+                {help && <small className={mcClasses("mc-cell-muted")}>{help}</small>}
+                <FieldError id={`${id}-error`} message={message} />
+            </label>
+        );
+    };
 
     const renderCheck = (key: keyof GatewayForm, label: string) => (
         <label className={mcClasses("mc-gateway-check mc-switch")}>
@@ -572,11 +614,11 @@ export default function GatewaysAdmin({
                 <div className={mcClasses("mc-gateway-form__head")}>
                     <p>{labels.gatewayconfigurationdesc}</p>
                 </div>
-                {isnew && renderInput("gateway", labels.gatewayid, "text")}
+                {isnew && renderInput("gateway", labels.gatewayid, "text", "", "", true)}
                 <div className={mcClasses("mc-gateway-section")}>
                     <h5>{labels.gatewayidentity}</h5>
                     <div className={mcClasses("mc-gateway-grid")}>
-                        {renderInput("displayname", labels.displayname)}
+                        {renderInput("displayname", labels.displayname, "text", "", "", true)}
                         {renderInput("displayorder", labels.displayorder, "number")}
                         <label className={mcClasses("mc-gateway-field")}>
                             <span>{labels.methodtype}</span>
@@ -604,7 +646,7 @@ export default function GatewaysAdmin({
                 <div className={mcClasses("mc-gateway-section")}>
                     <h5>{labels.apikeys}</h5>
                     <div className={mcClasses("mc-gateway-grid")}>
-                        {renderInput("publickey", labels.publickey)}
+                        {renderInput("publickey", labels.publickey, "text", "", "", Boolean(form?.enabled))}
                         {renderInput("merchantid", labels.merchantid)}
                         {renderInput(
                             "secretkey",
@@ -698,8 +740,8 @@ export default function GatewaysAdmin({
                             className={mcClasses("btn-mc-primary")}
                             loading={saving}
                             loadingLabel={labels.saving || "Saving..."}
-                            onClick={submitForm}
-                            type="button"
+                            form="mc-gateway-drawer-form"
+                            type="submit"
                         >
                             {labels.save}
                         </McButton>
@@ -715,7 +757,9 @@ export default function GatewaysAdmin({
                         <div className={mcClasses("mc-alert__body")}>{error}</div>
                     </div>
                 )}
-                {renderFormContent(isnew)}
+                <form id="mc-gateway-drawer-form" noValidate onSubmit={submitForm}>
+                    {renderFormContent(isnew)}
+                </form>
             </McDrawer>
         );
     };

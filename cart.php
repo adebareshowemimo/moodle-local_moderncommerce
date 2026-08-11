@@ -27,6 +27,7 @@ require_once($CFG->dirroot . '/local/moderncommerce/lib.php');
 
 use local_moderncommerce\api\cart_api;
 use local_moderncommerce\output\learner_shell;
+use local_moderncommerce\output\validation_labels;
 
 require_login();
 
@@ -127,7 +128,7 @@ $reactconfig = json_encode([
         'methodName' => 'local_moderncommerce_get_cart',
         'updateMethodName' => 'local_moderncommerce_update_cart',
         'layout' => $shell->get_react_layout_context(),
-        'labels' => [
+        'labels' => validation_labels::all() + [
             'applycoupon' => get_string('applycoupon', 'local_moderncommerce'),
             'browsecatalog' => get_string('browsecatalog', 'local_moderncommerce'),
             'cartandcheckout' => get_string('cartandcheckout', 'local_moderncommerce'),

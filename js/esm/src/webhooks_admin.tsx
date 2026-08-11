@@ -19,6 +19,7 @@ import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import {McDrawer} from "./drawer";
 import {McTableActionMenu, McTableCard, McTableFooter, McTablePagination} from "./table_components";
+import {integer, max, min, runRules} from "./validation";
 
 declare const M: {
     cfg: {
@@ -332,6 +333,18 @@ export default function WebhooksAdmin({
             return;
         }
 
+        const clientErrors = runRules({payment_max_retries: securityForm.payment_max_retries}, {
+            payment_max_retries: [
+                integer(labels["error:invalidinteger"] ?? "error:invalidinteger"),
+                min(0, labels["error:minvalue"] ?? "error:minvalue"),
+                max(10, labels["error:maxvalue"] ?? "error:maxvalue"),
+            ],
+        });
+        if (Object.keys(clientErrors).length > 0) {
+            setSecurityFieldErrors(clientErrors);
+            return;
+        }
+
         setSecuritySaving(true);
         setSecurityError("");
         setSecurityFieldErrors({});
@@ -424,20 +437,28 @@ export default function WebhooksAdmin({
                                     </span>
                                 </label>
                                 {securityFieldErrors.enable_webhook_ip_whitelist && (
-                                    <small className="text-danger">
-                                        {securityFieldErrors.enable_webhook_ip_whitelist}
-                                    </small>
+                                    <div className={mcClasses("mc-field-error")} role="alert">
+                                        <i
+                                            className={mcClasses("bi bi-exclamation-circle mc-field-error__icon")}
+                                            aria-hidden="true"
+                                        />
+                                        <span>{securityFieldErrors.enable_webhook_ip_whitelist}</span>
+                                    </div>
                                 )}
                             </div>
                             <div className={mcClasses("mc-product-form__grid mc-webhook-security-card__grid")}>
-                                <label>
+                                <label htmlFor="mc-webhook-payment-max-retries">
                                     <span>{labels.paymentmaxretries}</span>
                                     <input
+                                        aria-describedby={securityFieldErrors.payment_max_retries
+                                            ? "mc-webhook-payment-max-retries-error" : undefined}
+                                        aria-invalid={securityFieldErrors.payment_max_retries ? true : undefined}
                                         className={mcClasses(
                                             "mc-form-control",
-                                            securityFieldErrors.payment_max_retries ? "is-invalid" : ""
+                                            securityFieldErrors.payment_max_retries ? "mc-field-invalid" : ""
                                         )}
                                         disabled={securitySaving || securityLoading}
+                                        id="mc-webhook-payment-max-retries"
                                         max="10"
                                         min="0"
                                         onChange={(event) => updateSecurityForm({
@@ -448,7 +469,17 @@ export default function WebhooksAdmin({
                                         value={securityForm.payment_max_retries}
                                     />
                                     {securityFieldErrors.payment_max_retries && (
-                                        <small className="text-danger">{securityFieldErrors.payment_max_retries}</small>
+                                        <div
+                                            className={mcClasses("mc-field-error")}
+                                            id="mc-webhook-payment-max-retries-error"
+                                            role="alert"
+                                        >
+                                            <i
+                                                className={mcClasses("bi bi-exclamation-circle mc-field-error__icon")}
+                                                aria-hidden="true"
+                                            />
+                                            <span>{securityFieldErrors.payment_max_retries}</span>
+                                        </div>
                                     )}
                                 </label>
                             </div>

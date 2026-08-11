@@ -17,6 +17,7 @@ import type {Dispatch, ReactNode} from "react";
 import type {Labels} from "./learner_common";
 import {callMoodleService, wwwroot} from "./learner_common";
 import {mcClasses} from "./design_system";
+import {FieldError} from "./form";
 
 export type LearnerLayoutUser = {
     id?: number;
@@ -577,9 +578,7 @@ function AvatarEditorModal({
                                     disabled={editor.imageBusy}
                                     onChange={(event) => editor.onFile(event.currentTarget.files?.[0] ?? null)}
                                 />
-                                {editor.imageErrors.profileimage && (
-                                    <div className="invalid-feedback d-block">{editor.imageErrors.profileimage}</div>
-                                )}
+                                <FieldError message={editor.imageErrors.profileimage} />
                             </div>
                         </>
                     ) : (

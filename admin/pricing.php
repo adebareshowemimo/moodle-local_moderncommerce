@@ -25,6 +25,7 @@
 require_once(__DIR__ . '/../../../config.php');
 
 use local_moderncommerce\output\admin_shell;
+use local_moderncommerce\output\validation_labels;
 use local_moderncommerce\services\commerce_settings_service;
 use local_moderncommerce\services\pricing_service;
 
@@ -76,7 +77,8 @@ $pricingreactconfig = json_encode([
             'position' => $currencyconfig->position,
             'decimals' => (int) $currencyconfig->decimals,
         ],
-        'labels' => [
+        'labels' => validation_labels::all() + validation_labels::crossfield() + [
+            'error:invalidsku' => get_string('error:invalidsku', 'local_moderncommerce'),
             'active' => get_string('active', 'local_moderncommerce'),
             'addadvancedprice' => get_string('addadvancedprice', 'local_moderncommerce'),
             'advancedpricing' => get_string('advancedpricing', 'local_moderncommerce'),

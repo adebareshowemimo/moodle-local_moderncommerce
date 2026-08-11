@@ -18,6 +18,7 @@ import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import {confirmDialog} from "./modal";
 import ModernLearnerLayout, {type LearnerLayoutContext} from "./learner_layout";
+import {minLength, required, runRules} from "./validation";
 
 type CartItem = {
     id: number;
@@ -172,6 +173,7 @@ function OrderSummary({
     data,
     labels,
     couponInput,
+    couponError,
     busy,
     onCouponInput,
     onApplyCoupon,
@@ -180,6 +182,7 @@ function OrderSummary({
     data: CartResponse;
     labels: Labels;
     couponInput: string;
+    couponError: string;
     busy: boolean;
     onCouponInput: Dispatch<string>;
     onApplyCoupon: FormEventHandler<HTMLFormElement>;
@@ -226,10 +229,12 @@ function OrderSummary({
                         </button>
                     </div>
                 ) : (
-                    <form className={mcClasses("mc-coupon-input mt-3")} onSubmit={onApplyCoupon}>
+                    <form className={mcClasses("mc-coupon-input mt-3")} noValidate onSubmit={onApplyCoupon}>
                         <input
                             type="text"
-                            className={mcClasses("mc-form-control")}
+                            aria-describedby={couponError ? "mc-cart-coupon-error" : undefined}
+                            aria-invalid={couponError ? true : undefined}
+                            className={mcClasses("mc-form-control", couponError ? "mc-field-invalid" : "")}
                             value={couponInput}
                             placeholder={labels.couponcode}
                             aria-label={labels.couponcode}
@@ -244,6 +249,12 @@ function OrderSummary({
                             {labels.applycoupon}
                         </McButton>
                     </form>
+                )}
+                {couponError && !data.coupon && (
+                    <div className={mcClasses("mc-field-error")} id="mc-cart-coupon-error" role="alert">
+                        <i className={mcClasses("bi bi-exclamation-circle mc-field-error__icon")} aria-hidden="true" />
+                        <span>{couponError}</span>
+                    </div>
                 )}
 
                 <a
@@ -275,6 +286,7 @@ export default function Cart({
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
     const [couponInput, setCouponInput] = useState("");
+    const [couponError, setCouponError] = useState("");
     const [busyAction, setBusyAction] = useState("");
 
     useEffect(() => {
@@ -356,8 +368,16 @@ export default function Cart({
     const handleApplyCoupon = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        if (!couponInput.trim()) {
-            setError(labels.entercouponcode);
+        // Reported on the field rather than the page-level banner, so the
+        // message sits next to the control the user has to correct.
+        const found = runRules({couponcode: couponInput}, {
+            couponcode: [
+                required(labels["error:required"] ?? labels.entercouponcode),
+                minLength(3, labels["error:minlength"] ?? labels.entercouponcode),
+            ],
+        });
+        setCouponError(found.couponcode ?? "");
+        if (found.couponcode) {
             return;
         }
 
@@ -477,8 +497,12 @@ export default function Cart({
                             data={data}
                             labels={labels}
                             couponInput={couponInput}
+                            couponError={couponError}
                             busy={busy}
-                            onCouponInput={setCouponInput}
+                            onCouponInput={(value) => {
+                                setCouponInput(value);
+                                setCouponError("");
+                            }}
                             onApplyCoupon={handleApplyCoupon}
                             onRemoveCoupon={handleRemoveCoupon}
                         />

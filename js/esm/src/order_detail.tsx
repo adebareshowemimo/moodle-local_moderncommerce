@@ -18,6 +18,9 @@ import type {McBadgeVariant} from "./badge";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import {confirmDialog} from "./modal";
+import {FieldError} from "./form";
+import {focusFirstError, fmt, min, minLength, maxLength, number, required, runRules} from "./validation";
+import type {FieldErrorMap} from "./validation";
 import {McTableFrame} from "./table_components";
 
 declare const M: {
@@ -206,6 +209,7 @@ export default function OrderDetail({
     const [busy, setBusy] = useState(false);
     const [statusDraft, setStatusDraft] = useState("");
     const [refund, setRefund] = useState<RefundForm>(emptyRefundForm);
+    const [refundFieldErrors, setRefundFieldErrors] = useState<FieldErrorMap>({});
     const [reloadToken, setReloadToken] = useState(0);
 
     useEffect(() => {
@@ -268,6 +272,31 @@ export default function OrderDetail({
 
     const submitRefund = async() => {
         if (!data) {
+            return;
+        }
+
+        const t = (key: string) => labels[key] ?? key;
+        const remaining = Math.max(0, (data.rawtotal || 0) - (data.rawrefundedtotal || 0));
+        const found = runRules(refund, {
+            amount: refund.type === "partial"
+                ? [required(t("error:required")), number(t("error:invalidnumber")), min(0.01, t("error:minvalue"))]
+                : [],
+            reason: [
+                required(t("error:required")),
+                minLength(3, t("error:minlength")),
+                maxLength(500, t("error:maxlength")),
+            ],
+        });
+        // Refunding more than is left on the order would credit money that was
+        // never taken. The server rejects it too; this explains it in place.
+        if (!found.amount && refund.type === "partial" && Number(refund.amount) > remaining) {
+            found.amount = fmt(t("error:refundabovetotal"), remaining.toFixed(2));
+        }
+
+        setRefundFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setError("");
+            focusFirstError(found, ["amount", "reason"]);
             return;
         }
 
@@ -528,26 +557,52 @@ export default function OrderDetail({
                                         </select>
                                     </label>
                                     {refund.type === "partial" && (
-                                        <label>
-                                            <span>{labels.refundamount}</span>
+                                        <label htmlFor="mc-refund-amount">
+                                            <span>
+                                                {labels.refundamount}
+                                                <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                            </span>
                                             <input
-                                                className={mcClasses("mc-form-control")}
+                                                aria-describedby={refundFieldErrors.amount
+                                                    ? "mc-refund-amount-error" : undefined}
+                                                aria-invalid={refundFieldErrors.amount ? true : undefined}
+                                                aria-required="true"
+                                                className={mcClasses("mc-form-control",
+                                                    refundFieldErrors.amount ? "mc-field-invalid" : "")}
+                                                id="mc-refund-amount"
                                                 min="0"
+                                                name="amount"
                                                 onChange={(event) => setRefund((current) => ({...current, amount: event.target.value}))}
                                                 step="0.01"
                                                 type="number"
                                                 value={refund.amount}
                                             />
+                                            <FieldError
+                                                id="mc-refund-amount-error"
+                                                message={refundFieldErrors.amount}
+                                            />
                                         </label>
                                     )}
-                                    <label className={mcClasses("mc-product-form__wide")}>
-                                        <span>{labels.refundreason}</span>
+                                    <label className={mcClasses("mc-product-form__wide")} htmlFor="mc-refund-reason">
+                                        <span>
+                                            {labels.refundreason}
+                                            <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                        </span>
                                         <input
-                                            className={mcClasses("mc-form-control")}
+                                            aria-describedby={refundFieldErrors.reason
+                                                ? "mc-refund-reason-error" : undefined}
+                                            aria-invalid={refundFieldErrors.reason ? true : undefined}
+                                            aria-required="true"
+                                            className={mcClasses("mc-form-control",
+                                                refundFieldErrors.reason ? "mc-field-invalid" : "")}
+                                            id="mc-refund-reason"
+                                            maxLength={500}
+                                            name="reason"
                                             onChange={(event) => setRefund((current) => ({...current, reason: event.target.value}))}
                                             type="text"
                                             value={refund.reason}
                                         />
+                                        <FieldError id="mc-refund-reason-error" message={refundFieldErrors.reason} />
                                     </label>
                                 </div>
                                 <div className={mcClasses("mc-product-form__checks")}>

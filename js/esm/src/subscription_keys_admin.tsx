@@ -14,6 +14,7 @@
  */
 
 import {useEffect, useState} from "react";
+import type {FormEvent} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import {McBadge} from "./badge";
@@ -21,6 +22,9 @@ import type {McBadgeVariant} from "./badge";
 import {McDrawer} from "./drawer";
 import {McTableActionMenu, McTableCard, McTableFooter, McTablePagination} from "./table_components";
 import {confirmDialog} from "./modal";
+import {FieldError} from "./form";
+import {afterField, focusFirstError, integer, max, min, requiredId, runRules} from "./validation";
+import type {FieldErrorMap} from "./validation";
 
 declare const M: {
     cfg: {
@@ -241,6 +245,7 @@ export default function SubscriptionKeysAdmin({
 
     const [genOpen, setGenOpen] = useState(false);
     const [genForm, setGenForm] = useState<GenerateForm>(emptyGenerateForm());
+    const [genFieldErrors, setGenFieldErrors] = useState<FieldErrorMap>({});
     const [genGenerated, setGenGenerated] = useState<string[]>([]);
 
     useEffect(() => {
@@ -431,9 +436,25 @@ export default function SubscriptionKeysAdmin({
         </div>
     );
 
-    const submitGenerate = async() => {
-        if (genForm.planid <= 0) {
-            setError(labels.selectplanfirst);
+    const submitGenerate = async(event?: FormEvent<HTMLFormElement>) => {
+        event?.preventDefault();
+
+        const t = (key: string) => labels[key] ?? key;
+        const found = runRules(genForm, {
+            planid: requiredId(labels.selectplanfirst ?? t("error:required")),
+            quantity: [
+                integer(t("error:invalidinteger")), min(1, t("error:minvalue")), max(500, t("error:maxvalue")),
+            ],
+            maxuses: [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))],
+            maxusesperuser: [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))],
+            durationdays: [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))],
+            validuntil: afterField("validfrom", t("error:enddatebeforestart")),
+        });
+
+        setGenFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setError("");
+            focusFirstError(found, ["planid", "quantity", "maxuses", "maxusesperuser", "durationdays", "validuntil"]);
             return;
         }
 
@@ -493,8 +514,8 @@ export default function SubscriptionKeysAdmin({
                                 className={mcClasses("btn-mc-primary")}
                                 loading={busyId === -1}
                                 loadingLabel={labels.loading || "Generating..."}
-                                onClick={submitGenerate}
-                                type="button"
+                                form="mc-subkey-generate-form"
+                                type="submit"
                             >
                                 {labels.generatekeys}
                             </McButton>
@@ -509,12 +530,21 @@ export default function SubscriptionKeysAdmin({
                         </>
                     )}
                 >
+                    <form id="mc-subkey-generate-form" noValidate onSubmit={submitGenerate}>
                     <div className={mcClasses("mc-product-form__section")}>
                         <div className={mcClasses("mc-product-form__grid")}>
-                            <label className={mcClasses("mc-product-form__wide")}>
-                                <span>{labels.selectplan}</span>
+                            <label className={mcClasses("mc-product-form__wide")} htmlFor="mc-subkey-planid">
+                                <span>
+                                    {labels.selectplan}
+                                    <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                </span>
                                 <select
-                                    className={mcClasses("mc-select")}
+                                    aria-describedby={genFieldErrors.planid ? "mc-subkey-planid-error" : undefined}
+                                    aria-invalid={genFieldErrors.planid ? true : undefined}
+                                    aria-required="true"
+                                    className={mcClasses("mc-select", genFieldErrors.planid ? "mc-field-invalid" : "")}
+                                    id="mc-subkey-planid"
+                                    name="planid"
                                     onChange={(event) => updateGen({planid: Number(event.target.value) || 0})}
                                     value={genForm.planid}
                                 >
@@ -523,6 +553,7 @@ export default function SubscriptionKeysAdmin({
                                         <option key={plan.id} value={plan.id}>{plan.name} ({plan.displayprice})</option>
                                     ))}
                                 </select>
+                                <FieldError id="mc-subkey-planid-error" message={genFieldErrors.planid} />
                             </label>
                             <label>
                                 <span>{labels.numberofkeys}</span>
@@ -607,6 +638,7 @@ export default function SubscriptionKeysAdmin({
                             </label>
                         </div>
                     </div>
+                    </form>
 
                     {genGenerated.length > 0 && (
                         <div className={mcClasses("mc-product-form__section")}>

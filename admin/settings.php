@@ -26,6 +26,7 @@ require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/local/moderncommerce/lib.php');
 
 use local_moderncommerce\output\admin_shell;
+use local_moderncommerce\output\validation_labels;
 
 $context = context_system::instance();
 require_login();
@@ -92,7 +93,8 @@ $settingsreactconfig = json_encode([
                 'saving' => get_string('saving', 'local_moderncommerce'),
             ],
         ],
-        'labels' => [
+        'labels' => validation_labels::all() + [
+            'separatorsmustdiffer' => get_string('separatorsmustdiffer', 'local_moderncommerce'),
             // Tab labels.
             'tabStore' => get_string('tab_store', 'local_moderncommerce'),
             'tabCurrency' => get_string('tab_currency', 'local_moderncommerce'),

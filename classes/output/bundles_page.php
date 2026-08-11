@@ -110,7 +110,8 @@ class bundles_page {
      * @return array
      */
     private static function labels(): array {
-        return [
+        return validation_labels::all() + validation_labels::crossfield() + [
+            'error:bundleneedscourses' => get_string('error:bundleneedscourses', 'local_moderncommerce'),
             'title' => get_string('managebundles', 'local_moderncommerce'),
             'createbundle' => get_string('createbundleprogram', 'local_moderncommerce'),
             'editbundle' => get_string('editbundleprogram', 'local_moderncommerce'),

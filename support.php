@@ -28,6 +28,7 @@ require(__DIR__ . '/../../config.php');
 
 use local_moderncommerce\output\public_page;
 use local_moderncommerce\services\captcha_service;
+use local_moderncommerce\services\contact_service;
 $context = context_system::instance();
 public_page::require_enabled('support');
 $PAGE->set_context($context);
@@ -56,14 +57,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($captcharesult !== true) {
         \core\notification::error($captcharesult);
     } else {
-        $name = required_param('name', PARAM_TEXT);
-        $email = required_param('email', PARAM_EMAIL);
+        // Read optionally rather than with required_param: a missing field
+        // should come back as a message beside the control, not a fatal page.
+        $name = trim(optional_param('name', '', PARAM_TEXT));
+        $email = trim(optional_param('email', '', PARAM_EMAIL));
         $category = optional_param('category', 'general', PARAM_ALPHANUMEXT);
         $ordernumber = optional_param('ordernumber', '', PARAM_TEXT);
-        $message = required_param('message', PARAM_TEXT);
+        $message = trim(optional_param('message', '', PARAM_TEXT));
         $categorylabel = $categories[$category] ?? $categories['general'];
 
-        if ($supportemail === '') {
+        $supporterrors = contact_service::validate_enquiry([
+            'fullname' => $name,
+            'email' => $email,
+            'message' => $message,
+        ]);
+
+        if (!empty($supporterrors)) {
+            foreach ($supporterrors as $supporterror) {
+                \core\notification::error($supporterror);
+            }
+        } else if ($supportemail === '') {
             \core\notification::error(get_string('p1_support_missingemail', 'local_moderncommerce'));
         } else {
             $recipient = \core_user::get_noreply_user();

@@ -25,6 +25,7 @@
 require_once(__DIR__ . '/../../../config.php');
 
 use local_moderncommerce\output\learner_shell;
+use local_moderncommerce\output\validation_labels;
 
 require_login();
 
@@ -50,7 +51,11 @@ $reactconfig = json_encode([
         'saveMethodName' => 'local_moderncommerce_save_learner_profile',
         'savePictureMethodName' => 'local_moderncommerce_save_learner_profile_picture',
         'layout' => $shell->get_react_layout_context(),
-        'labels' => [
+        // Same limit learner_profile_service enforces, so the browser rejects an
+        // oversized file before encoding and uploading it.
+        'maxImageBytes' => get_max_upload_file_size($CFG->maxbytes),
+        'labels' => validation_labels::all() + [
+            'error:invalidphone' => get_string('error:invalidphone', 'local_moderncommerce'),
             'aboutyou' => get_string('aboutyou', 'local_moderncommerce'),
             'address' => get_string('address', 'local_moderncommerce'),
             'basicdetails' => get_string('basicdetails', 'local_moderncommerce'),

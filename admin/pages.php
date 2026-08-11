@@ -26,6 +26,7 @@ require_once(__DIR__ . '/../../../config.php');
 
 use local_moderncommerce\output\admin_shell;
 use local_moderncommerce\output\public_page;
+use local_moderncommerce\output\validation_labels;
 
 require_login();
 
@@ -64,7 +65,7 @@ $pagesreactconfig = json_encode([
             'togglePage' => 'local_moderncommerce_toggle_storefront_page',
         ],
         'globalUrl' => (new moodle_url('/local/moderncommerce/admin/global.php'))->out(false),
-        'labels' => [
+        'labels' => validation_labels::all() + [
             'title' => get_string('storepages', 'local_moderncommerce'),
             'storepages' => get_string('storepages', 'local_moderncommerce'),
             'storeglobalintro' => get_string('storeglobal_intro', 'local_moderncommerce'),

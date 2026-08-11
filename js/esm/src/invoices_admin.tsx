@@ -19,6 +19,9 @@ import {McButton} from "./button";
 import {McDrawer} from "./drawer";
 import {McTableActionMenu, McTableCard, McTableFooter, McTableFrame, McTablePagination} from "./table_components";
 import {confirmDialog} from "./modal";
+import {FieldError} from "./form";
+import {focusFirstError, maxLength, normaliseServerErrors, required, requiredId, runRules} from "./validation";
+import type {FieldErrorMap, WithFieldErrors} from "./validation";
 
 declare const M: {
     cfg: {
@@ -103,7 +106,7 @@ type InvoiceDetail = {
     items: Array<InvoiceItem & {id: number; total: number}>;
 };
 
-type SaveResponse = {
+type SaveResponse = WithFieldErrors & {
     success: boolean;
     invoiceid: number;
     message: string;
@@ -268,6 +271,7 @@ export default function InvoicesAdmin({
     const [reloadToken, setReloadToken] = useState(0);
     const [form, setForm] = useState<InvoiceForm | null>(null);
     const [formError, setFormError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [saving, setSaving] = useState(false);
     const [customerOptions, setCustomerOptions] = useState<CustomerOption[]>([]);
     const drawerBodyRef = useRef<HTMLDivElement>(null);
@@ -422,8 +426,22 @@ export default function InvoicesAdmin({
         if (!form) {
             return;
         }
-        if (form.customerid <= 0) {
-            setFormError(labels.searchcustomer);
+
+        const t = (key: string) => labels[key] ?? key;
+        const found = runRules(form, {
+            customerid: requiredId(labels.searchcustomer ?? t("error:required")),
+            invoicenumber: maxLength(50, t("error:maxlength")),
+            status: required(t("error:selectoption")),
+        });
+        // An invoice with no priced lines cannot be paid.
+        if (form.items.filter((item) => item.description.trim() !== "").length === 0) {
+            found.items = t("error:invoiceneedsitems");
+        }
+
+        setFieldErrors(found);
+        if (Object.keys(found).length > 0) {
+            setFormError("");
+            focusFirstError(found, ["customerid", "invoicenumber", "status", "items"]);
             return;
         }
 
@@ -450,7 +468,13 @@ export default function InvoicesAdmin({
             });
 
             if (!result.success) {
-                setFormError(result.message);
+                const serverErrors = normaliseServerErrors(result.errors);
+                if (Object.keys(serverErrors).length > 0) {
+                    setFieldErrors(serverErrors);
+                    focusFirstError(serverErrors, ["customerid", "invoicenumber", "status", "items"]);
+                } else {
+                    setFormError(result.message);
+                }
                 return;
             }
 
@@ -573,18 +597,34 @@ export default function InvoicesAdmin({
                             </div>
                         )}
 
-                        <form id="mc-invoice-drawer-form" onSubmit={submitForm}>
+                        <form id="mc-invoice-drawer-form" noValidate onSubmit={submitForm}>
                             <div className={mcClasses("mc-form-section")}>
                                 <div className={mcClasses("mc-form-section__body")}>
                                     <div className={mcClasses("mc-product-form__grid")}>
                                         <div className={mcClasses("mc-course-picker mc-invoice-customer-picker mc-product-form__wide")}>
                                             <label htmlFor="mc-invoice-customer">
-                                                <span>{labels.customerlabel}</span>
+                                                <span>
+                                                    {labels.customerlabel}
+                                                    <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                                                </span>
                                                 <input
                                                     autoComplete="off"
                                                     autoFocus
-                                                    className={mcClasses("mc-form-control")}
+                                                    aria-describedby={fieldErrors.customerid
+                                                        ? "mc-invoice-customer-error" : undefined}
+                                                    aria-invalid={fieldErrors.customerid ? true : undefined}
+                                                    aria-required="true"
+                                                    className={mcClasses("mc-form-control",
+                                                        fieldErrors.customerid ? "mc-field-invalid" : "")}
                                                     id="mc-invoice-customer"
+                                                    name="customerid"
+                                                    // Search box inside the save form: Enter must
+                                                    // filter customers, not save the invoice.
+                                                    onKeyDown={(event) => {
+                                                        if (event.key === "Enter") {
+                                                            event.preventDefault();
+                                                        }
+                                                    }}
                                                     onChange={(event) => updateForm({
                                                         customerquery: event.target.value,
                                                         customerid: 0,
@@ -595,6 +635,10 @@ export default function InvoicesAdmin({
                                                     value={form.customerid > 0
                                                         ? `${form.customername} (${form.customeremail})`
                                                         : form.customerquery}
+                                                />
+                                                <FieldError
+                                                    id="mc-invoice-customer-error"
+                                                    message={fieldErrors.customerid}
                                                 />
                                             </label>
                                             {customerOptions.length > 0 && form.customerid <= 0 && (
@@ -667,6 +711,7 @@ export default function InvoicesAdmin({
                                     </button>
                                 </div>
                                 <div className={mcClasses("mc-form-section__body")}>
+                                    <FieldError id="mc-invoice-items-error" message={fieldErrors.items} />
                                     <McTableFrame>
                                         <table
                                             className={mcClasses("table mc-table mc-product-table mc-invoice-items-table mb-0")}
@@ -686,7 +731,16 @@ export default function InvoicesAdmin({
                                                     <tr key={index}>
                                                         <td>
                                                             <input
-                                                                className={mcClasses("mc-form-control")}
+                                                                // The "needs a line item" error belongs on the
+                                                                // first description box, which is where the user
+                                                                // has to type to resolve it.
+                                                                aria-describedby={index === 0 && fieldErrors.items
+                                                                    ? "mc-invoice-items-error" : undefined}
+                                                                aria-invalid={index === 0 && fieldErrors.items
+                                                                    ? true : undefined}
+                                                                className={mcClasses("mc-form-control",
+                                                                    index === 0 && fieldErrors.items ? "mc-field-invalid" : "")}
+                                                                name={index === 0 ? "items" : undefined}
                                                                 onChange={(event) => updateItem(index, {description: event.target.value})}
                                                                 type="text"
                                                                 value={item.description}
@@ -834,7 +888,12 @@ export default function InvoicesAdmin({
             <McTableCard
                 title={<h2 className={mcClasses("mc-card-title")}>{labels.title}</h2>}
                 actions={(
-                    <button className={mcClasses("mc-button btn-mc-primary")} onClick={openNewInvoice} type="button">
+                    <button
+                        className={mcClasses("mc-button btn-mc-primary")}
+                        id="moderncommerce-invoices-new"
+                        onClick={openNewInvoice}
+                        type="button"
+                    >
                         <i className="bi bi-plus-lg me-1" aria-hidden="true" />
                         {labels.createinvoice}
                     </button>

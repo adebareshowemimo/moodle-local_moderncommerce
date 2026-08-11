@@ -28,6 +28,7 @@ define('AJAX_SCRIPT', true);
 require_once(__DIR__ . '/../../../config.php');
 
 use local_moderncommerce\services\captcha_service;
+use local_moderncommerce\services\contact_service;
 
 // Set proper headers for JSON response.
 header('Content-Type: application/json');
@@ -58,11 +59,22 @@ try {
         die();
     }
 
-    // Validate required fields.
-    if (empty($fullname) || empty($email) || empty($message)) {
+    // Validate through the shared rules so this endpoint and its synchronous
+    // twin cannot drift apart. Errors are returned per field, in the same shape
+    // the web service layer uses, so one JavaScript handler serves both.
+    $errors = contact_service::validate_enquiry([
+        'fullname' => $fullname,
+        'email' => $email,
+        'subject' => $subject,
+        'phone' => $phone,
+        'message' => $message,
+    ]);
+
+    if (!empty($errors)) {
         echo json_encode([
             'success' => false,
-            'error' => get_string('contact_error', 'local_moderncommerce'),
+            'error' => reset($errors),
+            'errors' => contact_service::format_errors($errors),
         ]);
         die();
     }

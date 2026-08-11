@@ -25,6 +25,7 @@
 require_once(__DIR__ . '/../../../config.php');
 
 use local_moderncommerce\output\admin_shell;
+use local_moderncommerce\output\validation_labels;
 use local_moderncommerce\services\pricing_service;
 
 $context = context_system::instance();
@@ -63,7 +64,8 @@ $invoicesreactconfig = json_encode([
         ],
         'statusOptions' => $statusoptions,
         'perPageOptions' => [10, 25, 50, 100],
-        'labels' => [
+        'labels' => validation_labels::all() + [
+            'error:invoiceneedsitems' => get_string('error:invoiceneedsitems', 'local_moderncommerce'),
             'title' => get_string('manageinvoices', 'local_moderncommerce'),
             'createinvoice' => get_string('createinvoice', 'local_moderncommerce'),
             'editinvoice' => get_string('editinvoice', 'local_moderncommerce'),

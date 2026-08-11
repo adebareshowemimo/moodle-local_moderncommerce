@@ -242,7 +242,10 @@ export default function SubscriptionPlans({methods, manageUrl, labels, layout}: 
     };
 
     const redeem = async() => {
+        // Was a silent return: pressing redeem with an empty box did nothing
+        // and explained nothing, even though keyError was already available.
         if (keyInput.trim() === "") {
+            setKeyError(labels["error:required"] ?? "");
             return;
         }
         setRedeeming(true);

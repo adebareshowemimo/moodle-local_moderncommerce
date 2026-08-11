@@ -161,6 +161,10 @@ $mc-token-groups: (
     "focus": (
         "focus-ring": rgba($mc-primary, 0.22),
         "focus-outline": $mc-primary,
+        // Invalid-field focus ring. Mirrors focus-ring but tinted with the fixed
+        // danger hue, so an errored control keeps a visible ring without
+        // reverting to the brand colour.
+        "danger-ring": rgba(#ca3120, 0.22),
     ),
     "motion": (
         "transition-fast": 0.15s ease,

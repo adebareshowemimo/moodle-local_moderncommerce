@@ -25,6 +25,7 @@
 require_once(__DIR__ . '/../../../config.php');
 
 use local_moderncommerce\output\admin_shell;
+use local_moderncommerce\output\validation_labels;
 
 $context = context_system::instance();
 require_login();
@@ -48,7 +49,7 @@ $config = json_encode([
             'delete' => 'local_moderncommerce_delete_category',
             'reorder' => 'local_moderncommerce_reorder_categories',
         ],
-        'labels' => [
+        'labels' => validation_labels::all() + [
             'title' => get_string('managecategories', 'local_moderncommerce'),
             'newcategory' => get_string('newcategory', 'local_moderncommerce'),
             'editcategory' => get_string('editcategory', 'local_moderncommerce'),
@@ -71,7 +72,6 @@ $config = json_encode([
             'nocategories' => get_string('nocategories', 'local_moderncommerce'),
             'nocategoriesdesc' => get_string('nocategories_desc', 'local_moderncommerce'),
             'deleteconfirm' => get_string('categorydeleteconfirm', 'local_moderncommerce'),
-            'namerequired' => get_string('categorynamerequired', 'local_moderncommerce'),
         ],
     ],
 ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);

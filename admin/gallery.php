@@ -73,7 +73,7 @@ $storefrontlabels = [
     'loading' => get_string('loading', 'local_moderncommerce'),
 ];
 
-$gallerylabels = [
+$gallerylabels = \local_moderncommerce\output\validation_labels::all() + [
     'alignment' => $gallerystring('widgetgallery_alignment'),
     'aligncenter' => $gallerystring('widgetgallery_align_center'),
     'alignleft' => $gallerystring('widgetgallery_align_left'),

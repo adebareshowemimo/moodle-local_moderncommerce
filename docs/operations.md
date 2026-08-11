@@ -20,6 +20,13 @@ composer run mc:icon-audit
 composer run mc:perf-report
 ```
 
+## Learner Dashboard Routing
+
+Authenticated requests to Moodle's core `/my` dashboard are redirected to
+`/local/moderncommerce/learner/index.php`. The redirect is registered through
+the `before_http_headers` hook in `db/hooks.php`; guests continue through
+Moodle's normal login flow.
+
 ## Payments
 
 If payment status is not updating:

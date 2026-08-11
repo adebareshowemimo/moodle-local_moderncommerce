@@ -91,8 +91,18 @@
             <input type="hidden" name="token" value="{{token}}">
             <input type="hidden" name="sesskey" value="{{sesskey}}">
             <input type="hidden" name="action" value="reply">
-            <div class="mb-3">
-              <textarea name="replymessage" class="form-control" rows="5" placeholder="{{#str}}typeyourreply, local_moderncommerce{{/str}}" required></textarea>
+            <div class="mb-3 mc-field">
+              <label class="mc-field-label" for="mc-clientreply-message">
+                {{#str}}clientreply, local_moderncommerce{{/str}}
+                <span class="mc-required" aria-hidden="true">*</span>
+              </label>
+              <textarea id="mc-clientreply-message" name="replymessage" class="form-control{{#replyerror}} mc-field-invalid{{/replyerror}}" rows="5" placeholder="{{#str}}typeyourreply, local_moderncommerce{{/str}}" aria-required="true" {{#replyerror}}aria-invalid="true" aria-describedby="mc-clientreply-message-error"{{/replyerror}} required>{{replyvalue}}</textarea>
+              {{#replyerror}}
+                <div class="mc-field-error" id="mc-clientreply-message-error" role="alert">
+                  <i class="bi bi-exclamation-circle mc-field-error__icon" aria-hidden="true"></i>
+                  <span>{{replyerror}}</span>
+                </div>
+              {{/replyerror}}
             </div>
             <div class="text-end">
               <button type="submit" class="mc-button btn-mc-primary" data-mc-button="primary">

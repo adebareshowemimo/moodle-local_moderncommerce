@@ -25,6 +25,7 @@
 require_once(__DIR__ . '/../../../config.php');
 
 use local_moderncommerce\output\admin_shell;
+use local_moderncommerce\output\validation_labels;
 use local_moderncommerce\services\pricing_service;
 
 $context = context_system::instance();
@@ -69,7 +70,8 @@ $couponsreactconfig = json_encode([
             'position' => $currencyconfig->position,
             'decimals' => (int) $currencyconfig->decimals,
         ],
-        'labels' => [
+        'labels' => validation_labels::all() + validation_labels::crossfield() + [
+            'error:invalidcouponcode' => get_string('error:invalidcouponcode', 'local_moderncommerce'),
             'active' => get_string('active', 'local_moderncommerce'),
             'actions' => get_string('actions', 'local_moderncommerce'),
             'all' => get_string('all'),

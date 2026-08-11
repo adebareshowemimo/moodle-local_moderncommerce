@@ -17,6 +17,8 @@ import {callMoodleService, Labels} from "./learner_common";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import ModernLearnerLayout, {type LearnerLayoutContext, type LearnerLayoutUser} from "./learner_layout";
+import {email, fmt, maxLength, normaliseServerErrors, pattern, required, runRules} from "./validation";
+import type {RuleMap} from "./validation";
 
 type ProfileDisplayField = {
     inputname: string;
@@ -121,8 +123,12 @@ type SavePictureResponse = {
     profileimage: string;
 };
 
+// The server has historically keyed these as `name`; the plugin-wide contract
+// is `field`. normaliseServerErrors accepts both, so the two sides can migrate
+// independently.
 type FieldError = {
-    name: string;
+    name?: string;
+    field?: string;
     message: string;
 };
 
@@ -132,6 +138,8 @@ type LearnerProfileProps = {
     savePictureMethodName: string;
     labels: Labels;
     layout?: LearnerLayoutContext;
+    /** Site upload limit in bytes; 0 disables the client-side size check. */
+    maxImageBytes?: number;
 };
 
 type BasicFormState = {
@@ -162,10 +170,37 @@ const initials = (fullname: string): string => fullname
     .map((part) => part.charAt(0).toUpperCase())
     .join("") || "LC";
 
-const errorMap = (errors: FieldError[]): Record<string, string> => errors.reduce((carry, error) => ({
-    ...carry,
-    [error.name]: error.message,
-}), {});
+const errorMap = (errors: FieldError[]): Record<string, string> => normaliseServerErrors(errors);
+
+/** Human-readable byte size for the upload-limit message. */
+const formatBytes = (bytes: number): string => {
+    if (bytes >= 1024 * 1024) {
+        return `${Math.round(bytes / (1024 * 1024))} MB`;
+    }
+    return `${Math.round(bytes / 1024)} KB`;
+};
+
+/**
+ * Move focus to the first field carrying an error, walking `order` rather than
+ * the error map so the landing spot follows the visual layout instead of
+ * whichever key happened to be inserted first.
+ */
+const focusFirstError = (errors: Record<string, string>, order: string[]): void => {
+    const first = order.find((field) => errors[field]);
+    if (!first) {
+        return;
+    }
+
+    window.requestAnimationFrame(() => {
+        const node = document.getElementById(`mc-profile-${first}`)
+            ?? document.getElementById(`mc-profile-custom-${first}`);
+        if (!node) {
+            return;
+        }
+        node.scrollIntoView({block: "center", behavior: "smooth"});
+        node.focus({preventScroll: true});
+    });
+};
 
 const fileToBase64 = async(file: File): Promise<string> => {
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -251,12 +286,32 @@ function LoadingState({labels}: {labels: Labels}) {
     );
 }
 
-function FieldErrorText({message}: {message?: string}) {
+function FieldErrorText({id, message}: {id?: string; message?: string}) {
     if (!message) {
         return null;
     }
 
-    return <div className="invalid-feedback d-block">{message}</div>;
+    // Was Bootstrap's invalid-feedback, which the mc-* system does not style —
+    // it only rendered because the Moodle theme happens to ship Bootstrap.
+    return (
+        <div className={mcClasses("mc-field-error")} id={id} role="alert">
+            <i className={mcClasses("bi bi-exclamation-circle mc-field-error__icon")} aria-hidden="true" />
+            <span>{message}</span>
+        </div>
+    );
+}
+
+/** Accessibility and error-state attributes for a hand-rolled profile input. */
+const fieldState = (id: string, message?: string, isRequired = false) => ({
+    "aria-describedby": message ? `${id}-error` : undefined,
+    "aria-invalid": message ? true : undefined,
+    "aria-required": isRequired ? true : undefined,
+    className: mcClasses("form-control", message ? "mc-field-invalid" : ""),
+});
+
+/** Label text with the required marker, matching the shared Field primitive. */
+function RequiredMark() {
+    return <span className={mcClasses("mc-required")} aria-hidden="true">*</span>;
 }
 
 function ProfileDetails({
@@ -356,12 +411,17 @@ function CustomFieldInput({
 }) {
     const id = `mc-profile-custom-${field.inputname}`;
 
+    const errorId = `${id}-error`;
+
     if (field.istextarea) {
         return (
             <div className="mb-3">
-                <label className={mcClasses("mc-field-label")} htmlFor={id}>{field.label}</label>
+                <label className={mcClasses("mc-field-label")} htmlFor={id}>
+                    {field.label}
+                    {field.required && <RequiredMark />}
+                </label>
                 <textarea
-                    className="form-control"
+                    {...fieldState(id, error, field.required)}
                     disabled={field.disabled}
                     id={id}
                     required={field.required}
@@ -369,7 +429,7 @@ function CustomFieldInput({
                     value={value}
                     onChange={(event) => onChange(event.currentTarget.value)}
                 />
-                <FieldErrorText message={error} />
+                <FieldErrorText id={errorId} message={error} />
             </div>
         );
     }
@@ -377,9 +437,13 @@ function CustomFieldInput({
     if (field.ismenu) {
         return (
             <div className="mb-3">
-                <label className={mcClasses("mc-field-label")} htmlFor={id}>{field.label}</label>
+                <label className={mcClasses("mc-field-label")} htmlFor={id}>
+                    {field.label}
+                    {field.required && <RequiredMark />}
+                </label>
                 <select
-                    className="form-select"
+                    {...fieldState(id, error, field.required)}
+                    className={mcClasses("form-select", error ? "mc-field-invalid" : "")}
                     disabled={field.disabled}
                     id={id}
                     required={field.required}
@@ -390,7 +454,7 @@ function CustomFieldInput({
                         <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                 </select>
-                <FieldErrorText message={error} />
+                <FieldErrorText id={errorId} message={error} />
             </div>
         );
     }
@@ -399,24 +463,33 @@ function CustomFieldInput({
         return (
             <div className="form-check mb-3">
                 <input
-                    className="form-check-input"
+                    aria-describedby={error ? errorId : undefined}
+                    aria-invalid={error ? true : undefined}
+                    aria-required={field.required ? true : undefined}
+                    className={mcClasses("form-check-input", error ? "mc-field-invalid" : "")}
                     disabled={field.disabled}
                     id={id}
                     type="checkbox"
                     checked={value === "1"}
                     onChange={(event) => onChange(event.currentTarget.checked ? "1" : "0")}
                 />
-                <label className="form-check-label" htmlFor={id}>{field.label}</label>
-                <FieldErrorText message={error} />
+                <label className="form-check-label" htmlFor={id}>
+                    {field.label}
+                    {field.required && <RequiredMark />}
+                </label>
+                <FieldErrorText id={errorId} message={error} />
             </div>
         );
     }
 
     return (
         <div className="mb-3">
-            <label className={mcClasses("mc-field-label")} htmlFor={id}>{field.label}</label>
+            <label className={mcClasses("mc-field-label")} htmlFor={id}>
+                {field.label}
+                {field.required && <RequiredMark />}
+            </label>
             <input
-                className="form-control"
+                {...fieldState(id, error, field.required)}
                 disabled={field.disabled}
                 id={id}
                 required={field.required}
@@ -424,7 +497,7 @@ function CustomFieldInput({
                 value={value}
                 onChange={(event) => onChange(event.currentTarget.value)}
             />
-            <FieldErrorText message={error} />
+            <FieldErrorText id={errorId} message={error} />
         </div>
     );
 }
@@ -435,6 +508,7 @@ export default function LearnerProfile({
     savePictureMethodName,
     labels,
     layout,
+    maxImageBytes = 0,
 }: LearnerProfileProps) {
     useModernCommerceClassSync();
     const [data, setData] = useState<ProfileResponse | null>(null);
@@ -554,9 +628,38 @@ export default function LearnerProfile({
         setInterestInput("");
     };
 
+    // Mirrors what learner_profile_service enforces, so an obvious mistake is
+    // caught before a round trip. The server remains authoritative.
+    const basicRules: RuleMap<BasicFormState> = {
+        firstname: [required(label(labels, "error:required")), maxLength(100, label(labels, "error:maxlength"))],
+        lastname: [required(label(labels, "error:required")), maxLength(100, label(labels, "error:maxlength"))],
+        email: [required(label(labels, "error:required")), email(label(labels, "error:invalidemail"))],
+        phone1: pattern(/^[0-9+()\s-]{0,20}$/, label(labels, "error:invalidphone")),
+        phone2: pattern(/^[0-9+()\s-]{0,20}$/, label(labels, "error:invalidphone")),
+        city: maxLength(120, label(labels, "error:maxlength")),
+        description: maxLength(2000, label(labels, "error:maxlength")),
+    };
+
     const saveProfile = async(event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!data) {
+            return;
+        }
+
+        const clientErrors = runRules(basicForm, basicRules);
+        // Custom fields carry their own required flag from the server.
+        (data.editablecustomfields || []).forEach((field) => {
+            if (field.required && String(customValues[field.inputname] ?? "").trim() === "") {
+                clientErrors[field.inputname] = label(labels, "error:required");
+            }
+        });
+
+        if (Object.keys(clientErrors).length > 0) {
+            setFieldErrors(clientErrors);
+            focusFirstError(clientErrors, [
+                ...Object.keys(basicRules),
+                ...(data.editablecustomfields || []).map((field) => field.inputname),
+            ]);
             return;
         }
 
@@ -618,6 +721,21 @@ export default function LearnerProfile({
     const uploadImage = async() => {
         if (!data || !selectedImage) {
             setImageErrors({profileimage: label(labels, "profileimagefilemissing")});
+            setImageFeedback("");
+            return;
+        }
+
+        // Checked before the file is base64-encoded and shipped: an oversized
+        // upload used to travel the whole way only to be rejected server side.
+        if (!selectedImage.type.startsWith("image/")) {
+            setImageErrors({profileimage: label(labels, "error:invalidimagetype")});
+            setImageFeedback("");
+            return;
+        }
+        if (maxImageBytes > 0 && selectedImage.size > maxImageBytes) {
+            setImageErrors({
+                profileimage: fmt(label(labels, "error:imagetoolarge"), formatBytes(maxImageBytes)),
+            });
             setImageFeedback("");
             return;
         }
@@ -760,6 +878,10 @@ export default function LearnerProfile({
                             <form
                                 className={mcClasses("mc-profile-panel mc-profile-panel--edit mc-card")}
                                 id="mc-profile-edit-panel"
+                                // Without this the browser's own bubble fires first and the
+                                // inline messages never render. Native `required` stays on
+                                // the controls as a no-JavaScript fallback.
+                                noValidate
                                 onSubmit={(event) => void saveProfile(event)}
                             >
                                 <div className={mcClasses("mc-card-header")}>
@@ -790,9 +912,10 @@ export default function LearnerProfile({
                                         <div className="col-md-6">
                                             <label className={mcClasses("mc-field-label")} htmlFor="mc-profile-firstname">
                                                 {label(labels, "firstname")}
+                                                <RequiredMark />
                                             </label>
                                             <input
-                                                className="form-control"
+                                                {...fieldState("mc-profile-firstname", fieldErrors.firstname, true)}
                                                 disabled={!data.canedit || busy}
                                                 id="mc-profile-firstname"
                                                 required
@@ -803,14 +926,15 @@ export default function LearnerProfile({
                                                     firstname: event.currentTarget.value,
                                                 })}
                                             />
-                                            <FieldErrorText message={fieldErrors.firstname} />
+                                            <FieldErrorText id="mc-profile-firstname-error" message={fieldErrors.firstname} />
                                         </div>
                                         <div className="col-md-6">
                                             <label className={mcClasses("mc-field-label")} htmlFor="mc-profile-lastname">
                                                 {label(labels, "lastname")}
+                                                <RequiredMark />
                                             </label>
                                             <input
-                                                className="form-control"
+                                                {...fieldState("mc-profile-lastname", fieldErrors.lastname, true)}
                                                 disabled={!data.canedit || busy}
                                                 id="mc-profile-lastname"
                                                 required
@@ -821,14 +945,15 @@ export default function LearnerProfile({
                                                     lastname: event.currentTarget.value,
                                                 })}
                                             />
-                                            <FieldErrorText message={fieldErrors.lastname} />
+                                            <FieldErrorText id="mc-profile-lastname-error" message={fieldErrors.lastname} />
                                         </div>
                                         <div className="col-md-6">
                                             <label className={mcClasses("mc-field-label")} htmlFor="mc-profile-email">
                                                 {label(labels, "email")}
+                                                <RequiredMark />
                                             </label>
                                             <input
-                                                className="form-control"
+                                                {...fieldState("mc-profile-email", fieldErrors.email, true)}
                                                 disabled={!data.canedit || busy}
                                                 id="mc-profile-email"
                                                 required
@@ -839,7 +964,7 @@ export default function LearnerProfile({
                                                     email: event.currentTarget.value,
                                                 })}
                                             />
-                                            <FieldErrorText message={fieldErrors.email} />
+                                            <FieldErrorText id="mc-profile-email-error" message={fieldErrors.email} />
                                         </div>
                                         <div className="col-md-6">
                                             <label className={mcClasses("mc-field-label")} htmlFor="mc-profile-country">
@@ -866,9 +991,10 @@ export default function LearnerProfile({
                                                 {label(labels, "city")}
                                             </label>
                                             <input
-                                                className="form-control"
+                                                {...fieldState("mc-profile-city", fieldErrors.city)}
                                                 disabled={!data.canedit || busy}
                                                 id="mc-profile-city"
+                                                maxLength={120}
                                                 type="text"
                                                 value={basicForm.city}
                                                 onChange={(event) => setBasicForm({
@@ -876,7 +1002,7 @@ export default function LearnerProfile({
                                                     city: event.currentTarget.value,
                                                 })}
                                             />
-                                            <FieldErrorText message={fieldErrors.city} />
+                                            <FieldErrorText id="mc-profile-city-error" message={fieldErrors.city} />
                                         </div>
                                         <div className="col-md-4">
                                             <label className={mcClasses("mc-field-label")} htmlFor="mc-profile-department">
@@ -922,28 +1048,28 @@ export default function LearnerProfile({
                                                 {label(labels, "phone1")}
                                             </label>
                                             <input
-                                                className="form-control"
+                                                {...fieldState("mc-profile-phone1", fieldErrors.phone1)}
                                                 disabled={!data.canedit || busy || data.fieldlocks.phone1}
                                                 id="mc-profile-phone1"
                                                 type="text"
                                                 value={basicForm.phone1}
                                                 onChange={(event) => setBasicForm({...basicForm, phone1: event.currentTarget.value})}
                                             />
-                                            <FieldErrorText message={fieldErrors.phone1} />
+                                            <FieldErrorText id="mc-profile-phone1-error" message={fieldErrors.phone1} />
                                         </div>
                                         <div className="col-md-4">
                                             <label className={mcClasses("mc-field-label")} htmlFor="mc-profile-phone2">
                                                 {label(labels, "phone2")}
                                             </label>
                                             <input
-                                                className="form-control"
+                                                {...fieldState("mc-profile-phone2", fieldErrors.phone2)}
                                                 disabled={!data.canedit || busy || data.fieldlocks.phone2}
                                                 id="mc-profile-phone2"
                                                 type="text"
                                                 value={basicForm.phone2}
                                                 onChange={(event) => setBasicForm({...basicForm, phone2: event.currentTarget.value})}
                                             />
-                                            <FieldErrorText message={fieldErrors.phone2} />
+                                            <FieldErrorText id="mc-profile-phone2-error" message={fieldErrors.phone2} />
                                         </div>
                                         <div className="col-md-4">
                                             <label className={mcClasses("mc-field-label")} htmlFor="mc-profile-address">
@@ -968,14 +1094,15 @@ export default function LearnerProfile({
                                             {label(labels, "description")}
                                         </label>
                                         <textarea
-                                            className="form-control"
+                                            {...fieldState("mc-profile-description", fieldErrors.description)}
                                             disabled={!data.canedit || busy || data.fieldlocks.description}
                                             id="mc-profile-description"
+                                            maxLength={2000}
                                             rows={4}
                                             value={basicForm.description}
                                             onChange={(event) => setBasicForm({...basicForm, description: event.currentTarget.value})}
                                         />
-                                        <FieldErrorText message={fieldErrors.description} />
+                                        <FieldErrorText id="mc-profile-description-error" message={fieldErrors.description} />
                                     </div>
                                     <div className="mb-3">
                                         <label className={mcClasses("mc-field-label")} htmlFor="mc-profile-interests">

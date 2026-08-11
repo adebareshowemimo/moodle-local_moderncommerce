@@ -19,6 +19,7 @@ import {McBadge} from "./badge";
 import type {McBadgeVariant} from "./badge";
 import {McButton} from "./button";
 import {McTableActionMenu, McTableCard, McTableFooter, McTablePagination} from "./table_components";
+import {FieldError} from "./form";
 
 declare const M: {
     cfg: {
@@ -189,6 +190,7 @@ export default function ContactsAdmin({methods, sortOptions, perPageOptions, lab
     const [detail, setDetail] = useState<DetailResponse | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [replyText, setReplyText] = useState("");
+    const [replyError, setReplyError] = useState("");
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
@@ -253,9 +255,20 @@ export default function ContactsAdmin({methods, sortOptions, perPageOptions, lab
     };
 
     const sendReply = async() => {
-        if (!detail || replyText.trim() === "") {
+        if (!detail) {
             return;
         }
+        // Was a silent return: the send button did nothing and said nothing.
+        const trimmed = replyText.trim();
+        if (trimmed === "" || trimmed.length < 2) {
+            setReplyError(labels["error:required"] ?? "");
+            return;
+        }
+        if (trimmed.length > 5000) {
+            setReplyError(labels["error:maxlength"]?.replace("{$a}", "5000") ?? "");
+            return;
+        }
+        setReplyError("");
         setBusy(true);
         setError("");
         try {
@@ -357,15 +370,27 @@ export default function ContactsAdmin({methods, sortOptions, perPageOptions, lab
                 </div>
 
                 <div className={mcClasses("mc-product-form__section")}>
-                    <label className={mcClasses("mc-field-label")} htmlFor="mc-contact-reply">{labels.reply}</label>
+                    <label className={mcClasses("mc-field-label")} htmlFor="mc-contact-reply">
+                        {labels.reply}
+                        <span className={mcClasses("mc-required")} aria-hidden="true">*</span>
+                    </label>
                     <textarea
-                        className={mcClasses("mc-form-control")}
+                        aria-describedby={replyError ? "mc-contact-reply-error" : undefined}
+                        aria-invalid={replyError ? true : undefined}
+                        aria-required="true"
+                        className={mcClasses("mc-form-control", replyError ? "mc-field-invalid" : "")}
                         id="mc-contact-reply"
-                        onChange={(event) => setReplyText(event.target.value)}
+                        maxLength={5000}
+                        name="replyText"
+                        onChange={(event) => {
+                            setReplyText(event.target.value);
+                            setReplyError("");
+                        }}
                         placeholder={labels.replyplaceholder}
                         rows={5}
                         value={replyText}
                     />
+                    <FieldError id="mc-contact-reply-error" message={replyError} />
                     <div className="mt-3">
                         <McButton
                             className={mcClasses("btn-mc-primary")}
