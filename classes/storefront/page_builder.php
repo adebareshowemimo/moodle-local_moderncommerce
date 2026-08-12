@@ -39,6 +39,7 @@ use local_moderncommerce\storefront\resolver\instructors_resolver;
 use local_moderncommerce\storefront\resolver\learningpromise_resolver;
 use local_moderncommerce\storefront\resolver\mediastorycarousel_resolver;
 use local_moderncommerce\storefront\resolver\newsletter_resolver;
+use local_moderncommerce\storefront\resolver\partners_resolver;
 use local_moderncommerce\storefront\resolver\policy_resolver;
 use local_moderncommerce\storefront\resolver\slider_resolver;
 use local_moderncommerce\storefront\resolver\supportform_resolver;
@@ -62,6 +63,7 @@ class page_builder {
             'featured' => featured_resolver::class,
             'related' => featured_resolver::class,
             'trustbadges' => trustbadges_resolver::class,
+            'partners' => partners_resolver::class,
             'countdown' => countdown_resolver::class,
             'testimonials' => testimonials_resolver::class,
             'categories' => categories_resolver::class,

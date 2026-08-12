@@ -39,8 +39,6 @@ class bundle_meta_service {
     private const TABLE_PRODUCT_COURSES = 'local_moderncommerce_product_courses';
     /** @var string */
     private const TABLE_PRODUCT_PRICES = 'local_moderncommerce_product_prices';
-    /** @var string */
-    private const TABLE_COURSE_META = 'local_moderncommerce_course_meta';
     /**
      * Return default meta for a bundle.
      *
@@ -71,13 +69,16 @@ class bundle_meta_service {
             'pass_grade' => 70,
             'pass_policy' => 'all_must_pass',
             'bundle_cert_enabled' => 0,
+            'certificate_template_id' => 0,
             'tags' => [],
         ];
 
         $defaults['courses_count'] = self::get_bundle_course_count($bundleid);
-        $defaults['total_duration_minutes'] = self::get_total_duration_minutes($bundleid);
+        $learninghours = self::get_learning_hours_summary($bundleid);
+        $defaults['total_duration_minutes'] = $learninghours['totalminutes'];
+        $defaults['learning_hours'] = $learninghours;
         $defaults['owned_value'] = self::get_owned_courses_value($bundleid, $USER->id ?? 0);
-        $defaults['kpi_assessments'] = 0;
+        $defaults['kpi_assessments'] = self::get_total_quizzes($bundleid);
         $defaults['outline_items'] = [];
         $defaults['tags'] = self::get_tags($bundleid);
         if (!self::table_exists(self::TABLE_META)) {
@@ -111,14 +112,16 @@ class bundle_meta_service {
             'pass_grade' => isset($record->pass_grade) ? (float)$record->pass_grade : 70,
             'pass_policy' => $record->pass_policy ?? 'all_must_pass',
             'bundle_cert_enabled' => (int)($record->bundle_cert ?? 0),
+            'certificate_template_id' => (int)($record->certificate_template_id ?? 0),
         ];
         // Courses count from product-courses table.
         $meta['courses_count'] = self::get_bundle_course_count($bundleid);
-        // Aggregate duration minutes from course meta for auto mode KPI.
-        $meta['total_duration_minutes'] = self::get_total_duration_minutes($bundleid);
-        // Assessments KPI: auto = sum of course quizzes; manual = assessments_count.
-        $auto = !empty($meta['auto_assessments']);
-        $meta['kpi_assessments'] = $auto ? self::get_total_quizzes($bundleid) : (int)($meta['assessments_count'] ?? 0);
+        // Aggregate Moodle course custom-field learning hours for auto mode KPI.
+        $learninghours = self::get_learning_hours_summary($bundleid);
+        $meta['total_duration_minutes'] = $learninghours['totalminutes'];
+        $meta['learning_hours'] = $learninghours;
+        // Assessments are always the live number of Moodle quizzes in the included courses.
+        $meta['kpi_assessments'] = self::get_total_quizzes($bundleid);
         // Owned value for current user.
         $meta['owned_value'] = self::get_owned_courses_value($bundleid, $USER->id ?? 0);
         // Attach outline for convenience.
@@ -304,21 +307,79 @@ class bundle_meta_service {
     }
 
     /**
-     * Compute total duration in minutes for all courses in a bundle.
+     * Get the bundle's Moodle course-level learning-hours coverage and total.
      *
-     * @param int $bundleid
-     * @return int total minutes
+     * Only explicitly stored, non-negative numeric values from a course custom field whose
+     * shortname is "learninghours" are included. This lets callers distinguish a genuine
+     * zero-hour value from a course which has no value at all.
+     *
+     * @param int $bundleid Bundle product ID.
+     * @return array{fieldexists: bool, totalminutes: int, setcount: int, missingcount: int,
+     *     coursecount: int, missingcourses: string[]}
+     */
+    public static function get_learning_hours_summary(int $bundleid): array {
+        $courses = self::get_bundle_courses($bundleid);
+        $summary = [
+            'fieldexists' => false,
+            'totalminutes' => 0,
+            'setcount' => 0,
+            'missingcount' => count($courses),
+            'coursecount' => count($courses),
+            'missingcourses' => array_column($courses, 'fullname'),
+        ];
+
+        $handler = \core_course\customfield\course_handler::create();
+        $learninghoursfield = null;
+        foreach ($handler->get_fields() as $field) {
+            if (strtolower(trim((string)$field->get('shortname'))) === 'learninghours') {
+                $learninghoursfield = $field;
+                break;
+            }
+        }
+        if ($learninghoursfield === null) {
+            return $summary;
+        }
+
+        $summary['fieldexists'] = true;
+        if (empty($courses)) {
+            $summary['missingcourses'] = [];
+            return $summary;
+        }
+
+        $courseids = array_column($courses, 'id');
+        $instancesdata = $handler->get_instances_data($courseids, true);
+        $fieldid = (int)$learninghoursfield->get('id');
+        $missingcourses = [];
+
+        foreach ($courses as $course) {
+            $courseid = (int)$course['id'];
+            $data = $instancesdata[$courseid][$fieldid] ?? null;
+            // get_instances_data() supplies defaults too; require a persisted course-level value.
+            $hasstoredvalue = $data !== null && (int)$data->get('id') > 0;
+            $value = $hasstoredvalue ? $data->get_value() : null;
+            if ($value === null || $value === '' || !is_numeric($value) || (float)$value < 0) {
+                $missingcourses[] = (string)$course['fullname'];
+                continue;
+            }
+
+            $summary['setcount']++;
+            $summary['totalminutes'] += (int)round((float)$value * 60);
+        }
+
+        $summary['missingcourses'] = $missingcourses;
+        $summary['missingcount'] = count($missingcourses);
+        return $summary;
+    }
+
+    /**
+     * Compute total learning duration in minutes for all courses in a bundle.
+     *
+     * @param int $bundleid Bundle product ID.
+     * @return int Total minutes from Moodle's learninghours course custom field.
      */
     public static function get_total_duration_minutes(int $bundleid): int {
-
-        global $DB;
-        $sql = "SELECT COALESCE(SUM(COALESCE(m.durationminutes, 0)), 0)
-                  FROM {" . self::TABLE_PRODUCT_COURSES . "} bc
-             LEFT JOIN {" . self::TABLE_COURSE_META . "} m ON m.courseid = bc.courseid
-                 WHERE bc.productid = :bundleid
-                   AND bc.relationtype = :relationtype";
-        $total = $DB->get_field_sql($sql, ['bundleid' => $bundleid, 'relationtype' => 'included']);
-        return (int)$total;
+        $summary = self::get_learning_hours_summary($bundleid);
+        return $summary['totalminutes'];
     }
     /**
      * Sum the current user's owned value for courses in the bundle.
@@ -607,6 +668,9 @@ class bundle_meta_service {
                 ['all_must_pass', 'weighted_avg', 'any_pass']
             ) ? $data['pass_policy'] : 'all_must_pass',
             'bundle_cert' => !empty($data['bundle_cert_enabled']) ? 1 : 0,
+            'certificate_template_id' => !empty($data['certificate_template_id'])
+                ? (int)$data['certificate_template_id']
+                : null,
             'usermodified' => $USER->id ?? null,
             'timemodified' => time(),
         ];

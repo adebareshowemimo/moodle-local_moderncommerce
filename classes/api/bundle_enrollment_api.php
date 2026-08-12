@@ -50,8 +50,16 @@ class bundle_enrollment_api {
             throw new \moodle_exception('invalidbundle', 'local_moderncommerce');
         }
 
-        foreach (bundle_api::get_courses((int) $bundleid) as $course) {
-            self::enroll_in_course((int) $userid, (int) $course->courseid);
+        if (!empty($bundle->isprogram)) {
+            \local_moderncommerce\services\program_progress_service::enrol(
+                (int)$userid,
+                (int)$bundleid,
+                $orderid === null ? null : (int)$orderid
+            );
+        } else {
+            foreach (bundle_api::get_courses((int) $bundleid) as $course) {
+                self::enroll_in_course((int) $userid, (int) $course->courseid);
+            }
         }
 
         $DB->execute(
@@ -110,6 +118,13 @@ class bundle_enrollment_api {
      * @return object|false Progress object.
      */
     public static function get_user_progress($userid, $bundleid) {
+        $bundle = bundle_api::get((int)$bundleid);
+        if ($bundle && !empty($bundle->isprogram) && self::is_enrolled((int)$userid, (int)$bundleid)) {
+            return (object)\local_moderncommerce\services\program_progress_service::sync(
+                (int)$userid,
+                (int)$bundleid
+            );
+        }
         if (!self::is_enrolled((int) $userid, (int) $bundleid)) {
             return false;
         }
@@ -166,7 +181,16 @@ class bundle_enrollment_api {
      * @return bool Success.
      */
     public static function issue_certificate($enrollmentid) {
-        return false;
+        global $DB;
+        $progress = $DB->get_record('local_moderncommerce_program_progress', ['id' => (int)$enrollmentid]);
+        if (!$progress) {
+            return false;
+        }
+        $result = \local_moderncommerce\services\program_progress_service::sync(
+            (int)$progress->userid,
+            (int)$progress->programid
+        );
+        return !empty($result['certificateissued']);
     }
 
     /**

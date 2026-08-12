@@ -2,7 +2,7 @@
 
 The install schema is defined in `db/install.xml`.
 
-This build defines 81 Modern Commerce tables. The table groups below are the practical ownership map used for support and development.
+This build defines 82 Modern Commerce tables. The table groups below are the practical ownership map used for support and development.
 
 ## Product Catalog
 
@@ -76,6 +76,7 @@ This build defines 81 Modern Commerce tables. The table groups below are the pra
 - `local_moderncommerce_bundle_mustpass`
 - `local_moderncommerce_bundle_prereq`
 - `local_moderncommerce_bundle_tags`
+- `local_moderncommerce_program_progress`
 - `local_moderncommerce_emailtpl`
 - `local_moderncommerce_widget`
 - `local_moderncommerce_widget_slide`

@@ -130,6 +130,17 @@ Leave both off for most stores. Enable them only when migrating from another com
 
 Use the course detail sidebar position to match the store's reading flow. The mobile layout always stacks the purchase/sidebar card before the main content.
 
+### Certificates
+
+Use this tab to configure the store-wide fallback for automatic program certificates.
+
+| Setting | What it controls |
+| --- | --- |
+| Default program certificate template | Course Certificate template used by certificate-enabled programs that do not select their own override. `No global default` requires every certificate-enabled program to choose a template. |
+| Manage Certificate Templates | Opens Moodle's native Course Certificate template manager in a new tab so templates can be created or edited without losing unsaved Modern Commerce settings. |
+
+The selector and management link are available only when `mod_coursecertificate` and its `tool_certificate` backend are installed and upgraded and the current administrator has the required template permissions. A program-specific selection in Advanced Features always overrides the global default. When the optional add-on is unavailable, Modern Commerce shows an explanatory notice and continues operating without certificate controls.
+
 ### Contact Autoreply
 
 The Contact Autoreply tab configures email behavior for Modern Commerce contact forms.

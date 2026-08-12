@@ -31,12 +31,14 @@ use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
 use core_external\external_warnings;
+use local_moderncommerce\api\bundle_api;
 use local_moderncommerce\services\bundle_meta_service;
+use local_moderncommerce\services\certificate_template_service;
 
 /**
  * Save a bundle's advanced/merchandising metadata.
  *
- * Prerequisites are intentionally not sent so existing prerequisite links are preserved.
+ * Program prerequisites are saved alongside completion policy settings.
  */
 class save_bundle_features extends external_api {
     /**
@@ -67,6 +69,12 @@ class save_bundle_features extends external_api {
             'passgrade' => new external_value(PARAM_FLOAT, 'Pass grade.', VALUE_DEFAULT, 70),
             'passpolicy' => new external_value(PARAM_ALPHANUMEXT, 'Pass policy.', VALUE_DEFAULT, 'all_must_pass'),
             'certenabled' => new external_value(PARAM_BOOL, 'Bundle certificate enabled.', VALUE_DEFAULT, false),
+            'certificatetemplateid' => new external_value(
+                PARAM_INT,
+                'Selected Moodle Course Certificate template ID.',
+                VALUE_DEFAULT,
+                0
+            ),
             'outline' => new external_multiple_structure(
                 new external_single_structure(['title' => new external_value(PARAM_TEXT, 'Outline item title.')]),
                 'Outline items.',
@@ -76,6 +84,12 @@ class save_bundle_features extends external_api {
             'mustpassids' => new external_multiple_structure(
                 new external_value(PARAM_INT, 'Must-pass course ID.'),
                 'Must-pass course IDs.',
+                VALUE_DEFAULT,
+                []
+            ),
+            'prereqids' => new external_multiple_structure(
+                new external_value(PARAM_INT, 'Prerequisite Moodle course ID.'),
+                'Prerequisite course IDs.',
                 VALUE_DEFAULT,
                 []
             ),
@@ -112,6 +126,7 @@ class save_bundle_features extends external_api {
      * @param float $passgrade Pass grade.
      * @param string $passpolicy Pass policy.
      * @param bool $certenabled Certificate enabled.
+     * @param int $certificatetemplateid Course Certificate template ID.
      * @param array $outline Outline items.
      * @param array $mustpassids Must-pass course IDs.
      * @param array $tags Tags.
@@ -139,8 +154,10 @@ class save_bundle_features extends external_api {
         float $passgrade = 70,
         string $passpolicy = 'all_must_pass',
         bool $certenabled = false,
+        int $certificatetemplateid = 0,
         array $outline = [],
         array $mustpassids = [],
+        array $prereqids = [],
         array $tags = []
     ): array {
         global $DB;
@@ -152,7 +169,8 @@ class save_bundle_features extends external_api {
             'autoduration' => $autoduration, 'durationhours' => $durationhours, 'durationminutes' => $durationminutes,
             'autoassessments' => $autoassessments, 'assessmentscount' => $assessmentscount, 'autooutline' => $autooutline,
             'passgrade' => $passgrade, 'passpolicy' => $passpolicy, 'certenabled' => $certenabled,
-            'outline' => $outline, 'mustpassids' => $mustpassids, 'tags' => $tags,
+            'certificatetemplateid' => $certificatetemplateid,
+            'outline' => $outline, 'mustpassids' => $mustpassids, 'prereqids' => $prereqids, 'tags' => $tags,
         ]);
 
         require_login();
@@ -160,13 +178,63 @@ class save_bundle_features extends external_api {
         self::validate_context($context);
         require_capability('local/moderncommerce:managecourses', $context);
 
-        $DB->get_record_select(
+        $bundle = $DB->get_record_select(
             'local_moderncommerce_products',
             "id = :id AND producttype IN (:bundle, :program)",
             ['id' => $params['bundleid'], 'bundle' => 'bundle', 'program' => 'program'],
-            'id',
+            'id, producttype',
             MUST_EXIST
         );
+
+        $allowedpasspolicies = ['all_must_pass', 'weighted_avg', 'any_pass'];
+        if (!in_array($params['passpolicy'], $allowedpasspolicies, true)) {
+            return [
+                'success' => false,
+                'message' => get_string('invalidpasspolicy', 'local_moderncommerce'),
+                'warnings' => [],
+            ];
+        }
+
+        $mustpassids = [];
+        if ($bundle->producttype === 'program' && $params['passpolicy'] !== 'all_must_pass') {
+            $includedcourseids = array_map(
+                static fn($mapping): int => (int)$mapping->courseid,
+                bundle_api::get_courses((int)$bundle->id)
+            );
+            $requestedmustpassids = array_values(array_unique(array_filter(
+                array_map('intval', $params['mustpassids']),
+                static fn(int $courseid): bool => $courseid > 0
+            )));
+            $mustpassids = array_values(array_intersect($requestedmustpassids, $includedcourseids));
+        }
+
+        if ($bundle->producttype === 'program' && $params['certenabled']) {
+            $available = certificate_template_service::available();
+            if (!$available) {
+                return [
+                    'success' => false,
+                    'message' => get_string('coursecertificateunavailableprogram', 'local_moderncommerce'),
+                    'warnings' => [],
+                ];
+            }
+            $effectivetemplateid = certificate_template_service::resolve($params['certificatetemplateid']);
+            if ($effectivetemplateid <= 0) {
+                return [
+                    'success' => false,
+                    'message' => get_string('certificatetemplaterequired', 'local_moderncommerce'),
+                    'warnings' => [],
+                ];
+            }
+            $templates = certificate_template_service::options();
+            if ($params['certificatetemplateid'] > 0
+                && !array_key_exists($params['certificatetemplateid'], $templates)) {
+                return [
+                    'success' => false,
+                    'message' => get_string('certificatetemplateinvalid', 'local_moderncommerce'),
+                    'warnings' => [],
+                ];
+            }
+        }
 
         $outlineitems = [];
         $position = 0;
@@ -198,9 +266,15 @@ class save_bundle_features extends external_api {
             'auto_outline' => $params['autooutline'] ? 1 : 0,
             'pass_grade' => $params['passgrade'],
             'pass_policy' => $params['passpolicy'],
-            'bundle_cert_enabled' => $params['certenabled'] ? 1 : 0,
+            'bundle_cert_enabled' => $bundle->producttype === 'program' && $params['certenabled'] ? 1 : 0,
+            'certificate_template_id' => $bundle->producttype === 'program'
+                ? $params['certificatetemplateid']
+                : 0,
             'outline_items' => $outlineitems,
-            'mustpass_courseids' => array_values(array_filter(array_map('intval', $params['mustpassids']))),
+            'mustpass_courseids' => $mustpassids,
+            'prereq_courseids' => $bundle->producttype === 'program'
+                ? array_values(array_filter(array_map('intval', $params['prereqids'])))
+                : [],
             'tags' => array_values(array_filter(array_map(static function ($t): string {
                 return trim((string) $t);
             }, $params['tags']))),

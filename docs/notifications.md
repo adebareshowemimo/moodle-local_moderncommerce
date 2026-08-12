@@ -122,6 +122,7 @@ The shared email template editor shows this palette from the core placeholder en
 | Coupon | `{coupon_code}`, `{coupon_expiry}`, `{coupon_reject_reason}`, `{coupon_min_spend}`, `{discount_percent}` |
 | Refund | `{refund_amount}`, `{refund_reference}`, `{refund_reason}` |
 | Access | `{access_enddate}`, `{renew_url}`, `{catalog_url}`, `{certificate_name}`, `{certificate_url}`, `{certificate_expiry}` |
+| Program | `{program_name}`, `{completed_courses}`, `{average_grade}`, `{completion_date}`, `{program_url}` |
 | Subscription | `{plan_name}`, `{old_plan_name}`, `{new_plan_name}`, `{plan_price}`, `{billing_cycle}`, `{trial_days}`, `{trial_end_date}`, `{subscription_startdate}`, `{subscription_enddate}`, `{next_billing_date}`, `{effective_date}`, `{days_remaining}`, `{days_extended}`, `{courses_list}`, `{my_subscription_url}`, `{renewal_url}`, `{reactivate_url}`, `{update_payment_url}`, `{invoice_url}`, `{winback_coupon}`, `{winback_discount}` |
 | Invoice | `{invoice_number}`, `{invoice_total}`, `{invoice_duedate}`, `{invoice_url}`, `{invoice_pdf_url}`, `{pay_invoice_url}`, `{organisation_name}` |
 | Keys | `{key_code}`, `{key_count}`, `{key_target_name}`, `{key_expiry}`, `{keys_csv_url}`, `{redeem_url}`, `{seats_total}`, `{seats_used}`, `{seats_remaining}`, `{manager_dashboard_url}` |
@@ -140,6 +141,13 @@ Some older checkout and access emails use event-specific aliases in addition to 
 | Enrolment confirmation | `{enrollment_date}`, `{enrollment_role}`, `{go_to_course_button}`, `{course_url}`, `{business_name}`, `{support_email}`, `{support_url}` |
 | Key redemption | `{enrollment_key}`, `{key_type}`, `{redemption_date}`, `{go_to_course_button}`, `{course_url}`, `{my_courses_link}`, `{business_name}`, `{support_email}`, `{support_url}` |
 | Refund confirmation | `{refund_date}`, `{refund_method}`, `{original_amount}`, `{processing_time}`, `{unenrollment_notice}`, `{contact_support_link}`, `{business_name}`, `{support_email}`, `{support_url}` |
+| Program completed | `{program_name}`, `{completed_courses}`, `{average_grade}`, `{completion_date}`, `{program_url}`, `{certificate_url}` |
+
+## Program Completion Communication
+
+When a learner first satisfies every configured program prerequisite, completion policy, pass grade, and must-pass rule, Modern Commerce emits `\local_moderncommerce\event\program_completed`. Its observer queues the `moderncommerce_program_completed` celebratory email and in-app notification for that learner.
+
+The notification uses the persisted program progress row as its related record and a stable deduplication key. Reopening the learner page or recalculating completion does not send the message again. Administrators can enable, disable, preview, or edit this event in the shared email-template administration screen.
 
 Use the placeholder chips shown by the specific outgoing email editor as the safest source for that event.
 

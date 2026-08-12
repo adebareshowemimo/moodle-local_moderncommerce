@@ -50,6 +50,7 @@ use local_moderncommerce\storefront\resolver\instructors_resolver;
 use local_moderncommerce\storefront\resolver\learningpromise_resolver;
 use local_moderncommerce\storefront\resolver\mediastorycarousel_resolver;
 use local_moderncommerce\storefront\resolver\newsletter_resolver;
+use local_moderncommerce\storefront\resolver\partners_resolver;
 use local_moderncommerce\storefront\resolver\policy_resolver;
 use local_moderncommerce\storefront\resolver\supportform_resolver;
 use local_moderncommerce\storefront\resolver\testimonials_resolver;
@@ -74,7 +75,7 @@ class gallery_builder {
     public static function order(): array {
         return [
             'slider', 'videohero', 'breadcrumb', 'featured', 'related', 'categories',
-            'trustbadges', 'countdown', 'testimonials', 'instructors', 'newsletter',
+            'trustbadges', 'partners', 'countdown', 'testimonials', 'instructors', 'newsletter',
             'content', 'mediastorycarousel', 'learningpromise', 'belief', 'policy',
             'faq', 'cta', 'supportform', 'contactcards', 'footer', 'catalog',
         ];
@@ -235,6 +236,7 @@ class gallery_builder {
             'featured' => featured_resolver::class,
             'related' => featured_resolver::class,
             'trustbadges' => trustbadges_resolver::class,
+            'partners' => partners_resolver::class,
             'countdown' => countdown_resolver::class,
             'testimonials' => testimonials_resolver::class,
             'instructors' => instructors_resolver::class,
@@ -274,6 +276,7 @@ class gallery_builder {
             'related' => self::related_variants(),
             'categories' => self::categories_variants(),
             'trustbadges' => self::trustbadges_variants(),
+            'partners' => self::partners_variants(),
             'countdown' => self::countdown_variants(),
             'testimonials' => self::testimonials_variants(),
             'instructors' => self::instructors_variants(),
@@ -316,6 +319,47 @@ class gallery_builder {
     private static function avatar(string $photo): string {
         return 'https://images.unsplash.com/photo-' . $photo
             . '?auto=format&fit=crop&crop=faces&q=80&w=240&h=240';
+    }
+
+    /**
+     * Build a self-contained wordmark placeholder for the partner logo gallery.
+     *
+     * Real partner logos are admin uploads, so the gallery cannot show one. An inline
+     * SVG data URI keeps the demo offline-safe and neutral rather than borrowing a
+     * real company mark.
+     *
+     * @param string $name Company name to render as the wordmark.
+     * @param string $colour Wordmark fill colour.
+     * @return string
+     */
+    private static function logo(string $name, string $colour): string {
+        // Widest bold Helvetica caps measure ~0.78em (browser-measured); pad so nothing clips.
+        $fontsize = 15;
+        $width = 44 + (int) round(strlen($name) * $fontsize * 0.78);
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $width . ' 60"'
+            . ' width="' . $width . '" height="60" preserveAspectRatio="xMidYMid meet">'
+            . '<circle cx="14" cy="30" r="9" fill="' . $colour . '" opacity="0.85"/>'
+            . '<text x="28" y="35" font-family="Helvetica,Arial,sans-serif" font-size="' . $fontsize . '"'
+            . ' font-weight="700" letter-spacing="0.5" fill="' . $colour . '">'
+            . htmlspecialchars($name, ENT_XML1) . '</text>'
+            . '</svg>';
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+    }
+
+    /**
+     * Six demo partner wordmarks, enough for the carousel arrows to appear.
+     *
+     * @return array
+     */
+    private static function demo_logos(): array {
+        return [
+            ['image' => self::logo('NORTH', '#1f2a44'), 'name' => 'Northwind Systems', 'linkurl' => ''],
+            ['image' => self::logo('AURORA', '#2563eb'), 'name' => 'Aurora Labs', 'linkurl' => ''],
+            ['image' => self::logo('MERIDIAN', '#0f766e'), 'name' => 'Meridian Group', 'linkurl' => ''],
+            ['image' => self::logo('KESTREL', '#7c3aed'), 'name' => 'Kestrel Digital', 'linkurl' => ''],
+            ['image' => self::logo('LUMEN', '#b45309'), 'name' => 'Lumen Institute', 'linkurl' => ''],
+            ['image' => self::logo('VANTAGE', '#be123c'), 'name' => 'Vantage Partners', 'linkurl' => 'https://example.org'],
+        ];
     }
 
     /**
@@ -626,6 +670,40 @@ class gallery_builder {
                 'direct' => $direct,
             ];
         }
+        return $variants;
+    }
+
+    /**
+     * Partner logos: one variant per layout mode.
+     *
+     * @return array
+     */
+    private static function partners_variants(): array {
+        $logos = self::demo_logos();
+        $variants = [];
+
+        foreach (['grid' => 'Grid', 'carousel' => 'Carousel', 'marquee' => 'Marquee'] as $style => $label) {
+            $variants[] = [
+                'stylelabel' => $label,
+                'settings' => [
+                    'style' => $style,
+                    'heading' => 'Trusted Technical Partners',
+                    'logos' => $logos,
+                    'visiblelogos' => 4,
+                    'speed' => 30,
+                    'pauseonhover' => true,
+                    'greyscale' => false,
+                    'logoheight' => 40,
+                    'logogap' => 40,
+                    'bgcolor' => 'var(--mc-surface)',
+                    'headingcolor' => 'var(--mc-text)',
+                    'headingfontsize' => 28,
+                    'paddingtop' => 48,
+                    'paddingbottom' => 48,
+                ],
+            ];
+        }
+
         return $variants;
     }
 

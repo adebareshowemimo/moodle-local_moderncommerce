@@ -32,6 +32,7 @@ use core_external\external_single_structure;
 use core_external\external_value;
 use core_external\external_warnings;
 use local_moderncommerce\services\commerce_settings_service;
+use local_moderncommerce\services\certificate_template_service;
 
 /**
  * Get the Modern Commerce commerce settings and option lists.
@@ -94,6 +95,8 @@ class get_settings extends external_api {
             'course_detail_sidebar_position' => (string) $settings->course_detail_sidebar_position,
             'enable_webhook_ip_whitelist' => (int) $settings->enable_webhook_ip_whitelist,
             'payment_max_retries' => (int) $settings->payment_max_retries,
+            'default_program_certificate_template_id' =>
+                (int) $settings->default_program_certificate_template_id,
         ];
 
         $currencyoptions = [];
@@ -121,6 +124,8 @@ class get_settings extends external_api {
             'navitemoptions' => self::nav_item_options(),
             'navbarcartpositionoptions' => self::navbar_cart_position_options(),
             'coursedetailsidebarpositionoptions' => self::course_detail_sidebar_position_options(),
+            'coursecertificateavailable' => certificate_template_service::available(),
+            'certificatetemplateoptions' => self::certificate_template_options(),
             'metrics' => self::metrics($settings, $currency),
             'warnings' => [],
         ];
@@ -218,6 +223,11 @@ class get_settings extends external_api {
             'navitemoptions' => self::options_structure(),
             'navbarcartpositionoptions' => self::options_structure(),
             'coursedetailsidebarpositionoptions' => self::options_structure(),
+            'coursecertificateavailable' => new external_value(
+                PARAM_BOOL,
+                'Whether Moodle Course Certificate is available.'
+            ),
+            'certificatetemplateoptions' => self::options_structure(),
             'metrics' => new external_multiple_structure(new external_single_structure([
                 'label' => new external_value(PARAM_TEXT, 'Metric label.'),
                 'value' => new external_value(PARAM_TEXT, 'Metric value.'),
@@ -268,7 +278,23 @@ class get_settings extends external_api {
             'course_detail_sidebar_position' => new external_value(PARAM_ALPHA, 'Course detail sidebar position.'),
             'enable_webhook_ip_whitelist' => new external_value(PARAM_INT, 'Webhook IP whitelist enabled.'),
             'payment_max_retries' => new external_value(PARAM_INT, 'Payment max retries.'),
+            'default_program_certificate_template_id' => new external_value(
+                PARAM_INT,
+                'Default Course Certificate template for programs.'
+            ),
         ]);
+    }
+
+    /** Course Certificate template options, including no global default. */
+    private static function certificate_template_options(): array {
+        $options = [[
+            'value' => '0',
+            'label' => get_string('nodefaultcertificatetemplate', 'local_moderncommerce'),
+        ]];
+        foreach (certificate_template_service::options() as $id => $name) {
+            $options[] = ['value' => (string)$id, 'label' => $name];
+        }
+        return $options;
     }
 
     /**

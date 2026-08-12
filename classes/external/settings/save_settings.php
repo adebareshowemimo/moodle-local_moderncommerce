@@ -110,6 +110,12 @@ class save_settings extends external_api {
                 VALUE_DEFAULT,
                 0
             ),
+            'default_program_certificate_template_id' => new external_value(
+                PARAM_INT,
+                'Default Course Certificate template for programs.',
+                VALUE_DEFAULT,
+                0
+            ),
         ]);
     }
 
@@ -147,6 +153,7 @@ class save_settings extends external_api {
      * @param string $notificationposition Floating toast position.
      * @param int $notificationautodismiss Toast auto-dismiss delay (ms).
      * @param int $contactinfoenabled Whether contact info is collected at checkout.
+     * @param int $defaultprogramcertificatetemplateid Default Course Certificate template ID.
      * @return array
      */
     public static function execute(
@@ -180,7 +187,8 @@ class save_settings extends external_api {
         int $paymentmaxretries = 3,
         string $notificationposition = 'top-right',
         int $notificationautodismiss = 4000,
-        int $contactinfoenabled = 0
+        int $contactinfoenabled = 0,
+        int $defaultprogramcertificatetemplateid = 0
     ): array {
         $params = self::validate_parameters(self::execute_parameters(), [
             'primary_currency' => $primarycurrency,
@@ -214,6 +222,7 @@ class save_settings extends external_api {
             'notification_position' => $notificationposition,
             'notification_autodismiss' => $notificationautodismiss,
             'contact_info_enabled' => $contactinfoenabled,
+            'default_program_certificate_template_id' => $defaultprogramcertificatetemplateid,
         ]);
 
         require_login();

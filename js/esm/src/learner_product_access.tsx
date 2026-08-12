@@ -44,6 +44,8 @@ type Course = {
     status: string;
     statuslabel: string;
     courseurl: string;
+    locked: boolean;
+    unlockreason: string;
     modulecount: number;
     enrolleddate: number;
     enrolleddatelabel: string;
@@ -68,6 +70,16 @@ type ProductAccessResponse = {
     product: Product;
     courses: Course[];
     counts: Counts;
+    programprogress: {
+        programid: number;
+        status: string;
+        completed: boolean;
+        progresspercentage: number;
+        coursescompleted: number;
+        totalcourses: number;
+        certificateissued: boolean;
+        prerequisitesmet: boolean;
+    };
     urls: {
         library: string;
         dashboard: string;
@@ -86,6 +98,9 @@ type LearnerProductAccessProps = {
 const label = (labels: Labels, key: string, fallback = ""): string => labels[key] || fallback || key;
 
 const courseActionLabel = (course: Course, labels: Labels): string => {
+    if (course.locked) {
+        return label(labels, "locked");
+    }
     if (course.completed) {
         return label(labels, "reviewcourse");
     }
@@ -178,9 +193,13 @@ function CourseCard({
             <span className={mcClasses("mc-learner-course-card__body")}>
                 <span className="d-flex align-items-start justify-content-between gap-2">
                     <span>
-                        <a className={mcClasses("mc-learner-course-card__title text-decoration-none")} href={course.courseurl}>
-                            {course.name}
-                        </a>
+                        {course.locked ? (
+                            <span className={mcClasses("mc-learner-course-card__title")}>{course.name}</span>
+                        ) : (
+                            <a className={mcClasses("mc-learner-course-card__title text-decoration-none")} href={course.courseurl}>
+                                {course.name}
+                            </a>
+                        )}
                         <span className={mcClasses("mc-learner-course-card__meta d-flex flex-wrap gap-2")}>
                             {course.categoryname && <span>{course.categoryname}</span>}
                             {course.modulecount > 0 && (
@@ -203,10 +222,16 @@ function CourseCard({
                     <span className={mcClasses("mc-cell-muted small")}>{course.progresslabel}</span>
                 </span>
             </span>
-            <a className={mcClasses("mc-button btn-mc-primary ms-md-auto")} href={course.courseurl}>
-                <i className="bi bi-play-circle" aria-hidden="true" />
-                {courseActionLabel(course, labels)}
-            </a>
+            {course.locked ? (
+                <span className={mcClasses("mc-cell-muted small ms-md-auto")} title={course.unlockreason}>
+                    <i className="bi bi-lock me-1" aria-hidden="true" />{courseActionLabel(course, labels)}
+                </span>
+            ) : (
+                <a className={mcClasses("mc-button btn-mc-primary ms-md-auto")} href={course.courseurl}>
+                    <i className="bi bi-play-circle" aria-hidden="true" />
+                    {courseActionLabel(course, labels)}
+                </a>
+            )}
         </article>
     );
 }
@@ -294,6 +319,28 @@ export default function LearnerProductAccess({
             {!loading && data?.success && (
                 <div className={mcClasses("mc-learner-product-access")}>
                     <ProductSummary product={data.product} counts={data.counts} labels={labels} />
+
+                    {data.product.producttype === "program" && (
+                        <section className={mcClasses("mc-card mb-3")} aria-label={label(labels, "programprogress")}>
+                            <div className={mcClasses("mc-card-body")}>
+                                <div className="d-flex justify-content-between gap-3 mb-2">
+                                    <strong>{data.programprogress.completed
+                                        ? label(labels, "programcomplete")
+                                        : label(labels, "programprogress")}</strong>
+                                    <span>{Math.round(data.programprogress.progresspercentage)}%</span>
+                                </div>
+                                <div className={mcClasses("mc-progress-bar-wrap")}>
+                                    <span className={mcClasses("mc-progress-bar-fill")}
+                                        style={{width: `${clampProgress(data.programprogress.progresspercentage)}%`}} />
+                                </div>
+                                {!data.programprogress.prerequisitesmet && (
+                                    <p className={mcClasses("mc-cell-muted small mt-2 mb-0")}>
+                                        {label(labels, "programprerequisitespending")}
+                                    </p>
+                                )}
+                            </div>
+                        </section>
+                    )}
 
                     <LearnerStatStrip>
                         <LearnerStatTile

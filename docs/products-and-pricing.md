@@ -50,8 +50,8 @@ In implementation, both bundles and programs are stored in `local_moderncommerce
 - `producttype = bundle` for bundles.
 - `producttype = program` for programs.
 - Included Moodle courses are stored in `local_moderncommerce_product_courses`.
-- Both use the same pricing, checkout, cart, order, enrolment-key, subscription-access, and learner-access expansion mechanics.
-- Both can use advanced merchandising metadata such as outline, prerequisites, must-pass courses, duration, badges, and certificate settings.
+- Both use the same pricing, checkout, cart, order, enrolment-key, and product ownership foundation.
+- Both can use advanced merchandising metadata such as duration, assessments, outline, tags, and badges. Live prerequisites, pass policies, must-pass rules, progress, and automatic final certificates apply only to programs.
 
 The distinction is still important because it controls how the product is positioned and understood across the admin, catalog, learner dashboard, badges, filters, and reporting. Choose the type based on the buyer promise:
 
@@ -63,12 +63,14 @@ The distinction is still important because it controls how the product is positi
 | Examples | "Excel Skills Bundle", "Manager Starter Pack" | "Data Analyst Career Program", "New Manager Certification" |
 | Best admin label | Bundle | Program |
 
-Changing a product from bundle to program changes its `producttype` and the labels/badges shown around the product. It does not create a separate enrolment engine; the included Moodle courses remain the access source.
+Changing a product from bundle to program changes its `producttype`, initializes progress for existing paid purchasers, and activates program completion and certificate tracking. Existing Moodle enrollments are retained, and future program purchases receive every included course.
+
+For the complete runtime, policy, certificate, data-model, and troubleshooting reference, see [Programs and learning paths](programs-and-learning-paths.md).
 
 Use:
 
 - `/local/moderncommerce/admin/bundles.php` to create and manage the product.
-- `/local/moderncommerce/admin/advanced_bundle_features.php?bundleid=ID` for merchandising, outline, must-pass courses, duration, badges, certificate flag, and completion policy.
+- `/local/moderncommerce/admin/advanced_bundle_features.php?bundleid=ID` for shared merchandising, duration, assessments, outline, tags, and badges, plus program-only completion, prerequisite, must-pass, and certificate controls.
 
 ## Advanced Bundle Settings
 
@@ -111,25 +113,27 @@ Use this section to control the learning-effort signals buyers see before purcha
 
 | Setting | What it controls |
 | --- | --- |
-| Duration: auto-detect | When enabled, Modern Commerce sums duration metadata from the included courses. |
+| Duration: auto-detect | When enabled, Modern Commerce sums the numeric `learninghours` Moodle custom course field across included courses. The page reports when the field is missing, when no course has a value, and which courses are missing values in a partially configured bundle. |
 | Manual duration | When auto-detect is off, enter hours and minutes manually. Hours cannot be negative; minutes are stored from `0` to `59`. |
-| Assessments: auto-detect | When enabled, Modern Commerce counts Moodle quiz modules across included courses. |
-| Manual assessments | When auto-detect is off, enter the number of assessments buyers should expect. |
+| Assessments: auto-detect | When enabled, shows a live count of non-deleted Moodle quiz modules across all included courses. |
+| Manual assessments | When auto-detect is off, enter the number of assessments learners should expect. |
 
-Prefer auto-detect when course metadata and Moodle quiz setup are reliable. Use manual values when the bundle/program has offline assessments, capstone projects, external exams, or when course metadata is incomplete.
+Create a Moodle custom course field with the shortname `learninghours`, then set its numeric hour value on each included course. Use manual duration when course-level learning hours are intentionally unavailable. Keep assessment auto-detection enabled for Moodle quiz-based bundles, or use manual assessments when the bundle includes offline, external, or non-quiz assessments.
 
 ### Completion Settings
 
-Use this section to describe the expected completion rule for the bundle/program.
+This section appears for programs and drives the live completion and certificate engine. Bundles do not have a program-level completion outcome, prerequisite requirement, must-pass rule, or automatic final award.
 
 | Setting | What it controls |
 | --- | --- |
-| Pass policy | Stored policy for bundle/program completion. Options are `all_must_pass`, `weighted_avg`, and `any_pass`. |
+| Pass policy | Live program completion rule. Options are `all_must_pass`, `weighted_avg`, and `any_pass`. |
 | Pass grade | Percentage threshold for policies that need a grade cutoff. Valid range is `0` to `100`; default is `70`. |
-| Enable certificate | Marks the bundle/program as certificate-enabled for flows that use bundle certificate metadata. |
-| Must-pass courses | Included courses that are required for successful bundle/program completion. Only courses already included in the bundle/program appear in this list. |
+| Enable certificate | Enables certificate issuance. Programs require Moodle Course Certificate (`mod_coursecertificate`) and a selected template. |
+| Certificate template | For programs, selects the native Moodle `tool_certificate` template used by the Course Certificate integration when completion requirements are met. The selector is shown only when certificates are enabled. |
+| Program prerequisites | Search-ahead multi-select of external Moodle courses that must be complete before the final certificate is issued. Prerequisites never lock included program courses. |
+| Must-pass courses | Program-only requirement shown directly beneath `weighted_avg` and `any_pass`. Each selected included course must pass individually in addition to the base policy. It is hidden and cleared for `all_must_pass`. |
 
-Use `all_must_pass` for compliance and certificate pathways, `weighted_avg` when the overall average matters more than every course, and `any_pass` only for flexible bundles where one successful course can satisfy the offer. After setting completion rules, test with a learner account that has realistic course completion and grade data.
+Use `all_must_pass` for compliance and certificate pathways, `weighted_avg` when the overall average matters more than every individual grade, and `any_pass` for elective programs where one successful option can satisfy the base policy. After setting program completion rules, test with a learner account that has realistic course completion and grade data.
 
 ### Course Outline
 
@@ -172,7 +176,11 @@ Avoid turning on every badge for every product. Badges lose value if every bundl
 
 ### Prerequisites
 
-Modern Commerce has database and service support for prerequisite course links. The current React Advanced Bundle Settings page reads existing prerequisite metadata and preserves it when saving, but it does not expose prerequisite editing controls. Do not document a prerequisite setup workflow for this page until the active UI includes those controls.
+Programs expose a search-ahead prerequisite multi-select in the certificate section. Every selected Moodle course and every included program course must be complete before the program certificate is issued. Prerequisites never restrict course access, and receiving the program grants every included course immediately.
+
+Program progress is stored in `local_moderncommerce_program_progress` and refreshed by Moodle course-completion events. Completion policies use Moodle course completion and normalized final course grades, plus the configured pass grade and must-pass course list. A configured Course Certificate template is issued once when the policy is met; the issue ID is retained to prevent duplicate awards.
+
+Converting a purchased bundle to a program initializes progress for existing purchasers from their current Moodle completion records. Existing course enrollments are retained, and new purchasers receive all included courses.
 
 ### Setup Checklist
 
@@ -183,11 +191,14 @@ For a production-ready bundle or program:
 3. Open `/local/moderncommerce/admin/advanced_bundle_features.php?bundleid=ID`.
 4. Set skill level, language, visibility, and availability dates.
 5. Decide whether duration and assessment counts should be automatic or manual.
-6. Set pass policy, pass grade, certificate flag, and must-pass courses.
-7. Write a short course outline.
-8. Add useful tags.
-9. Add only meaningful merchandising badges.
-10. Save and test the catalog card, bundle/program details page, cart, checkout, and learner access.
+6. For programs, set the pass policy and pass grade. For `weighted_avg` or `any_pass`, select any individually required must-pass courses from the vertical list beneath the policy.
+7. Enable the certificate, choose its template, and search for any external prerequisites.
+8. Write a short course outline.
+9. Add useful tags.
+10. Add only meaningful merchandising badges.
+11. Save and test the catalog card, bundle/program details page, cart, checkout, and learner access.
+
+Program certificate templates come from Moodle's Course Certificate add-on. Set the optional store-wide fallback under **Modern Commerce > Settings > Certificates**. The global setting and bundle/program advanced pages provide **Manage Certificate Templates** for authorised administrators; it opens Moodle's native template manager in a new tab. Modern Commerce stores only the selected global fallback or program override and does not maintain a separate certificate-template system. If Course Certificate is absent, these controls degrade safely and the rest of Modern Commerce continues working.
 
 ## Course Metadata
 

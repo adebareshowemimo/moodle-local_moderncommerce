@@ -40,6 +40,9 @@ class widget_types {
     /** @var string Trust badges strip. */
     const TRUSTBADGES = 'trustbadges';
 
+    /** @var string Partner / client logo band. */
+    const PARTNERS = 'partners';
+
     /** @var string Countdown bar. */
     const COUNTDOWN = 'countdown';
 
@@ -108,6 +111,7 @@ class widget_types {
             self::RELATED,
             self::CATEGORIES,
             self::TRUSTBADGES,
+            self::PARTNERS,
             self::COUNTDOWN,
             self::TESTIMONIALS,
             self::INSTRUCTORS,
@@ -151,6 +155,7 @@ class widget_types {
             self::FEATURED,
             self::RELATED,
             self::TRUSTBADGES,
+            self::PARTNERS,
             self::COUNTDOWN,
             self::TESTIMONIALS,
             self::CATEGORIES,

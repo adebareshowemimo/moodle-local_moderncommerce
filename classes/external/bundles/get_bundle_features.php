@@ -34,6 +34,7 @@ use core_external\external_warnings;
 use local_moderncommerce\api\bundle_api;
 use local_moderncommerce\services\bundle_meta_service;
 use local_moderncommerce\services\pricing_service;
+use local_moderncommerce\services\certificate_template_service;
 
 /**
  * Get a bundle's advanced/merchandising metadata.
@@ -78,6 +79,7 @@ class get_bundle_features extends external_api {
         $bundleid = (int) $bundle->id;
 
         $meta = bundle_meta_service::get_meta($bundleid);
+        $learninghours = $meta['learning_hours'];
 
         $outline = [];
         foreach (bundle_meta_service::get_outline($bundleid) as $row) {
@@ -102,11 +104,18 @@ class get_bundle_features extends external_api {
                 'fullname' => format_string((string) ($c['fullname'] ?? '')),
             ];
         }
+        // Candidate lookup is search-ahead through the dedicated service. Keep
+        // this field for compatibility with existing API consumers.
+        $prereqcandidates = [];
 
         $tags = array_values(array_map('strval', bundle_meta_service::get_tags($bundleid)));
 
         // Live "Bundle Overview" sidebar data.
         $isprogram = ($bundle->producttype === 'program');
+        $coursecertificateavailable = certificate_template_service::available();
+        $certificatetemplates = $coursecertificateavailable ? self::certificate_template_options() : [];
+        $defaultcertificatetemplateid = certificate_template_service::default_template_id();
+        $defaultcertificatetemplatename = certificate_template_service::options()[$defaultcertificatetemplateid] ?? '';
         $apibundle = bundle_api::get($bundleid);
         $rawprice = (float) ($apibundle->price ?? 0);
         $rawsale = (float) ($apibundle->saleprice ?? 0);
@@ -131,6 +140,10 @@ class get_bundle_features extends external_api {
             'onsale' => $onsale,
             'coursescount' => count($courses),
             'totaldurationminutes' => (int) ($meta['total_duration_minutes'] ?? 0),
+            'learninghoursfieldexists' => !empty($learninghours['fieldexists']),
+            'learninghourssetcount' => (int) ($learninghours['setcount'] ?? 0),
+            'learninghoursmissingcount' => (int) ($learninghours['missingcount'] ?? 0),
+            'learninghoursmissingcourses' => array_values($learninghours['missingcourses'] ?? []),
             'kpiassessments' => (int) ($meta['kpi_assessments'] ?? 0),
             'savingsamount' => (float) ($savings['savings'] ?? 0),
             'savingspercent' => (int) ($savings['percentage'] ?? 0),
@@ -155,10 +168,16 @@ class get_bundle_features extends external_api {
             'passgrade' => (float) ($meta['pass_grade'] ?? 70),
             'passpolicy' => (string) ($meta['pass_policy'] ?? 'all_must_pass'),
             'certenabled' => !empty($meta['bundle_cert_enabled']),
+            'certificatetemplateid' => (int) ($meta['certificate_template_id'] ?? 0),
+            'defaultcertificatetemplateid' => $defaultcertificatetemplateid,
+            'defaultcertificatetemplatename' => $defaultcertificatetemplatename,
+            'coursecertificateavailable' => $coursecertificateavailable,
+            'certificatetemplates' => $certificatetemplates,
             'outline' => $outline,
             'mustpassids' => array_values(array_filter($mustpassids)),
             'courses' => $courses,
             'prereqcourses' => $prereqcourses,
+            'prereqcandidates' => $prereqcandidates,
             'tags' => $tags,
             'levels' => self::options(['Beginner', 'Intermediate', 'Advanced', 'All Levels']),
             'languages' => self::language_options(),
@@ -190,6 +209,12 @@ class get_bundle_features extends external_api {
             'onsale' => new external_value(PARAM_BOOL, 'Whether the bundle is on sale.'),
             'coursescount' => new external_value(PARAM_INT, 'Number of included courses.'),
             'totaldurationminutes' => new external_value(PARAM_INT, 'Auto-calculated total duration in minutes.'),
+            'learninghoursfieldexists' => new external_value(PARAM_BOOL, 'Whether the learninghours course custom field exists.'),
+            'learninghourssetcount' => new external_value(PARAM_INT, 'Courses with a learninghours value.'),
+            'learninghoursmissingcount' => new external_value(PARAM_INT, 'Courses without a learninghours value.'),
+            'learninghoursmissingcourses' => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'Course without a learninghours value.')
+            ),
             'kpiassessments' => new external_value(PARAM_INT, 'Auto-calculated assessments count.'),
             'savingsamount' => new external_value(PARAM_FLOAT, 'Bundle savings amount.'),
             'savingspercent' => new external_value(PARAM_INT, 'Bundle savings percentage.'),
@@ -214,6 +239,17 @@ class get_bundle_features extends external_api {
             'passgrade' => new external_value(PARAM_FLOAT, 'Pass grade.'),
             'passpolicy' => new external_value(PARAM_ALPHANUMEXT, 'Pass policy.'),
             'certenabled' => new external_value(PARAM_BOOL, 'Bundle certificate enabled.'),
+            'certificatetemplateid' => new external_value(PARAM_INT, 'Selected Course Certificate template ID.'),
+            'defaultcertificatetemplateid' => new external_value(
+                PARAM_INT,
+                'Store-wide default Course Certificate template ID.'
+            ),
+            'defaultcertificatetemplatename' => new external_value(
+                PARAM_TEXT,
+                'Store-wide default Course Certificate template name.'
+            ),
+            'coursecertificateavailable' => new external_value(PARAM_BOOL, 'Whether Moodle Course Certificate is available.'),
+            'certificatetemplates' => self::options_structure(),
             'outline' => new external_multiple_structure(new external_single_structure([
                 'title' => new external_value(PARAM_TEXT, 'Outline item title.'),
             ])),
@@ -225,6 +261,10 @@ class get_bundle_features extends external_api {
             'prereqcourses' => new external_multiple_structure(new external_single_structure([
                 'id' => new external_value(PARAM_INT, 'Prerequisite course ID.'),
                 'fullname' => new external_value(PARAM_TEXT, 'Prerequisite course name.'),
+            ])),
+            'prereqcandidates' => new external_multiple_structure(new external_single_structure([
+                'id' => new external_value(PARAM_INT, 'Prerequisite candidate course ID.'),
+                'fullname' => new external_value(PARAM_TEXT, 'Prerequisite candidate course name.'),
             ])),
             'tags' => new external_multiple_structure(new external_value(PARAM_TEXT, 'Tag.')),
             'levels' => self::options_structure(),
@@ -278,5 +318,23 @@ class get_bundle_features extends external_api {
             $out[] = ['value' => $name, 'label' => $name];
         }
         return $out;
+    }
+
+    /**
+     * Whether the Moodle Course Certificate add-on and its template backend are available.
+     *
+     * @return bool
+     */
+    /**
+     * Return Course Certificate templates visible to the current administrator.
+     *
+     * @return array
+     */
+    private static function certificate_template_options(): array {
+        $options = [];
+        foreach (certificate_template_service::options() as $id => $name) {
+            $options[] = ['value' => (string)$id, 'label' => (string)$name];
+        }
+        return $options;
     }
 }

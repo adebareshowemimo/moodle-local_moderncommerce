@@ -18,6 +18,7 @@ namespace local_moderncommerce\observer;
 
 
 use local_moderncommerce\api\bundle_api;
+use local_moderncommerce\api\bundle_enrollment_api;
 use local_moderncommerce\api\order_api;
 use local_moderncommerce\services\enrolment_service;
 /**
@@ -125,6 +126,17 @@ class enrollment_observer {
 
         if (empty($bundlecourses)) {
             debugging('No courses found in bundle ' . $bundleid, DEBUG_DEVELOPER);
+            return;
+        }
+        if (!empty($bundle->isprogram)) {
+            try {
+                bundle_enrollment_api::enroll_user((int)$userid, (int)$bundleid, (int)$orderid);
+                self::mark_item_enrolled(self::get_order_items_table(), [
+                    'orderid' => $orderid, 'bundleid' => $bundleid,
+                ]);
+            } catch (\Throwable $exception) {
+                debugging('Failed to start program ' . $bundleid . ': ' . $exception->getMessage(), DEBUG_DEVELOPER);
+            }
             return;
         }
         $enrolledcount = 0;

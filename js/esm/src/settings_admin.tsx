@@ -78,6 +78,7 @@ type Values = {
     course_detail_sidebar_position: string;
     enable_webhook_ip_whitelist: number;
     payment_max_retries: number;
+    default_program_certificate_template_id: number;
 };
 
 type SettingsResponse = {
@@ -90,6 +91,8 @@ type SettingsResponse = {
     navitemoptions: Option[];
     navbarcartpositionoptions: Option[];
     coursedetailsidebarpositionoptions: Option[];
+    coursecertificateavailable: boolean;
+    certificatetemplateoptions: Option[];
     metrics: Metric[];
 };
 
@@ -131,12 +134,14 @@ type Form = {
     course_detail_sidebar_position: string;
     enable_webhook_ip_whitelist: boolean;
     payment_max_retries: string;
+    default_program_certificate_template_id: string;
 };
 
 type Props = {
     getMethodName: string;
     saveMethodName: string;
     initialTab?: string;
+    certificateTemplatesUrl?: string;
     contactEmails?: ContactEmailsConfig;
     labels: Labels;
 };
@@ -162,6 +167,7 @@ const TABS: TabConfig[] = [
     {id: "notifications", labelKey: "tabNotifications", icon: "bi-bell"},
     {id: "reviews", labelKey: "tabReviews", icon: "bi-star"},
     {id: "products", labelKey: "tabProducts", icon: "bi-box-seam"},
+    {id: "certificates", labelKey: "tabCertificates", icon: "bi-award"},
 ];
 
 const CONTACT_EMAILS_TAB: TabConfig = {
@@ -186,6 +192,7 @@ const FIELD_TAB: Record<string, string> = {
     reviews_enabled: "reviews",
     product_show_sku: "products", product_show_slug: "products",
     course_detail_sidebar_position: "products",
+    default_program_certificate_template_id: "certificates",
     // Owned by the webhooks screen, which saves through this same endpoint.
     // Without an entry here their errors fall through to a toast instead of
     // revealing the panel that holds them.
@@ -247,6 +254,7 @@ const valuesToForm = (v: Values): Form => ({
     course_detail_sidebar_position: v.course_detail_sidebar_position,
     enable_webhook_ip_whitelist: Boolean(v.enable_webhook_ip_whitelist),
     payment_max_retries: String(v.payment_max_retries),
+    default_program_certificate_template_id: String(v.default_program_certificate_template_id),
 });
 
 const formToArgs = (form: Form) => ({
@@ -281,12 +289,14 @@ const formToArgs = (form: Form) => ({
     course_detail_sidebar_position: form.course_detail_sidebar_position,
     enable_webhook_ip_whitelist: form.enable_webhook_ip_whitelist ? 1 : 0,
     payment_max_retries: Number(form.payment_max_retries) || 0,
+    default_program_certificate_template_id: Number(form.default_program_certificate_template_id) || 0,
 });
 
 export default function SettingsAdmin({
     getMethodName,
     saveMethodName,
     initialTab = "store",
+    certificateTemplatesUrl = "",
     contactEmails,
     labels,
 }: Props) {
@@ -670,6 +680,46 @@ export default function SettingsAdmin({
                                 data.coursedetailsidebarpositionoptions
                             )}
                         </div>
+                    </div>
+                );
+            case "certificates":
+                return (
+                    <div className={mcClasses("mc-product-form__section")}>
+                        <h4>{labels.programcertificatesettings}</h4>
+                        <p className={mcClasses("mc-cell-muted small")}>{labels.programcertificatesettingsdesc}</p>
+                        {data.coursecertificateavailable ? (
+                            <>
+                                <div className={mcClasses("mc-product-form__grid mt-3")}>
+                                    {selectField(
+                                        "default_program_certificate_template_id",
+                                        labels.defaultprogramcertificatetemplate,
+                                        data.certificatetemplateoptions
+                                    )}
+                                    {certificateTemplatesUrl && (
+                                        <div className="d-flex align-items-end">
+                                            <a
+                                                className={mcClasses("mc-button mc-btn-soft text-nowrap")}
+                                                href={certificateTemplatesUrl}
+                                                rel="noopener noreferrer"
+                                                target="_blank"
+                                            >
+                                                <i className="bi bi-award me-1" aria-hidden="true" />
+                                                {labels.managecertificatetemplates}
+                                                <i className="bi bi-box-arrow-up-right ms-2" aria-hidden="true" />
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        ) : (
+                            <div className={mcClasses("mc-alert mc-alert--warning mt-3")} role="status">
+                                <i className="bi bi-exclamation-triangle mc-alert__icon" aria-hidden="true" />
+                                <div className={mcClasses("mc-alert__body")}>
+                                    {labels.coursecertificateunavailableprogram}
+                                    <div className="mt-1">{labels.coursecertificateoptionaldesc}</div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
             case CONTACT_EMAILS_TAB_ID:

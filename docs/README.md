@@ -16,12 +16,14 @@ Modern Commerce is a Moodle 5.2 local plugin for running an ecommerce storefront
 3. [Role access guide](role-access.md)
 4. [First run and demo data](first-run.md)
 5. [Products and pricing](products-and-pricing.md)
-6. [Payments](payments.md)
-7. [Storefront](storefront.md)
+6. [Programs and learning paths](programs-and-learning-paths.md)
+7. [Payments](payments.md)
+8. [Storefront](storefront.md)
 
 ## Core Workflows
 
 - [Products and pricing](products-and-pricing.md)
+- [Programs and learning paths](programs-and-learning-paths.md)
 - [Orders, invoices, refunds, and reports](orders-and-reports.md)
 - [Dashboard widgets](dashboard-widgets.md)
 - [Coupons and enrolment keys](coupons-and-keys.md)
@@ -61,4 +63,4 @@ Modern Commerce documentation follows these rules:
 
 ## Version
 
-This documentation targets Modern Commerce `2.1.6` on Moodle `5.2`.
+This documentation targets Modern Commerce `2.1.8-r7` on Moodle `5.2`.

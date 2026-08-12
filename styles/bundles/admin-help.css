@@ -271,6 +271,7 @@
 
 .mch-main {
   display: grid;
+  min-width: 0;
   gap: 1rem;
   padding: 1rem;
 }
@@ -289,7 +290,8 @@
 }
 
 .mch-hero__copy {
-  max-width: 70ch;
+  width: 100%;
+  min-width: 0;
 }
 
 .mch-hero__eyebrow,
@@ -371,8 +373,10 @@
 }
 
 .mch-prose {
-  max-width: 78ch;
+  width: 100%;
+  min-width: 0;
   padding: 1rem;
+  box-sizing: border-box;
   color: var(--mch-ink);
   font-size: 0.96rem;
   line-height: 1.65;
@@ -442,9 +446,9 @@
 }
 
 .mch-prose table {
-  display: block;
+  display: table;
   width: 100%;
-  overflow-x: auto;
+  table-layout: fixed;
   border-collapse: collapse;
 }
 
@@ -452,7 +456,14 @@
 .mch-prose td {
   padding: 0.6rem 0.7rem;
   border: 1px solid var(--mch-border);
+  overflow-wrap: anywhere;
   vertical-align: top;
+}
+
+.mch-prose td code,
+.mch-prose td a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .mch-prose th {
@@ -471,6 +482,23 @@
   }
   .mch-prose {
     padding: 1.25rem;
+  }
+}
+@media (max-width: 767.98px) {
+  .mch-prose table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    table-layout: auto;
+  }
+  .mch-prose th,
+  .mch-prose td {
+    min-width: 10rem;
+  }
+  .mch-prose th:first-child,
+  .mch-prose td:first-child {
+    min-width: 8rem;
   }
 }
 @media (min-width: 992px) {

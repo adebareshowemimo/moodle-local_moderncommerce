@@ -27,13 +27,18 @@ require_once($CFG->dirroot . '/local/moderncommerce/lib.php');
 
 use local_moderncommerce\output\admin_shell;
 use local_moderncommerce\output\validation_labels;
+use local_moderncommerce\services\certificate_template_service;
 
 $context = context_system::instance();
 require_login();
 require_capability('local/moderncommerce:managesettings', $context);
 
 $requestedtab = optional_param('tab', '', PARAM_ALPHANUMEXT);
-$initialtab = $requestedtab === 'contact_autoreply' ? 'contact_autoreply' : 'store';
+$validtabs = [
+    'store', 'currency', 'tax', 'documents', 'checkout', 'navigation',
+    'notifications', 'reviews', 'products', 'certificates', 'contact_autoreply',
+];
+$initialtab = in_array($requestedtab, $validtabs, true) ? $requestedtab : 'store';
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/moderncommerce/admin/settings.php', ['tab' => $requestedtab]));
@@ -41,6 +46,7 @@ $PAGE->set_pagelayout('admin');
 $PAGE->set_secondary_navigation(false);
 $PAGE->set_primary_active_tab('ccpadmin');
 $PAGE->set_title(get_string('commercesettings', 'local_moderncommerce'));
+$PAGE->set_heading(get_string('commercesettings', 'local_moderncommerce'));
 
 $settingsreactconfig = json_encode([
     'component' => '@moodle/lms/local_moderncommerce/settings_admin',
@@ -50,6 +56,7 @@ $settingsreactconfig = json_encode([
         'getMethodName' => 'local_moderncommerce_admin_get_settings',
         'saveMethodName' => 'local_moderncommerce_admin_save_settings',
         'initialTab' => $initialtab,
+        'certificateTemplatesUrl' => certificate_template_service::manage_url(),
         'contactEmails' => [
             'available' => true,
             'getMethodName' => 'local_moderncommerce_get_contact_email_settings',
@@ -105,6 +112,7 @@ $settingsreactconfig = json_encode([
             'tabNotifications' => get_string('tab_notifications', 'local_moderncommerce'),
             'tabReviews' => get_string('tab_reviews', 'local_moderncommerce'),
             'tabProducts' => get_string('tab_products', 'local_moderncommerce'),
+            'tabCertificates' => get_string('tab_certificates', 'local_moderncommerce'),
             'tabContactAutoreply' => get_string('contactautoreply', 'local_moderncommerce'),
             // Store identity.
             'storeidentity' => get_string('storeidentity', 'local_moderncommerce'),
@@ -162,6 +170,21 @@ $settingsreactconfig = json_encode([
             'showskufield' => get_string('showskufield', 'local_moderncommerce'),
             'showslugfield' => get_string('showslugfield', 'local_moderncommerce'),
             'coursedetailsidebarposition' => get_string('coursedetailsidebarposition', 'local_moderncommerce'),
+            'programcertificatesettings' => get_string('programcertificatesettings', 'local_moderncommerce'),
+            'programcertificatesettingsdesc' => get_string('programcertificatesettings_desc', 'local_moderncommerce'),
+            'defaultprogramcertificatetemplate' => get_string(
+                'defaultprogramcertificatetemplate',
+                'local_moderncommerce'
+            ),
+            'coursecertificateunavailableprogram' => get_string(
+                'coursecertificateunavailableprogram',
+                'local_moderncommerce'
+            ),
+            'coursecertificateoptionaldesc' => get_string(
+                'coursecertificateoptionaldesc',
+                'local_moderncommerce'
+            ),
+            'managecertificatetemplates' => get_string('managecertificatetemplates', 'local_moderncommerce'),
             // Controls.
             'save' => get_string('savechanges'),
             'discard' => get_string('discardchanges', 'local_moderncommerce'),

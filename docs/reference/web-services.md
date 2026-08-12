@@ -2,7 +2,7 @@
 
 Modern Commerce AJAX/web service functions are defined in `db/services.php`.
 
-There are 153 function definitions in this build. They are grouped by workflow.
+There are 161 function definitions in this build. They are grouped by workflow.
 
 ## Public Catalog and Detail
 
@@ -23,9 +23,12 @@ Newsletter and contact submissions verify Moodle core reCAPTCHA when Moodle's gl
 - learner courses, certificates, grades, orders, wishlist, profile
 - learner subscriptions and product access
 
+Program product access returns the persisted completion summary, prerequisite state, curriculum-ordered course states, and learner-safe URLs for every included course. It synchronizes live progress and ensures all program course enrollments before responding. Prerequisites affect final completion and certificate eligibility, not course access.
+
 ## Admin Commerce
 
 - products and prices
+- bundle/program advanced features, including server-side prerequisite search-ahead, duration and assessments; program saves additionally validate the pass-policy allowlist, discard must-pass IDs outside the included curriculum, clear must-pass rules for `all_must_pass`, and validate the optional Course Certificate template
 - categories
 - coupons and targets
 - orders, customers, refunds

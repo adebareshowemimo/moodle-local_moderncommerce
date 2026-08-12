@@ -52,6 +52,18 @@ $observers = [
         'internal' => true,
         'priority' => 0,
     ],
+    [
+        'eventname' => '\core\event\course_completed',
+        'callback' => '\local_moderncommerce\observer\program_observer::course_completed',
+        'internal' => true,
+        'priority' => 100,
+    ],
+    [
+        'eventname' => '\local_moderncommerce\event\program_completed',
+        'callback' => '\local_moderncommerce\observer\program_completion_observer::program_completed',
+        'internal' => true,
+        'priority' => 100,
+    ],
     // GDPR cleanup of Modern Commerce data when a user is deleted.
     [
         'eventname' => '\core\event\user_deleted',

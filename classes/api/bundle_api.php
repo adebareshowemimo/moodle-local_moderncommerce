@@ -161,6 +161,7 @@ class bundle_api {
     public static function delete($bundleid): bool {
         global $DB;
 
+        $DB->delete_records('local_moderncommerce_program_progress', ['programid' => $bundleid]);
         $DB->delete_records('local_moderncommerce_product_courses', ['productid' => $bundleid]);
         $DB->delete_records('local_moderncommerce_product_prices', ['productid' => $bundleid]);
         $DB->delete_records('local_moderncommerce_product_inventory', ['productid' => $bundleid]);
@@ -445,10 +446,9 @@ class bundle_api {
         $DB->set_field('local_moderncommerce_products', 'producttype', self::TYPE_PROGRAM, ['id' => $bundleid]);
         $DB->set_field('local_moderncommerce_products', 'timemodified', time(), ['id' => $bundleid]);
 
-        return [
-            'migrated' => 0,
-            'completed' => 0,
-        ];
+        // Existing purchasers need a real program record immediately. This also
+        // evaluates their current Moodle completions and issues any earned award.
+        return \local_moderncommerce\services\program_progress_service::initialize_existing((int)$bundleid);
     }
 
     /**

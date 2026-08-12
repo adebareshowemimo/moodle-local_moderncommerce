@@ -25,6 +25,7 @@
 require_once(__DIR__ . '/../../../config.php');
 
 use local_moderncommerce\output\admin_shell;
+use local_moderncommerce\services\certificate_template_service;
 
 $bundleid = optional_param('bundleid', 0, PARAM_INT);
 
@@ -60,7 +61,9 @@ $bundlefeaturesreactconfig = json_encode([
     'props' => [
         'bundleId' => (int) $bundleid,
         'getMethodName' => 'local_moderncommerce_admin_get_bundle_features',
+        'searchPrerequisitesMethodName' => 'local_moderncommerce_admin_search_program_prerequisites',
         'saveMethodName' => 'local_moderncommerce_admin_save_bundle_features',
+        'certificateTemplatesUrl' => certificate_template_service::manage_url(),
         'labels' => [
             'bundleinfo' => get_string('catalogvisibility', 'local_moderncommerce'),
             'durationassessments' => get_string('durationassessments', 'local_moderncommerce'),
@@ -93,10 +96,28 @@ $bundlefeaturesreactconfig = json_encode([
             'hours' => get_string('hours', 'local_moderncommerce'),
             'minutes' => get_string('minutes', 'local_moderncommerce'),
             'autodetect' => get_string('autodetect', 'local_moderncommerce'),
+            'manualentry' => get_string('manualentry', 'local_moderncommerce'),
+            'nolearninghoursfield' => get_string('nolearninghoursfield', 'local_moderncommerce'),
+            'nolearninghourscourselevel' => get_string('nolearninghourscourselevel', 'local_moderncommerce'),
+            'partiallearninghours' => get_string('partiallearninghours', 'local_moderncommerce'),
+            'alllearninghoursset' => get_string('alllearninghoursset', 'local_moderncommerce'),
+            'nobundlecourseslearninghours' => get_string('nobundlecourseslearninghours', 'local_moderncommerce'),
+            'quizassessmentcount' => get_string('quizassessmentcount', 'local_moderncommerce'),
             'assessments' => get_string('assessments', 'local_moderncommerce'),
             'passgrade' => get_string('passgrade', 'local_moderncommerce'),
             'passpolicy' => get_string('passpolicy', 'local_moderncommerce'),
             'enablecertificate' => get_string('enablecertificate', 'local_moderncommerce'),
+            'certificatetemplate' => get_string('certificatetemplate', 'local_moderncommerce'),
+            'certificatetemplatehelp' => get_string('certificatetemplate_help', 'local_moderncommerce'),
+            'selectcertificatetemplate' => get_string('selectcertificatetemplate', 'local_moderncommerce'),
+            'useglobalcertificatetemplate' => get_string('useglobalcertificatetemplate', 'local_moderncommerce'),
+            'certificatetemplaterequired' => get_string('certificatetemplaterequired', 'local_moderncommerce'),
+            'coursecertificateunavailableprogram' => get_string(
+                'coursecertificateunavailableprogram',
+                'local_moderncommerce'
+            ),
+            'nocertificatetemplates' => get_string('nocertificatetemplates', 'local_moderncommerce'),
+            'managecertificatetemplates' => get_string('managecertificatetemplates', 'local_moderncommerce'),
             'merchandising' => get_string('merchandising', 'local_moderncommerce'),
             'regularprice' => get_string('regularprice', 'local_moderncommerce'),
             'compareprice' => get_string('compareprice', 'local_moderncommerce'),
@@ -108,6 +129,12 @@ $bundlefeaturesreactconfig = json_encode([
             'sectiontitle' => get_string('sectiontitle', 'local_moderncommerce'),
             'addsection' => get_string('addsection', 'local_moderncommerce'),
             'mustpasscourses' => get_string('mustpasscourses', 'local_moderncommerce'),
+            'mustpasscourseshelp' => get_string('mustpasscourses_help', 'local_moderncommerce'),
+            'programprerequisites' => get_string('programprerequisites', 'local_moderncommerce'),
+            'programprerequisiteshelp' => get_string('programprerequisites_help', 'local_moderncommerce'),
+            'searchprogramprerequisites' => get_string('searchprogramprerequisites', 'local_moderncommerce'),
+            'noprerequisitematches' => get_string('noprerequisitematches', 'local_moderncommerce'),
+            'selectedprerequisites' => get_string('selectedprerequisites', 'local_moderncommerce'),
             'tags' => get_string('tags', 'local_moderncommerce'),
             'addtag' => get_string('addtag', 'local_moderncommerce'),
             'remove' => get_string('delete'),
@@ -115,6 +142,11 @@ $bundlefeaturesreactconfig = json_encode([
             'save' => get_string('savechanges'),
             'saved' => get_string('changessaved'),
             'loading' => get_string('loading', 'local_moderncommerce'),
+            'error:invalidnumber' => get_string('error:invalidnumber', 'local_moderncommerce'),
+            'error:invalidinteger' => get_string('error:invalidinteger', 'local_moderncommerce'),
+            'error:minvalue' => get_string('error:minvalue', 'local_moderncommerce'),
+            'error:maxvalue' => get_string('error:maxvalue', 'local_moderncommerce'),
+            'error:enddatebeforestart' => get_string('error:enddatebeforestart', 'local_moderncommerce'),
         ],
     ],
 ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);

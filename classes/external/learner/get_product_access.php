@@ -32,6 +32,7 @@ use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
 use local_moderncommerce\services\access_service;
+use local_moderncommerce\services\program_progress_service;
 use moodle_url;
 use xmldb_table;
 
@@ -85,7 +86,11 @@ class get_product_access extends external_api {
         }
 
         $producttype = self::normalise_product_type((string)$product->producttype);
-        $courses = self::product_courses((int)$USER->id, $id, $product, $producttype);
+        $programprogress = self::empty_program_progress();
+        if ($producttype === 'program') {
+            $programprogress = program_progress_service::sync((int)$USER->id, $id);
+        }
+        $courses = self::product_courses((int)$USER->id, $id, $product, $producttype, $programprogress);
         $counts = self::counts($courses);
 
         return [
@@ -95,6 +100,7 @@ class get_product_access extends external_api {
             'courses' => $courses,
             'counts' => $counts,
             'urls' => self::urls($id, $producttype),
+            'programprogress' => $programprogress,
         ];
     }
 
@@ -111,6 +117,7 @@ class get_product_access extends external_api {
             'courses' => new external_multiple_structure(self::course_structure()),
             'counts' => self::counts_structure(),
             'urls' => self::url_structure(),
+            'programprogress' => self::program_progress_structure(),
         ]);
     }
 
@@ -146,6 +153,7 @@ class get_product_access extends external_api {
                 'dashboard' => self::learner_url('dashboard'),
                 'details' => '',
             ],
+            'programprogress' => self::empty_program_progress(),
         ];
     }
 
@@ -185,7 +193,13 @@ class get_product_access extends external_api {
      * @param string $producttype Product type.
      * @return array
      */
-    private static function product_courses(int $userid, int $productid, \stdClass $product, string $producttype): array {
+    private static function product_courses(
+        int $userid,
+        int $productid,
+        \stdClass $product,
+        string $producttype,
+        array $programprogress
+    ): array {
         global $DB;
 
         if (!self::table_exists('local_moderncommerce_product_courses')) {
@@ -213,8 +227,12 @@ class get_product_access extends external_api {
         ]);
 
         $courses = [];
+        $states = [];
+        foreach ($programprogress['courses'] ?? [] as $state) {
+            $states[(int)$state['id']] = $state;
+        }
         foreach ($records as $record) {
-            $course = self::course_data($userid, $record, $product, $producttype);
+            $course = self::course_data($userid, $record, $product, $producttype, $states[(int)$record->courseid] ?? null);
             if ($course) {
                 $courses[] = $course;
             }
@@ -232,8 +250,16 @@ class get_product_access extends external_api {
      * @param string $producttype Product type.
      * @return array|null
      */
-    private static function course_data(int $userid, \stdClass $record, \stdClass $product, string $producttype): ?array {
+    private static function course_data(
+        int $userid,
+        \stdClass $record,
+        \stdClass $product,
+        string $producttype,
+        ?array $programstate = null
+    ): ?array {
         $courseid = (int)$record->courseid;
+        // Prerequisites are completion/certificate requirements, not locks.
+        $locked = false;
         if ($courseid <= 0 || !access_service::user_has_course_access($userid, $courseid)) {
             return null;
         }
@@ -286,7 +312,9 @@ class get_product_access extends external_api {
             'completed' => $completed,
             'status' => $status,
             'statuslabel' => $statuslabel,
-            'courseurl' => access_service::course_view_url($courseid)->out(false),
+            'courseurl' => $locked ? '' : access_service::course_view_url($courseid)->out(false),
+            'locked' => $locked,
+            'unlockreason' => $locked ? get_string('programlocked', 'local_moderncommerce') : '',
             'modulecount' => self::module_count($course),
             'enrolleddate' => self::enrolled_date($userid, $courseid),
             'enrolleddatelabel' => self::enrolled_date_label($userid, $courseid),
@@ -300,6 +328,17 @@ class get_product_access extends external_api {
             'sourcelabel' => self::product_type_label($producttype),
             'producttype' => $producttype,
             'productname' => format_string((string)$product->name),
+        ];
+    }
+
+    /** Empty program progress for bundle/error responses. */
+    private static function empty_program_progress(): array {
+        return [
+            'programid' => 0, 'userid' => 0, 'status' => '', 'completed' => false,
+            'totalcourses' => 0, 'coursescompleted' => 0, 'coursespassed' => 0,
+            'averagegrade' => 0.0, 'progresspercentage' => 0.0, 'currentcourseid' => 0,
+            'certificateissued' => false, 'certificateissueid' => 0, 'prerequisitesmet' => true,
+            'prerequisites' => [], 'courses' => [], 'passpolicy' => '', 'passgrade' => 0.0,
         ];
     }
 
@@ -515,6 +554,8 @@ class get_product_access extends external_api {
             'status' => new external_value(PARAM_ALPHANUMEXT, 'Status key.'),
             'statuslabel' => new external_value(PARAM_TEXT, 'Status label.'),
             'courseurl' => new external_value(PARAM_RAW, 'Course URL.'),
+            'locked' => new external_value(PARAM_BOOL, 'Deprecated compatibility flag; program courses are not locked.'),
+            'unlockreason' => new external_value(PARAM_TEXT, 'Deprecated compatibility message; normally empty.'),
             'modulecount' => new external_value(PARAM_INT, 'Module count.'),
             'enrolleddate' => new external_value(PARAM_INT, 'Enrolment timestamp.'),
             'enrolleddatelabel' => new external_value(PARAM_TEXT, 'Enrolment date label.'),
@@ -551,6 +592,42 @@ class get_product_access extends external_api {
             'library' => new external_value(PARAM_RAW, 'Learner library URL.'),
             'dashboard' => new external_value(PARAM_RAW, 'Learner dashboard URL.'),
             'details' => new external_value(PARAM_RAW, 'Public details URL.'),
+        ]);
+    }
+
+    /** Program progress response structure. */
+    private static function program_progress_structure(): external_single_structure {
+        return new external_single_structure([
+            'programid' => new external_value(PARAM_INT, 'Program ID.'),
+            'userid' => new external_value(PARAM_INT, 'Learner ID.'),
+            'status' => new external_value(PARAM_ALPHANUMEXT, 'Program status.'),
+            'completed' => new external_value(PARAM_BOOL, 'Whether the completion policy is met.'),
+            'totalcourses' => new external_value(PARAM_INT, 'Total program courses.'),
+            'coursescompleted' => new external_value(PARAM_INT, 'Completed courses.'),
+            'coursespassed' => new external_value(PARAM_INT, 'Passed courses.'),
+            'averagegrade' => new external_value(PARAM_FLOAT, 'Average final course grade.'),
+            'progresspercentage' => new external_value(PARAM_FLOAT, 'Completion percentage.'),
+            'currentcourseid' => new external_value(PARAM_INT, 'First incomplete program course ID.'),
+            'certificateissued' => new external_value(PARAM_BOOL, 'Whether the program certificate was issued.'),
+            'certificateissueid' => new external_value(PARAM_INT, 'Tool certificate issue ID.'),
+            'prerequisitesmet' => new external_value(PARAM_BOOL, 'Whether external prerequisites are complete.'),
+            'prerequisites' => new external_multiple_structure(new external_single_structure([
+                'id' => new external_value(PARAM_INT, 'Prerequisite course ID.'),
+                'name' => new external_value(PARAM_TEXT, 'Prerequisite course name.'),
+                'completed' => new external_value(PARAM_BOOL, 'Whether prerequisite is complete.'),
+            ])),
+            'courses' => new external_multiple_structure(new external_single_structure([
+                'id' => new external_value(PARAM_INT, 'Course ID.'),
+                'sortorder' => new external_value(PARAM_INT, 'Program order.'),
+                'required' => new external_value(PARAM_BOOL, 'Whether required.'),
+                'completed' => new external_value(PARAM_BOOL, 'Whether complete.'),
+                'passed' => new external_value(PARAM_BOOL, 'Whether passed.'),
+                'grade' => new external_value(PARAM_RAW, 'Normalised grade or null.'),
+                'mustpass' => new external_value(PARAM_BOOL, 'Whether explicitly required to pass.'),
+                'unlocked' => new external_value(PARAM_BOOL, 'Whether learner access is available; always true for included courses.'),
+            ])),
+            'passpolicy' => new external_value(PARAM_ALPHANUMEXT, 'Completion policy.'),
+            'passgrade' => new external_value(PARAM_FLOAT, 'Required pass grade.'),
         ]);
     }
 }

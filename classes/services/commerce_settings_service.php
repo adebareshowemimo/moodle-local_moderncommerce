@@ -318,6 +318,7 @@ class commerce_settings_service {
             // Payments & security.
             'enable_webhook_ip_whitelist' => self::config_bool('enable_webhook_ip_whitelist', true) ? 1 : 0,
             'payment_max_retries' => self::clamped_int('payment_max_retries', 3, 0, 10),
+            'default_program_certificate_template_id' => certificate_template_service::default_template_id(),
         ];
     }
 
@@ -559,6 +560,15 @@ class commerce_settings_service {
         // Payments & security.
         $ipwhitelist = !empty($data['enable_webhook_ip_whitelist']) ? 1 : 0;
         $maxretries = max(0, min(10, (int)($data['payment_max_retries'] ?? 3)));
+        $defaultcertificatetemplateid = max(0, (int)($data['default_program_certificate_template_id'] ?? 0));
+        if ($defaultcertificatetemplateid > 0
+            && !array_key_exists($defaultcertificatetemplateid, certificate_template_service::options())) {
+            $errors['default_program_certificate_template_id'] = get_string(
+                'certificatetemplateinvalid',
+                self::COMPONENT
+            );
+            $defaultcertificatetemplateid = certificate_template_service::default_template_id();
+        }
 
         return [
             [
@@ -596,6 +606,7 @@ class commerce_settings_service {
                 'course_detail_sidebar_position' => $coursedetailsidebarposition,
                 'enable_webhook_ip_whitelist' => $ipwhitelist,
                 'payment_max_retries' => $maxretries,
+                'default_program_certificate_template_id' => $defaultcertificatetemplateid,
             ],
             $errors,
         ];

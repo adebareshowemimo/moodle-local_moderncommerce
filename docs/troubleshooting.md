@@ -127,6 +127,10 @@ Check:
 - CDN/proxy cache is purged
 - SCSS changes were rebuilt before packaging
 
+## Program Progress and Certificates
+
+For program enrollment, certificate prerequisites, grade policies, conversion, and final certificate diagnosis, use [Programs and learning paths](programs-and-learning-paths.md). Its troubleshooting section maps learner symptoms to Moodle completion, gradebook, progress-table, observer, enrollment, and `tool_certificate` checks.
+
 ## Demo Data
 
 For local or staging systems:

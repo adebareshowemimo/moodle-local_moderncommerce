@@ -48,11 +48,22 @@ This guide helps Moodle admins add and configure Course Certificates for a speci
 4. Save and test with a student account.
 
 ## 4. Create a Custom Certificate Template
-1. In the Course certificate settings, select or create a template.
+1. Open Site administration → General → Certificates → Manage certificate templates, or use **Manage Certificate Templates** from Modern Commerce Settings → Certificates or a bundle/program Advanced Features page.
 2. Add fields (learner name, course name, completion date) and branding elements (logo, signature).
 3. Position elements and fine-tune fonts and sizes.
 4. Preview the certificate.
 5. Save template and assign it to the Course certificate activity.
+
+## 5. Configure a Program Final Certificate
+
+1. Open Modern Commerce → Settings → Certificates and optionally select the store-wide default template.
+2. Open the program's Advanced Features page and choose a pass policy and pass grade.
+3. For Weighted Average or Any Course Pass, select any Must Pass Courses directly beneath Pass Policy. Each course is displayed on its own checkbox row; large lists scroll within the field.
+4. Enable the certificate and either use the global template or select a program override.
+5. Search for external prerequisite courses when they are required for the final award. Selecting a result closes and clears the dropdown for the next search.
+6. Save and test with a learner who has access to every included course.
+
+Program prerequisites and course order never lock included courses. The final award requires every included course and every selected prerequisite to be complete, the pass policy to be satisfied, and every selected must-pass course to pass. When Course Certificate is not installed or upgraded, Modern Commerce continues to work but hides or disables its certificate controls safely.
 
 ## Tips & Pitfalls
 - Ensure site-level completion tracking is on; otherwise course completion rules won’t apply.

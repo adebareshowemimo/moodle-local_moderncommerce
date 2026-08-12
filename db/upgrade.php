@@ -33,6 +33,7 @@
  * @throws moodle_exception This schema reset is clean-install only.
  */
 function xmldb_local_moderncommerce_upgrade($oldversion) {
+    global $DB;
     if ($oldversion < 2026061005) {
         // Beta schema-reset builds cannot be upgraded; force a clean install.
         throw new moodle_exception('cleaninstallrequired', 'local_moderncommerce');
@@ -1243,6 +1244,94 @@ function xmldb_local_moderncommerce_upgrade($oldversion) {
         \local_moderncommerce\services\category_service::migrate_widget_items_to_product_categories();
 
         upgrade_plugin_savepoint(true, 2026081002, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026081102) {
+        global $DB;
+
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('local_moderncommerce_bundle_meta');
+        $field = new xmldb_field(
+            'certificate_template_id',
+            XMLDB_TYPE_INTEGER,
+            '10',
+            null,
+            null,
+            null,
+            null,
+            'bundle_cert'
+        );
+
+        if ($dbman->table_exists($table) && !$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026081102, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026081103) {
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('local_moderncommerce_program_progress');
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE);
+            $table->add_field('programid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+            $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+            $table->add_field('orderid', XMLDB_TYPE_INTEGER, '10');
+            $table->add_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'active');
+            $table->add_field('totalcourses', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('completedcourses', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('passedcourses', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('averagegrade', XMLDB_TYPE_NUMBER, '10, 2', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('progresspercentage', XMLDB_TYPE_NUMBER, '10, 2', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('currentcourseid', XMLDB_TYPE_INTEGER, '10');
+            $table->add_field('certificateissueid', XMLDB_TYPE_INTEGER, '10');
+            $table->add_field('timecompleted', XMLDB_TYPE_INTEGER, '10');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_key('programid_fk', XMLDB_KEY_FOREIGN, ['programid'], 'local_moderncommerce_products', ['id']);
+            $table->add_key('userid_fk', XMLDB_KEY_FOREIGN, ['userid'], 'user', ['id']);
+            $table->add_index('program_user_uix', XMLDB_INDEX_UNIQUE, ['programid', 'userid']);
+            $table->add_index('status_ix', XMLDB_INDEX_NOTUNIQUE, ['status']);
+            $table->add_index('certificateissue_ix', XMLDB_INDEX_NOTUNIQUE, ['certificateissueid']);
+            $dbman->create_table($table);
+        }
+        upgrade_plugin_savepoint(true, 2026081103, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026081104) {
+        // Refresh event observers and expose the global program certificate setting.
+        upgrade_plugin_savepoint(true, 2026081104, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026081105) {
+        // Refresh external services for the program prerequisite search-ahead picker.
+        upgrade_plugin_savepoint(true, 2026081105, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026081106) {
+        // Expose the global certificate template on its dedicated settings tab.
+        upgrade_plugin_savepoint(true, 2026081106, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026081107) {
+        // Program prerequisite picker interaction update is a code-only change.
+        upgrade_plugin_savepoint(true, 2026081107, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026081108) {
+        // Certificate template manager links are a code-only change.
+        upgrade_plugin_savepoint(true, 2026081108, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026081109) {
+        // Pass-policy and must-pass course alignment is a code-only change.
+        upgrade_plugin_savepoint(true, 2026081109, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026081110) {
+        // Must-pass course list styling is a code-only change.
+        upgrade_plugin_savepoint(true, 2026081110, 'local', 'moderncommerce');
     }
 
     return true;

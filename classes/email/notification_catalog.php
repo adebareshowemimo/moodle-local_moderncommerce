@@ -402,6 +402,7 @@ class notification_catalog {
             str_contains($key, 'access')
             || str_contains($key, 'enrollment')
             || str_contains($key, 'course_completed')
+            || str_contains($key, 'program_completed')
             || str_contains($key, 'certificate')
         ) {
             return 'access_learning';

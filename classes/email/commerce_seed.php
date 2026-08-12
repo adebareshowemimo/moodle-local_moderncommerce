@@ -399,6 +399,30 @@ HTML
             ),
 
             self::row(
+                'moderncommerce_program_completed',
+                self::MC,
+                'Program Completed',
+                'celebratory',
+                "Congratulations, {firstname} — you completed {program_name}",
+                <<<'HTML'
+<p>Hi {firstname},</p>
+<p>Congratulations — you have met every completion requirement for <strong>{program_name}</strong>.</p>
+<ul>
+  <li><strong>Courses completed:</strong> {completed_courses}</li>
+  <li><strong>Average grade:</strong> {average_grade}</li>
+  <li><strong>Completed:</strong> {completion_date}</li>
+</ul>
+<p><a class="mc-button" href="{program_url}">View your completed program</a></p>
+<p>If this program awards a certificate, it is available in <a href="{certificate_url}">My certificates</a>.</p>
+HTML
+                ,
+                [
+                    'firstname', 'program_name', 'completed_courses', 'average_grade',
+                    'completion_date', 'program_url', 'certificate_url',
+                ]
+            ),
+
+            self::row(
                 'moderncommerce_access_expiring',
                 self::MC,
                 'Access Expiring Soon',

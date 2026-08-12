@@ -294,15 +294,21 @@ class access_service {
              LEFT JOIN {local_moderncommerce_product_courses} pc
                     ON pc.productid = oi.productid
                    AND pc.relationtype = :relationtype
+             LEFT JOIN {local_moderncommerce_products} includedproduct
+                    ON includedproduct.id = pc.productid
                  WHERE o.userid = :userid
                    AND o.status IN ('paid', 'completed')
-                   AND (oi.courseid = :directcourseid OR pc.courseid = :bundlecourseid)";
+                   AND (
+                        oi.courseid = :directcourseid
+                        OR (pc.courseid = :bundlecourseid AND includedproduct.producttype <> :programtype)
+                   )";
 
         return $DB->record_exists_sql($sql, [
             'relationtype' => 'included',
             'userid' => $userid,
             'directcourseid' => $courseid,
             'bundlecourseid' => $courseid,
+            'programtype' => 'program',
         ]);
     }
 

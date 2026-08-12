@@ -20,6 +20,7 @@ import {McDrawer} from "./drawer";
 import {HeroSlider, SliderData, sliderDataDefaults} from "./storefront/slider";
 import ProductCarousel from "./storefront/product_carousel";
 import TrustStrip from "./storefront/trustbadges";
+import PartnerLogos from "./storefront/partners";
 import CountdownBar from "./storefront/countdown";
 import TestimonialGrid from "./storefront/testimonials";
 import CategoryTiles from "./storefront/categories";
@@ -215,6 +216,17 @@ const remainingEditorProfiles: Record<string, FocusedEditorSection[]> = {
         {key: "text", label: "Text", icon: "bi-fonts",
             fields: ["labelcolor", "labelfontsize", "sublabelcolor", "sublabelfontsize"]},
         {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["paddingtop", "paddingbottom"]},
+    ],
+    partners: [
+        {key: "layout", label: "Layout", icon: "bi-layout-three-columns",
+            fields: ["style", "visiblelogos", "speed", "pauseonhover"]},
+        {key: "heading", label: "Heading", icon: "bi-type-h2",
+            fields: ["heading", "headingcolor", "headingfontsize"]},
+        {key: "logos", label: "Logos", icon: "bi-buildings", fields: ["logos"]},
+        {key: "treatment", label: "Logo style", icon: "bi-image",
+            fields: ["greyscale", "logoheight", "logogap"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand",
+            fields: ["bgcolor", "paddingtop", "paddingbottom"]},
     ],
     testimonials: [
         {key: "heading", label: "Heading", icon: "bi-type-h2",
@@ -1166,6 +1178,29 @@ function CategoriesWidget({widget}: {widget: WidgetInstance}) {
             cardTextFontSize={cfg.cardtextfontsize} cardRadius={cfg.cardradius}
             iconBgColor={cfg.iconbgcolor} iconSize={cfg.iconsize}
             countColor={cfg.countcolor} countFontSize={cfg.countfontsize}
+            paddingTop={cfg.paddingtop} paddingBottom={cfg.paddingbottom} labels={cfg.labels} />
+    );
+}
+
+function PartnersWidget({widget}: {widget: WidgetInstance}) {
+    const cfg = parseJson<{
+        logos: Array<{image: string; name: string; linkurl: string}>;
+        style: string; heading: string; visiblelogos: number; speed: number;
+        pauseonhover: boolean; greyscale: boolean; logoheight: number; logogap: number;
+        bgcolor: string; headingcolor: string; headingfontsize: number;
+        paddingtop: number; paddingbottom: number;
+        labels: {scrollleft: string; scrollright: string};
+    }>(widget.data, {
+        logos: [], style: "grid", heading: "", visiblelogos: 5, speed: 30,
+        pauseonhover: true, greyscale: false, logoheight: 48, logogap: 48,
+        bgcolor: "", headingcolor: "", headingfontsize: 0, paddingtop: 0, paddingbottom: 0,
+        labels: {scrollleft: "", scrollright: ""},
+    });
+    return (
+        <PartnerLogos heading={cfg.heading || widget.title} logos={cfg.logos} variant={cfg.style}
+            visibleLogos={cfg.visiblelogos} speed={cfg.speed} pauseOnHover={cfg.pauseonhover}
+            greyscale={cfg.greyscale} logoHeight={cfg.logoheight} logoGap={cfg.logogap}
+            bgColor={cfg.bgcolor} headingColor={cfg.headingcolor} headingFontSize={cfg.headingfontsize}
             paddingTop={cfg.paddingtop} paddingBottom={cfg.paddingbottom} labels={cfg.labels} />
     );
 }
@@ -2149,7 +2184,8 @@ function BreadcrumbWidget({widget}: {widget: WidgetInstance}) {
 
 const WIDGETS: Record<string, FC<{widget: WidgetInstance}>> = {
     slider: SliderWidget, featured: FeaturedWidget, related: FeaturedWidget,
-    trustbadges: TrustBadgesWidget, countdown: CountdownWidget, testimonials: TestimonialsWidget,
+    trustbadges: TrustBadgesWidget, partners: PartnersWidget,
+    countdown: CountdownWidget, testimonials: TestimonialsWidget,
     categories: CategoriesWidget, instructors: InstructorsWidget, newsletter: NewsletterWidget,
     videohero: VideoHeroWidget, mediastorycarousel: MediaStoryCarouselWidget,
     breadcrumb: BreadcrumbWidget,

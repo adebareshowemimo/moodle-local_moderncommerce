@@ -96,6 +96,13 @@ class placeholder_engine {
                 '{certificate_url}' => 'Link to download the certificate',
                 '{certificate_expiry}' => 'Certificate expiry date (formatted)',
             ],
+            'program' => [
+                '{program_name}' => 'Program name',
+                '{completed_courses}' => 'Number of completed program courses',
+                '{average_grade}' => 'Final program average grade',
+                '{completion_date}' => 'Program completion date (formatted)',
+                '{program_url}' => 'Link to the completed program',
+            ],
             'subscription' => [
                 '{plan_name}' => 'Subscription plan name',
                 '{old_plan_name}' => 'Previous plan name (upgrade/downgrade)',

@@ -988,6 +988,176 @@
   color: var(--mc-trust-sublabel-color, var(--mc-widget-body-color, var(--mc-text-muted, #6b7280)));
 }
 
+/* ── Partner logos band ───────────────────────────────────────────────────── */
+.mw-partners {
+  width: 100%;
+  background: var(--mc-partners-bg, transparent);
+  padding: var(--mc-partners-padding-top, 3rem) 1.25rem var(--mc-partners-padding-bottom, 3rem);
+  /* Lets the logo gap respond to the band's own width, not the viewport, so the strip
+     stays on one row inside narrow containers such as the admin gallery preview. */
+  container-type: inline-size;
+}
+
+.mw-partners__heading {
+  margin: 0 0 2rem;
+  text-align: center;
+  font-size: var(--mc-partners-heading-font-size, var(--mc-fs-h3, 1.5rem));
+  font-weight: var(--mc-fw-heading, 700);
+  color: var(--mc-partners-heading-color, var(--mc-widget-heading-color, var(--mc-text, #111827)));
+}
+
+.mw-partners__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Never squeeze a logo out of its aspect ratio — wrap the row instead. */
+  flex: 0 0 auto;
+}
+
+.mw-partners__img {
+  display: block;
+  height: var(--mc-partners-logo-height, 48px);
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* Optional greyscale treatment; colour returns on hover/focus. */
+.mw-partners--greyscale .mw-partners__img {
+  filter: grayscale(1);
+  opacity: 0.7;
+  transition: filter var(--mc-transition-fast, 0.15s ease), opacity var(--mc-transition-fast, 0.15s ease);
+}
+
+.mw-partners--greyscale .mw-partners__item:hover .mw-partners__img,
+.mw-partners--greyscale .mw-partners__item:focus-visible .mw-partners__img {
+  filter: grayscale(0);
+  opacity: 1;
+}
+
+/* Grid: a static centred row that wraps only when logos genuinely run out of room. */
+.mw-partners__grid {
+  width: min(100%, 1280px);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  /* The configured gap is the ceiling; narrow bands tighten it before logos wrap. */
+  gap: min(var(--mc-partners-gap, 3rem), 4cqi);
+}
+
+/* Carousel: a scroll-snap track sized by --mw-cols, mirroring the category carousel. */
+.mw-partners--carousel .mw-partners__head {
+  width: min(100%, 1280px);
+  margin: 0 auto 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.mw-partners--carousel .mw-partners__heading {
+  margin: 0;
+  text-align: left;
+}
+
+.mw-partners__nav {
+  display: flex;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+
+.mw-partners__arrow,
+.mw-partners__arrow.mc-button {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--mc-border, #e5e7eb);
+  border-radius: 50%;
+  background: var(--mc-surface, #fff);
+  color: var(--mc-text, #111827);
+  cursor: pointer;
+  transition: background-color var(--mc-transition-fast, 0.15s ease), transform var(--mc-transition-fast, 0.15s ease);
+}
+
+.mw-partners__arrow:hover,
+.mw-partners__arrow.mc-button:hover {
+  background: var(--mc-surface-alt, #f1f5f9);
+  transform: scale(1.06);
+}
+
+.mw-partners__track {
+  width: min(100%, 1280px);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--mc-partners-gap, 3rem);
+  overflow-x: auto;
+  /* Scroll horizontally only — never expose a vertical scrollbar on the sides. */
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  /* Hide the scrollbar; scrolling stays available via the arrows / swipe. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mw-partners__track::-webkit-scrollbar {
+  display: none;
+}
+
+.mw-partners__track > .mw-partners__item {
+  /* Fixed width so the track shows exactly --mw-cols logos per view; the rest scroll. */
+  flex: 0 0 calc((100% - (var(--mw-cols, 5) - 1) * var(--mc-partners-gap, 3rem)) / var(--mw-cols, 5));
+  scroll-snap-align: start;
+}
+
+/* Marquee: the track is rendered twice, so translating it -50% loops seamlessly. */
+.mw-partners__marquee {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
+.mw-partners__marquee-track {
+  display: flex;
+  align-items: center;
+  gap: var(--mc-partners-gap, 3rem);
+  width: max-content;
+  /* Keeps the gap rhythm intact across the loop seam. */
+  padding-right: var(--mc-partners-gap, 3rem);
+  animation: mw-partners-scroll var(--mc-partners-speed, 30s) linear infinite;
+}
+
+.mw-partners__marquee--pausable:hover .mw-partners__marquee-track,
+.mw-partners__marquee--pausable:focus-within .mw-partners__marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes mw-partners-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Degrade the marquee to the same static centred row as the grid variant. */
+  .mw-partners__marquee-track {
+    animation: none;
+    transform: none;
+    width: 100%;
+    padding-right: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .mw-partners__marquee-track .mw-partners__item[aria-hidden=true] {
+    display: none;
+  }
+}
 /* ── Countdown bar ────────────────────────────────────────────────────────── */
 .mw-countdown {
   display: flex;
@@ -4733,6 +4903,7 @@ body.mc-public-catalog-page .mc-catalog-section {
 
 .mw-featured__title,
 .mw-trust__title,
+.mw-partners__heading,
 .mw-tm__title,
 .mw-cats__title,
 .mw-inst__title,
@@ -4863,6 +5034,11 @@ body.mc-public-catalog-page .mc-catalog-section {
 .mw-widget--trustbadges .mw-trust__title {
   color: var(--mc-trust-title-color, var(--mc-widget-heading-color, var(--mc-text, #111827)));
   font-size: var(--mc-trust-title-font-size, var(--mc-widget-heading-font-size, var(--mc-fs-h2)));
+}
+
+.mw-widget--partners .mw-partners__heading {
+  color: var(--mc-partners-heading-color, var(--mc-widget-heading-color, var(--mc-text, #111827)));
+  font-size: var(--mc-partners-heading-font-size, var(--mc-widget-heading-font-size, var(--mc-fs-h2)));
 }
 
 .mw-widget--trustbadges .mw-trust__label {

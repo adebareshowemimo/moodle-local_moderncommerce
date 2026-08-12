@@ -12,11 +12,11 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import {FieldError} from "./form";
-import {afterField, focusFirstError, max, min, number, runRules} from "./validation";
+import {afterField, focusFirstError, integer, max, min, number, runRules} from "./validation";
 import type {FieldErrorMap} from "./validation";
 
 declare const M: {
@@ -43,6 +43,10 @@ type Detail = {
     onsale: boolean;
     coursescount: number;
     totaldurationminutes: number;
+    learninghoursfieldexists: boolean;
+    learninghourssetcount: number;
+    learninghoursmissingcount: number;
+    learninghoursmissingcourses: string[];
     kpiassessments: number;
     savingsamount: number;
     savingspercent: number;
@@ -67,10 +71,16 @@ type Detail = {
     passgrade: number;
     passpolicy: string;
     certenabled: boolean;
+    certificatetemplateid: number;
+    defaultcertificatetemplateid: number;
+    defaultcertificatetemplatename: string;
+    coursecertificateavailable: boolean;
+    certificatetemplates: Option[];
     outline: Array<{title: string}>;
     mustpassids: number[];
     courses: Course[];
     prereqcourses: Course[];
+    prereqcandidates: Course[];
     tags: string[];
     levels: Option[];
     languages: Option[];
@@ -97,13 +107,23 @@ type Form = {
     passgrade: string;
     passpolicy: string;
     certenabled: boolean;
+    certificatetemplateid: string;
     outline: string[];
     mustpassids: number[];
+    prereqids: number[];
     tags: string[];
 };
 
 type SaveResponse = {success: boolean; message: string};
-type Props = {bundleId: number; getMethodName: string; saveMethodName: string; labels: Labels};
+type PrerequisiteSearchResponse = {courses: Course[]};
+type Props = {
+    bundleId: number;
+    getMethodName: string;
+    searchPrerequisitesMethodName: string;
+    saveMethodName: string;
+    certificateTemplatesUrl?: string;
+    labels: Labels;
+};
 
 const formatDuration = (minutes: number): string => {
     const total = Math.max(0, Math.round(minutes));
@@ -160,12 +180,21 @@ const detailToForm = (d: Detail): Form => ({
     passgrade: String(d.passgrade),
     passpolicy: d.passpolicy,
     certenabled: d.certenabled,
+    certificatetemplateid: String(d.certificatetemplateid || 0),
     outline: d.outline.length > 0 ? d.outline.map((o) => o.title) : [""],
     mustpassids: d.mustpassids,
+    prereqids: d.prereqcourses.map((course) => course.id),
     tags: d.tags,
 });
 
-export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethodName, labels}: Props) {
+export default function BundleFeaturesAdmin({
+    bundleId,
+    getMethodName,
+    searchPrerequisitesMethodName,
+    saveMethodName,
+    certificateTemplatesUrl = "",
+    labels,
+}: Props) {
     useModernCommerceClassSync();
     const [detail, setDetail] = useState<Detail | null>(null);
     const [form, setForm] = useState<Form | null>(null);
@@ -174,6 +203,12 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
     const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
     const [error, setError] = useState("");
     const [tagInput, setTagInput] = useState("");
+    const [prerequisiteQuery, setPrerequisiteQuery] = useState("");
+    const [prerequisiteOptions, setPrerequisiteOptions] = useState<Course[]>([]);
+    const [selectedPrerequisites, setSelectedPrerequisites] = useState<Course[]>([]);
+    const [prerequisiteFocused, setPrerequisiteFocused] = useState(false);
+    const [prerequisiteLoading, setPrerequisiteLoading] = useState(false);
+    const prerequisiteInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -184,6 +219,7 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
                 if (!cancelled) {
                     setDetail(result);
                     setForm(detailToForm(result));
+                    setSelectedPrerequisites(result.prereqcourses);
                 }
             })
             .catch((caught: unknown) => {
@@ -201,6 +237,39 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
         };
     }, [getMethodName, bundleId]);
 
+    useEffect(() => {
+        if (!detail?.isprogram || !form?.certenabled || !prerequisiteFocused) {
+            return;
+        }
+
+        let cancelled = false;
+        const timer = window.setTimeout(() => {
+            setPrerequisiteLoading(true);
+            void callMoodleService<PrerequisiteSearchResponse>(searchPrerequisitesMethodName, {
+                bundleid: bundleId,
+                query: prerequisiteQuery.trim(),
+            }).then((result) => {
+                if (!cancelled) {
+                    setPrerequisiteOptions(result.courses);
+                }
+            }).catch((caught: unknown) => {
+                if (!cancelled) {
+                    setError(caught instanceof Error ? caught.message : String(caught));
+                }
+            }).finally(() => {
+                if (!cancelled) {
+                    setPrerequisiteLoading(false);
+                }
+            });
+        }, 250);
+
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
+    }, [bundleId, detail?.isprogram, form?.certenabled, prerequisiteFocused,
+        prerequisiteQuery, searchPrerequisitesMethodName]);
+
     const update = (changes: Partial<Form>) => setForm((c) => c ? {...c, ...changes} : c);
 
     const toggleMustPass = (courseid: number) => {
@@ -211,6 +280,26 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
             const has = c.mustpassids.includes(courseid);
             return {...c, mustpassids: has ? c.mustpassids.filter((id) => id !== courseid) : [...c.mustpassids, courseid]};
         });
+    };
+
+    const selectPrerequisite = (course: Course) => {
+        setForm((current) => current && !current.prereqids.includes(course.id)
+            ? {...current, prereqids: [...current.prereqids, course.id]}
+            : current);
+        setSelectedPrerequisites((current) => current.some((item) => item.id === course.id)
+            ? current
+            : [...current, course]);
+        setPrerequisiteQuery("");
+        setPrerequisiteOptions([]);
+        setPrerequisiteFocused(false);
+        prerequisiteInputRef.current?.blur();
+    };
+
+    const removePrerequisite = (courseid: number) => {
+        setForm((current) => current
+            ? {...current, prereqids: current.prereqids.filter((id) => id !== courseid)}
+            : current);
+        setSelectedPrerequisites((current) => current.filter((course) => course.id !== courseid));
     };
 
     const moveOutline = (index: number, delta: number) => {
@@ -249,16 +338,28 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
             durationminutes: [
                 number(t("error:invalidnumber")), min(0, t("error:minvalue")), max(59, t("error:maxvalue")),
             ],
-            assessmentscount: [number(t("error:invalidnumber")), min(0, t("error:minvalue"))],
+            assessmentscount: [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))],
             passgrade: [
                 number(t("error:invalidnumber")), min(0, t("error:minvalue")), max(100, t("error:maxvalue")),
             ],
             availend: afterField("availstart", t("error:enddatebeforestart")),
         });
+        if (detail?.isprogram && form.certenabled
+            && Number(form.certificatetemplateid) <= 0
+            && detail.defaultcertificatetemplateid <= 0) {
+            found.certificatetemplateid = labels.certificatetemplaterequired;
+        }
         setFieldErrors(found);
         if (Object.keys(found).length > 0) {
             setError("");
-            focusFirstError(found, ["durationhours", "durationminutes", "assessmentscount", "passgrade", "availend"]);
+            focusFirstError(found, [
+                "durationhours",
+                "durationminutes",
+                "assessmentscount",
+                "passgrade",
+                "certificatetemplateid",
+                "availend",
+            ]);
             return;
         }
 
@@ -279,7 +380,7 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
                 trending: form.trending,
                 skilllevel: form.skilllevel,
                 language: form.language,
-                hasprereq: (detail?.prereqcourses.length ?? 0) > 0,
+                hasprereq: form.prereqids.length > 0,
                 autoduration: form.autoduration,
                 durationhours: Number(form.durationhours) || 0,
                 durationminutes: Number(form.durationminutes) || 0,
@@ -289,8 +390,10 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
                 passgrade: Number(form.passgrade) || 0,
                 passpolicy: form.passpolicy,
                 certenabled: form.certenabled,
+                certificatetemplateid: Number(form.certificatetemplateid) || 0,
                 outline: form.outline.map((t) => t.trim()).filter((t) => t !== "").map((title) => ({title})),
                 mustpassids: form.mustpassids,
+                prereqids: form.prereqids,
                 tags: form.tags,
             });
             if (!result.success) {
@@ -332,8 +435,9 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
     const durationMinutes = form.autoduration
         ? detail.totaldurationminutes
         : (Number(form.durationhours) || 0) * 60 + (Number(form.durationminutes) || 0);
-    const assessmentsValue = form.autoassessments ? detail.kpiassessments : (Number(form.assessmentscount) || 0);
-
+    const assessmentsValue = form.autoassessments
+        ? detail.kpiassessments
+        : (Number(form.assessmentscount) || 0);
     return (
         <div className={mcClasses("mc-bundle-features-layout")}>
             <aside className={mcClasses("mc-bundle-overview")} aria-label={labels.overview}>
@@ -460,8 +564,32 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
                 </div>
                 <div className={mcClasses("mc-form-section__body")}>
                     <div className={mcClasses("mc-product-form__checks")}>
-                        {renderSwitch(form.autoduration, (value) => update({autoduration: value}), `${labels.duration}: ${labels.autodetect}`)}
+                        {renderSwitch(
+                            form.autoduration,
+                            (value) => update({autoduration: value}),
+                            `${labels.duration}: ${form.autoduration ? labels.autodetect : labels.manualentry}`,
+                        )}
                     </div>
+                    {form.autoduration && (
+                        <div className={mcClasses("mc-alert mc-alert--neutral mt-3")} role="status">
+                            <i className="bi bi-clock mc-alert__icon" aria-hidden="true" />
+                            <div className={mcClasses("mc-alert__body")}>
+                                {detail.coursescount === 0 && labels.nobundlecourseslearninghours}
+                                {detail.coursescount > 0 && !detail.learninghoursfieldexists && labels.nolearninghoursfield}
+                                {detail.coursescount > 0 && detail.learninghoursfieldexists && detail.learninghourssetcount === 0 &&
+                                    labels.nolearninghourscourselevel}
+                                {detail.learninghourssetcount > 0 && detail.learninghoursmissingcount === 0 && labels.alllearninghoursset}
+                                {detail.learninghourssetcount > 0 && detail.learninghoursmissingcount > 0 && (
+                                    <>
+                                        <div>{labels.partiallearninghours}</div>
+                                        <ul className="mb-0 mt-1">
+                                            {detail.learninghoursmissingcourses.map((course) => <li key={course}>{course}</li>)}
+                                        </ul>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     {!form.autoduration && (
                         <div className={mcClasses("mc-product-form__grid mt-3")}>
                             <label><span>{labels.hours}</span><input className={mcClasses("mc-form-control")} min="0" onChange={(e) => update({durationhours: e.target.value})} type="number" value={form.durationhours} /></label>
@@ -469,17 +597,50 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
                         </div>
                     )}
                     <div className={mcClasses("mc-product-form__checks mt-3")}>
-                        {renderSwitch(form.autoassessments, (value) => update({autoassessments: value}), `${labels.assessments}: ${labels.autodetect}`)}
+                        {renderSwitch(
+                            form.autoassessments,
+                            (value) => update({autoassessments: value}),
+                            `${labels.assessments}: ${form.autoassessments ? labels.autodetect : labels.manualentry}`,
+                        )}
                     </div>
-                    {!form.autoassessments && (
+                    {form.autoassessments ? (
+                        <div className={mcClasses("mc-bundle-assessment-summary mt-3")} role="status">
+                            <span className={mcClasses("mc-bundle-assessment-summary__icon")} aria-hidden="true">
+                                <i className="bi bi-ui-checks" />
+                            </span>
+                            <div className={mcClasses("mc-bundle-assessment-summary__body")}>
+                                <strong className={mcClasses("mc-bundle-assessment-summary__value")}>
+                                    {detail.kpiassessments}
+                                </strong>
+                                <span className={mcClasses("mc-bundle-assessment-summary__label")}>
+                                    {labels.quizassessmentcount}
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
                         <div className={mcClasses("mc-product-form__grid mt-3")}>
-                            <label><span>{labels.assessments}</span><input className={mcClasses("mc-form-control")} min="0" onChange={(e) => update({assessmentscount: e.target.value})} type="number" value={form.assessmentscount} /></label>
+                            <label>
+                                <span>{labels.assessments}</span>
+                                <input
+                                    aria-describedby={fieldErrors.assessmentscount ? "bundle-assessmentscount-error" : undefined}
+                                    aria-invalid={fieldErrors.assessmentscount ? "true" : undefined}
+                                    className={mcClasses("mc-form-control")}
+                                    id="bundle-assessmentscount"
+                                    min="0"
+                                    name="assessmentscount"
+                                    onChange={(e) => update({assessmentscount: e.target.value})}
+                                    step="1"
+                                    type="number"
+                                    value={form.assessmentscount}
+                                />
+                                <FieldError id="bundle-assessmentscount-error" message={fieldErrors.assessmentscount} />
+                            </label>
                         </div>
                     )}
                 </div>
             </div>
 
-            <div className={mcClasses("mc-form-section")}>
+            {detail.isprogram && <div className={mcClasses("mc-form-section")}>
                 <div className={mcClasses("mc-form-section__header")}>
                     <h4 className={mcClasses("mc-form-section__title")}>{labels.completionsettings}</h4>
                 </div>
@@ -487,7 +648,17 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
                     <div className={mcClasses("mc-product-form__grid")}>
                         <label>
                             <span>{labels.passpolicy}</span>
-                            <select className={mcClasses("mc-select")} onChange={(e) => update({passpolicy: e.target.value})} value={form.passpolicy}>
+                            <select
+                                className={mcClasses("mc-select")}
+                                onChange={(event) => {
+                                    const passpolicy = event.target.value;
+                                    update({
+                                        passpolicy,
+                                        ...(passpolicy === "all_must_pass" ? {mustpassids: []} : {}),
+                                    });
+                                }}
+                                value={form.passpolicy}
+                            >
                                 {detail.passpolicies.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                             </select>
                         </label>
@@ -496,23 +667,183 @@ export default function BundleFeaturesAdmin({bundleId, getMethodName, saveMethod
                             <input className={mcClasses("mc-form-control")} min="0" max="100" onChange={(e) => update({passgrade: e.target.value})} step="0.01" type="number" value={form.passgrade} />
                         </label>
                     </div>
+                    {form.passpolicy !== "all_must_pass" && (
+                        <div className={mcClasses("mc-field mt-3")}>
+                            <span className={mcClasses("mc-field-label")}>{labels.mustpasscourses}</span>
+                            <div className={mcClasses("mc-product-form__checks mc-mustpass-list")}>
+                                {detail.courses.length === 0 && <span className={mcClasses("mc-cell-muted")}>-</span>}
+                                {detail.courses.map((course) => (
+                                    <label className={mcClasses("mc-mustpass-course")} key={course.id}>
+                                        <input
+                                            checked={form.mustpassids.includes(course.id)}
+                                            className={mcClasses("mc-mustpass-course__checkbox")}
+                                            onChange={() => toggleMustPass(course.id)}
+                                            type="checkbox"
+                                        />
+                                        <span className={mcClasses("mc-mustpass-course__name")}>{course.fullname}</span>
+                                    </label>
+                                ))}
+                            </div>
+                            <div className={mcClasses("mc-field-help")}>{labels.mustpasscourseshelp}</div>
+                        </div>
+                    )}
                     <div className={mcClasses("mc-product-form__checks mt-3")}>
                         {renderSwitch(form.certenabled, (value) => update({certenabled: value}), labels.enablecertificate)}
                     </div>
-                    <div className={mcClasses("mc-field mt-3")}>
-                        <span className={mcClasses("mc-field-label")}>{labels.mustpasscourses}</span>
-                        <div className={mcClasses("mc-product-form__checks mc-mustpass-grid")}>
-                            {detail.courses.length === 0 && <span className={mcClasses("mc-cell-muted")}>-</span>}
-                            {detail.courses.map((course) => (
-                                <label key={course.id}>
-                                    <input checked={form.mustpassids.includes(course.id)} onChange={() => toggleMustPass(course.id)} type="checkbox" />
-                                    <span>{course.fullname}</span>
-                                </label>
-                            ))}
+                    {detail.isprogram && form.certenabled && (
+                        detail.coursecertificateavailable ? (
+                            detail.certificatetemplates.length > 0 ? (
+                                <div className={mcClasses("mc-field mt-3")}>
+                                    <label className={mcClasses("mc-field-label")} htmlFor="bundle-certificate-template">
+                                        {labels.certificatetemplate}
+                                    </label>
+                                    <div className="d-flex flex-column flex-md-row gap-2">
+                                        <select
+                                            aria-describedby={fieldErrors.certificatetemplateid
+                                                ? "bundle-certificate-template-error"
+                                                : "bundle-certificate-template-help"}
+                                            aria-invalid={fieldErrors.certificatetemplateid ? "true" : undefined}
+                                            className={mcClasses("mc-select flex-grow-1")}
+                                            id="bundle-certificate-template"
+                                            name="certificatetemplateid"
+                                            onChange={(event) => update({certificatetemplateid: event.target.value})}
+                                            value={form.certificatetemplateid}
+                                        >
+                                            <option value="0">
+                                                {detail.defaultcertificatetemplateid > 0
+                                                    ? `${labels.useglobalcertificatetemplate}: ${detail.defaultcertificatetemplatename}`
+                                                    : labels.selectcertificatetemplate}
+                                            </option>
+                                            {detail.certificatetemplates.map((template) => (
+                                                <option key={template.value} value={template.value}>{template.label}</option>
+                                            ))}
+                                        </select>
+                                        {certificateTemplatesUrl && (
+                                            <a
+                                                className={mcClasses("mc-button mc-btn-soft text-nowrap")}
+                                                href={certificateTemplatesUrl}
+                                                rel="noopener noreferrer"
+                                                target="_blank"
+                                            >
+                                                <i className="bi bi-award me-1" aria-hidden="true" />
+                                                {labels.managecertificatetemplates}
+                                                <i className="bi bi-box-arrow-up-right ms-2" aria-hidden="true" />
+                                            </a>
+                                        )}
+                                    </div>
+                                    <div className={mcClasses("mc-field-help")} id="bundle-certificate-template-help">
+                                        {labels.certificatetemplatehelp}
+                                    </div>
+                                    <FieldError
+                                        id="bundle-certificate-template-error"
+                                        message={fieldErrors.certificatetemplateid}
+                                    />
+                                </div>
+                            ) : (
+                                <div className={mcClasses("mc-alert mc-alert--warning mt-3")} role="status">
+                                    <i className="bi bi-exclamation-triangle mc-alert__icon" aria-hidden="true" />
+                                    <div className={mcClasses("mc-alert__body")}>{labels.nocertificatetemplates}</div>
+                                </div>
+                            )
+                        ) : (
+                            <div className={mcClasses("mc-alert mc-alert--warning mt-3")} role="status">
+                                <i className="bi bi-exclamation-triangle mc-alert__icon" aria-hidden="true" />
+                                <div className={mcClasses("mc-alert__body")}>
+                                    {labels.coursecertificateunavailableprogram}
+                                </div>
+                            </div>
+                        )
+                    )}
+                    {certificateTemplatesUrl && detail.coursecertificateavailable
+                            && (!detail.isprogram || detail.certificatetemplates.length === 0) && (
+                        <div className="mt-3">
+                            <a
+                                className={mcClasses("mc-button mc-btn-soft")}
+                                href={certificateTemplatesUrl}
+                                rel="noopener noreferrer"
+                                target="_blank"
+                            >
+                                <i className="bi bi-award me-1" aria-hidden="true" />
+                                {labels.managecertificatetemplates}
+                                <i className="bi bi-box-arrow-up-right ms-2" aria-hidden="true" />
+                            </a>
                         </div>
-                    </div>
+                    )}
+                    {form.certenabled && (
+                        <div className={mcClasses("mc-field mt-3")}>
+                            <label className={mcClasses("mc-field-label")} htmlFor="program-prerequisites">
+                                {labels.programprerequisites}
+                            </label>
+                            <div className={mcClasses("mc-course-picker")}>
+                                <input
+                                    aria-autocomplete="list"
+                                    aria-expanded={prerequisiteFocused ? "true" : "false"}
+                                    autoComplete="off"
+                                    className={mcClasses("mc-form-control")}
+                                    id="program-prerequisites"
+                                    onBlur={() => window.setTimeout(() => setPrerequisiteFocused(false), 150)}
+                                    onChange={(event) => setPrerequisiteQuery(event.target.value)}
+                                    onFocus={() => setPrerequisiteFocused(true)}
+                                    placeholder={labels.searchprogramprerequisites}
+                                    ref={prerequisiteInputRef}
+                                    role="combobox"
+                                    type="search"
+                                    value={prerequisiteQuery}
+                                />
+                                {prerequisiteFocused && (
+                                    <div className={mcClasses("mc-course-picker__results")} role="listbox">
+                                        {prerequisiteLoading && (
+                                            <div className={mcClasses("mc-course-picker__message")}>{labels.loading}</div>
+                                        )}
+                                        {!prerequisiteLoading && prerequisiteOptions
+                                            .filter((course) => !form.prereqids.includes(course.id)).length === 0 && (
+                                            <div className={mcClasses("mc-course-picker__empty mc-cell-muted small")}>
+                                                {labels.noprerequisitematches}
+                                            </div>
+                                        )}
+                                        {!prerequisiteLoading && prerequisiteOptions
+                                            .filter((course) => !form.prereqids.includes(course.id))
+                                            .map((course) => (
+                                                <button
+                                                    className={mcClasses("mc-button mc-course-picker__option")}
+                                                    key={course.id}
+                                                    onMouseDown={(event) => {
+                                                        event.preventDefault();
+                                                        selectPrerequisite(course);
+                                                    }}
+                                                    role="option"
+                                                    type="button"
+                                                >
+                                                    <span className={mcClasses("mc-course-picker__option-main")}>
+                                                        <strong>{course.fullname}</strong>
+                                                    </span>
+                                                </button>
+                                            ))}
+                                    </div>
+                                )}
+                                {selectedPrerequisites.length > 0 && (
+                                    <div aria-label={labels.selectedprerequisites} className="d-flex flex-column gap-2">
+                                        {selectedPrerequisites.map((course) => (
+                                            <div className={mcClasses("mc-course-picker__selection")} key={course.id}>
+                                                <span>{course.fullname}</span>
+                                                <button
+                                                    aria-label={`${labels.remove}: ${course.fullname}`}
+                                                    className={mcClasses("mc-button mc-btn-ghost p-0")}
+                                                    onClick={() => removePrerequisite(course.id)}
+                                                    type="button"
+                                                >
+                                                    &times;
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div className={mcClasses("mc-field-help")}>{labels.programprerequisiteshelp}</div>
+                        </div>
+                    )}
                 </div>
-            </div>
+            </div>}
 
             <div className={mcClasses("mc-form-section")}>
                 <div className={mcClasses("mc-form-section__header d-flex justify-content-between align-items-center gap-2")}>

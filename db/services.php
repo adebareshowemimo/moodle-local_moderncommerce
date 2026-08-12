@@ -1142,6 +1142,15 @@ $functions = [
         'capabilities'  => 'local/moderncommerce:managecourses',
         'loginrequired' => true,
     ],
+    'local_moderncommerce_admin_search_program_prerequisites' => [
+        'classname'     => 'local_moderncommerce\external\bundles\search_prerequisite_courses',
+        'methodname'    => 'execute',
+        'description'   => 'Search Moodle courses for program certificate prerequisites.',
+        'type'          => 'read',
+        'ajax'          => true,
+        'capabilities'  => 'local/moderncommerce:managecourses',
+        'loginrequired' => true,
+    ],
     'local_moderncommerce_admin_save_bundle_features' => [
         'classname'     => 'local_moderncommerce\external\bundles\save_bundle_features',
         'methodname'    => 'execute',
@@ -1594,6 +1603,7 @@ $services = [
             'local_moderncommerce_admin_get_course_features',
             'local_moderncommerce_admin_save_course_features',
             'local_moderncommerce_admin_get_bundle_features',
+            'local_moderncommerce_admin_search_program_prerequisites',
             'local_moderncommerce_admin_save_bundle_features',
             'local_moderncommerce_admin_get_settings',
             'local_moderncommerce_admin_save_settings',
