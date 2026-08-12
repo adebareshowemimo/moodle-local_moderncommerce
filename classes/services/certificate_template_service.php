@@ -1,18 +1,48 @@
 <?php
 // This file is part of Moodle and is licensed under the GNU GPL v3 or later.
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Course Certificate template integration service.
+ *
+ * @package    local_moderncommerce
+ * @copyright  2025 Adebare Showemimo
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
 namespace local_moderncommerce\services;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Resolves the store-wide and per-program Course Certificate templates.
+ *
+ * @package    local_moderncommerce
+ * @copyright  2025 Adebare Showemimo
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class certificate_template_service {
+    /** Modern Commerce component name. */
     private const COMPONENT = 'local_moderncommerce';
+
+    /** Configuration key for the global program certificate template. */
     private const CONFIG_DEFAULT_TEMPLATE = 'default_program_certificate_template_id';
 
-    /** Whether Moodle Course Certificate and its template backend are available. */
+    /**
+     * Check whether Moodle Course Certificate and its template backend are available.
+     *
+     * @return bool
+     */
     public static function available(): bool {
         global $DB;
 
@@ -30,7 +60,11 @@ class certificate_template_service {
         }
     }
 
-    /** Return templates visible to the current administrator. */
+    /**
+     * Return templates visible to the current administrator.
+     *
+     * @return array
+     */
     public static function options(): array {
         if (!self::available()) {
             return [];
@@ -48,13 +82,19 @@ class certificate_template_service {
         }
     }
 
-    /** Return the template manager URL when the current user may access it. */
+    /**
+     * Return the template manager URL when the current user may access it.
+     *
+     * @return string
+     */
     public static function manage_url(): string {
         global $CFG;
 
-        if (!self::available()
+        if (
+            !self::available()
                 || !class_exists(\tool_certificate\permission::class)
-                || !is_readable($CFG->dirroot . '/admin/tool/certificate/manage_templates.php')) {
+                || !is_readable($CFG->dirroot . '/admin/tool/certificate/manage_templates.php')
+        ) {
             return '';
         }
 
@@ -69,13 +109,22 @@ class certificate_template_service {
         }
     }
 
-    /** Return the configured global template when it is still valid and visible. */
+    /**
+     * Return the configured global template when it is still valid and visible.
+     *
+     * @return int
+     */
     public static function default_template_id(): int {
         $templateid = (int)(get_config(self::COMPONENT, self::CONFIG_DEFAULT_TEMPLATE) ?: 0);
         return self::exists($templateid) ? $templateid : 0;
     }
 
-    /** Resolve a program override, falling back to the store-wide default. */
+    /**
+     * Resolve a program override, falling back to the store-wide default.
+     *
+     * @param int $overridetemplateid Program-specific template ID.
+     * @return int
+     */
     public static function resolve(int $overridetemplateid): int {
         if (self::exists($overridetemplateid)) {
             return $overridetemplateid;
@@ -83,7 +132,12 @@ class certificate_template_service {
         return self::default_template_id();
     }
 
-    /** Check template existence without applying administrator visibility to learner-side issuance. */
+    /**
+     * Check template existence without applying administrator visibility to learner-side issuance.
+     *
+     * @param int $templateid Template ID.
+     * @return bool
+     */
     public static function exists(int $templateid): bool {
         global $DB;
 
@@ -99,7 +153,12 @@ class certificate_template_service {
         }
     }
 
-    /** Validate and save the global template. Zero disables the global fallback. */
+    /**
+     * Validate and save the global template; zero disables the global fallback.
+     *
+     * @param int $templateid Template ID.
+     * @return bool
+     */
     public static function save_default(int $templateid): bool {
         if ($templateid > 0 && !array_key_exists($templateid, self::options())) {
             return false;

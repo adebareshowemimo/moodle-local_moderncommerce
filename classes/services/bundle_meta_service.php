@@ -354,7 +354,7 @@ class bundle_meta_service {
         foreach ($courses as $course) {
             $courseid = (int)$course['id'];
             $data = $instancesdata[$courseid][$fieldid] ?? null;
-            // get_instances_data() supplies defaults too; require a persisted course-level value.
+            // The instances-data method supplies defaults too; require a persisted course-level value.
             $hasstoredvalue = $data !== null && (int)$data->get('id') > 0;
             $value = $hasstoredvalue ? $data->get_value() : null;
             if ($value === null || $value === '' || !is_numeric($value) || (float)$value < 0) {

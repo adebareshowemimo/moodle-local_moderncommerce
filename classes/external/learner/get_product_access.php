@@ -331,7 +331,11 @@ class get_product_access extends external_api {
         ];
     }
 
-    /** Empty program progress for bundle/error responses. */
+    /**
+     * Build empty program progress for bundle and error responses.
+     *
+     * @return array
+     */
     private static function empty_program_progress(): array {
         return [
             'programid' => 0, 'userid' => 0, 'status' => '', 'completed' => false,
@@ -595,7 +599,11 @@ class get_product_access extends external_api {
         ]);
     }
 
-    /** Program progress response structure. */
+    /**
+     * Build the program progress response structure.
+     *
+     * @return external_single_structure
+     */
     private static function program_progress_structure(): external_single_structure {
         return new external_single_structure([
             'programid' => new external_value(PARAM_INT, 'Program ID.'),
@@ -624,7 +632,10 @@ class get_product_access extends external_api {
                 'passed' => new external_value(PARAM_BOOL, 'Whether passed.'),
                 'grade' => new external_value(PARAM_RAW, 'Normalised grade or null.'),
                 'mustpass' => new external_value(PARAM_BOOL, 'Whether explicitly required to pass.'),
-                'unlocked' => new external_value(PARAM_BOOL, 'Whether learner access is available; always true for included courses.'),
+                'unlocked' => new external_value(
+                    PARAM_BOOL,
+                    'Whether learner access is available; always true for included courses.'
+                ),
             ])),
             'passpolicy' => new external_value(PARAM_ALPHANUMEXT, 'Completion policy.'),
             'passgrade' => new external_value(PARAM_FLOAT, 'Required pass grade.'),

@@ -285,7 +285,11 @@ class get_settings extends external_api {
         ]);
     }
 
-    /** Course Certificate template options, including no global default. */
+    /**
+     * Build Course Certificate template options, including no global default.
+     *
+     * @return array
+     */
     private static function certificate_template_options(): array {
         $options = [[
             'value' => '0',

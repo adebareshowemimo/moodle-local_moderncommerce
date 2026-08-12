@@ -561,8 +561,10 @@ class commerce_settings_service {
         $ipwhitelist = !empty($data['enable_webhook_ip_whitelist']) ? 1 : 0;
         $maxretries = max(0, min(10, (int)($data['payment_max_retries'] ?? 3)));
         $defaultcertificatetemplateid = max(0, (int)($data['default_program_certificate_template_id'] ?? 0));
-        if ($defaultcertificatetemplateid > 0
-            && !array_key_exists($defaultcertificatetemplateid, certificate_template_service::options())) {
+        if (
+            $defaultcertificatetemplateid > 0
+            && !array_key_exists($defaultcertificatetemplateid, certificate_template_service::options())
+        ) {
             $errors['default_program_certificate_template_id'] = get_string(
                 'certificatetemplateinvalid',
                 self::COMPONENT

@@ -226,8 +226,10 @@ class save_bundle_features extends external_api {
                 ];
             }
             $templates = certificate_template_service::options();
-            if ($params['certificatetemplateid'] > 0
-                && !array_key_exists($params['certificatetemplateid'], $templates)) {
+            if (
+                $params['certificatetemplateid'] > 0
+                && !array_key_exists($params['certificatetemplateid'], $templates)
+            ) {
                 return [
                     'success' => false,
                     'message' => get_string('certificatetemplateinvalid', 'local_moderncommerce'),

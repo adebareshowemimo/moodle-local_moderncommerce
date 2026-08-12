@@ -1,5 +1,26 @@
 <?php
 // This file is part of Moodle and is licensed under the GNU GPL v3 or later.
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Program enrollment, completion, and certificate service.
+ *
+ * @package    local_moderncommerce
+ * @copyright  2025 Adebare Showemimo
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
 namespace local_moderncommerce\services;
 
@@ -18,11 +39,23 @@ use local_moderncommerce\api\bundle_api;
  * program grants every included course immediately. Prerequisites, course
  * completion, grades, and must-pass rules determine completion and certificate
  * eligibility; they never lock a course.
+ *
+ * @package    local_moderncommerce
+ * @copyright  2025 Adebare Showemimo
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class program_progress_service {
+    /** Program progress table name. */
     private const TABLE = 'local_moderncommerce_program_progress';
 
-    /** Start or refresh a learner's program. */
+    /**
+     * Start or refresh a learner's program.
+     *
+     * @param int $userid Learner ID.
+     * @param int $programid Program product ID.
+     * @param int|null $orderid Related order ID.
+     * @return array
+     */
     public static function enrol(int $userid, int $programid, ?int $orderid = null): array {
         if (!self::is_program($programid)) {
             throw new \moodle_exception('invalidprogram', 'local_moderncommerce');
@@ -30,7 +63,15 @@ class program_progress_service {
         return self::sync($userid, $programid, $orderid, true);
     }
 
-    /** Recalculate progress, ensure course access, and issue the completion certificate. */
+    /**
+     * Recalculate progress, ensure course access, and issue the completion certificate.
+     *
+     * @param int $userid Learner ID.
+     * @param int $programid Program product ID.
+     * @param int|null $orderid Related order ID.
+     * @param bool $issuecertificate Whether certificate issuance is allowed.
+     * @return array
+     */
     public static function sync(
         int $userid,
         int $programid,
@@ -189,7 +230,12 @@ class program_progress_service {
         ];
     }
 
-    /** Refresh every purchased program containing a completed course. */
+    /**
+     * Refresh every purchased program containing a completed course.
+     *
+     * @param int $userid Learner ID.
+     * @param int $courseid Completed course ID.
+     */
     public static function sync_for_course(int $userid, int $courseid): void {
         global $DB;
         $programids = $DB->get_fieldset_sql(
@@ -214,7 +260,12 @@ class program_progress_service {
         }
     }
 
-    /** Initialize progress for existing purchasers during bundle conversion. */
+    /**
+     * Initialize progress for existing purchasers during bundle conversion.
+     *
+     * @param int $programid Program product ID.
+     * @return array
+     */
     public static function initialize_existing(int $programid): array {
         global $DB;
         $rows = $DB->get_records_sql(
@@ -235,22 +286,37 @@ class program_progress_service {
         return ['migrated' => $migrated, 'completed' => $completed];
     }
 
+    /**
+     * Check whether a product is a program.
+     *
+     * @param int $programid Product ID.
+     * @return bool
+     */
     private static function is_program(int $programid): bool {
         global $DB;
         return $DB->record_exists('local_moderncommerce_products', ['id' => $programid, 'producttype' => 'program']);
     }
 
+    /**
+     * Check Moodle's authoritative course completion state.
+     *
+     * @param int $userid Learner ID.
+     * @param int $courseid Course ID.
+     * @return bool
+     */
     private static function course_completed(int $userid, int $courseid): bool {
         global $DB;
 
         // Moodle writes the authoritative completion timestamp before emitting
         // core\event\course_completed. Reading it directly also avoids stale
         // completion_info caches during the observer request.
-        if ($DB->record_exists_select(
-            'course_completions',
-            'userid = :userid AND course = :courseid AND timecompleted IS NOT NULL',
-            ['userid' => $userid, 'courseid' => $courseid]
-        )) {
+        if (
+            $DB->record_exists_select(
+                'course_completions',
+                'userid = :userid AND course = :courseid AND timecompleted IS NOT NULL',
+                ['userid' => $userid, 'courseid' => $courseid]
+            )
+        ) {
             return true;
         }
 
@@ -263,6 +329,13 @@ class program_progress_service {
         }
     }
 
+    /**
+     * Return the normalized final course grade percentage.
+     *
+     * @param int $userid Learner ID.
+     * @param int $courseid Course ID.
+     * @return float|null
+     */
     private static function course_grade_percentage(int $userid, int $courseid): ?float {
         $grades = grade_get_course_grades($courseid, $userid);
         if (empty($grades->grades[$userid]) || $grades->grades[$userid]->grade === null) {
@@ -274,6 +347,14 @@ class program_progress_service {
         return $max > $min ? round((((float)$grade->grade - $min) / ($max - $min)) * 100, 2) : null;
     }
 
+    /**
+     * Ensure the learner can access an included program course.
+     *
+     * @param int $userid Learner ID.
+     * @param int $courseid Course ID.
+     * @param int|null $orderid Related order ID.
+     * @param int $programid Program product ID.
+     */
     private static function grant_course_access(int $userid, int $courseid, ?int $orderid, int $programid): void {
         enrolment_service::enrol_user_in_course($userid, $courseid, [
             'orderid' => $orderid ?: 0,
@@ -282,6 +363,15 @@ class program_progress_service {
         ]);
     }
 
+    /**
+     * Issue the program certificate once and persist its native issue ID.
+     *
+     * @param int $userid Learner ID.
+     * @param int $programid Program product ID.
+     * @param int $progressid Program progress record ID.
+     * @param array $meta Program metadata.
+     * @return int Certificate issue ID, or zero when no certificate was issued.
+     */
     private static function issue_certificate(int $userid, int $programid, int $progressid, array $meta): int {
         global $DB;
         $templateid = certificate_template_service::resolve((int)($meta['certificate_template_id'] ?? 0));

@@ -1334,5 +1334,10 @@ function xmldb_local_moderncommerce_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026081110, 'local', 'moderncommerce');
     }
 
+    if ($oldversion < 2026081200) {
+        // Finalize the Modern Commerce 2.2.0 program and certificate release metadata.
+        upgrade_plugin_savepoint(true, 2026081200, 'local', 'moderncommerce');
+    }
+
     return true;
 }

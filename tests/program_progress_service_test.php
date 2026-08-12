@@ -1,9 +1,36 @@
 <?php
 // This file is part of Moodle and is licensed under the GNU GPL v3 or later.
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Tests for program enrollment and completion behavior.
+ *
+ * @package    local_moderncommerce
+ * @copyright  2025 Adebare Showemimo
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
 use local_moderncommerce\services\program_progress_service;
 
-/** Tests program access and completion. */
+/**
+ * Tests program access and completion.
+ *
+ * @package    local_moderncommerce
+ * @copyright  2025 Adebare Showemimo
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 #[\PHPUnit\Framework\Attributes\CoversClass(program_progress_service::class)]
 final class program_progress_service_test extends advanced_testcase {
     public function test_program_grants_all_courses_and_persists_completion(): void {
@@ -101,6 +128,12 @@ final class program_progress_service_test extends advanced_testcase {
         $this->assertTrue($progress['completed']);
     }
 
+    /**
+     * Create a program containing the supplied courses.
+     *
+     * @param array $courseids Moodle course IDs.
+     * @return int Program product ID.
+     */
     private function create_program(array $courseids): int {
         global $DB;
         $id = (int)$DB->insert_record('local_moderncommerce_products', (object)[
@@ -117,6 +150,12 @@ final class program_progress_service_test extends advanced_testcase {
         return $id;
     }
 
+    /**
+     * Mark a Moodle course complete for a learner.
+     *
+     * @param int $userid Learner ID.
+     * @param int $courseid Course ID.
+     */
     private function complete_course(int $userid, int $courseid): void {
         global $DB;
         $record = $DB->get_record('course_completions', ['userid' => $userid, 'course' => $courseid]);

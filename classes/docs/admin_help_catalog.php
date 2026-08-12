@@ -103,7 +103,7 @@ class admin_help_catalog {
                 'id' => 'programs-learning-paths',
                 'group' => 'commerce',
                 'title' => 'Programs and learning paths',
-                'summary' => 'Ordered enrollment, prerequisites, completion policies, learner progress, conversion, and certificates.',
+                'summary' => 'Program access, prerequisites, completion policies, learner progress, conversion, and certificates.',
                 'icon' => 'bi-signpost-split',
                 'file' => 'programs-and-learning-paths.md',
             ],
