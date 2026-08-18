@@ -360,8 +360,9 @@
   line-height: 1.2;
 }
 
-.mcg-panel p,
-.mcg-settings p {
+.mcg-panel > p,
+.mcg-panel p:not(.mcg-preview-shell p),
+.mcg-settings p:not(.mcg-preview-shell p) {
   max-width: 72ch;
   margin: 0.5rem 0 0;
   color: var(--mcg-muted);
@@ -1010,6 +1011,10 @@
   }
   .mcg-settings {
     position: sticky;
+    max-height: calc(100vh - 3rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 }
 @media (max-width: 760px) {

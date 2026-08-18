@@ -136,7 +136,7 @@ class add_storefront_widget extends external_api {
         $w->set('subtitle', $subtitle);
         $w->set('enabled', 1);
         $w->set('settings', json_encode($settings, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-        $w->set('styleconfig', json_encode($styleconfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        $w->set('styleconfig', preset_service::encode_object($styleconfig));
         $w->create();
 
         return [

@@ -61,6 +61,59 @@ class plan_api {
     }
 
     /**
+     * Seats currently occupied on a plan.
+     *
+     * Counts the states that still entitle the holder to access, so a cancelled
+     * or expired subscriber releases their seat straight away.
+     *
+     * @param int $planid Plan ID.
+     * @return int Number of seats in use.
+     */
+    public static function seats_in_use(int $planid): int {
+        global $DB;
+
+        return (int) $DB->count_records_select(
+            'local_moderncommerce_user_subscriptions',
+            "planid = :planid AND status IN ('active', 'trial', 'grace')",
+            ['planid' => $planid]
+        );
+    }
+
+    /**
+     * Whether a plan has a seat available for a new subscriber.
+     *
+     * A max_seats of zero (the default) means unlimited. An existing subscriber
+     * renewing or reactivating already holds their seat, so pass their user id
+     * to exempt them from the count.
+     *
+     * @param object $plan Plan record.
+     * @param int $userid User who wants the seat, or 0 for a new subscriber.
+     * @return bool True when the plan can take another subscriber.
+     */
+    public static function has_available_seat(object $plan, int $userid = 0): bool {
+        global $DB;
+
+        $maxseats = (int) ($plan->max_seats ?? 0);
+        if ($maxseats <= 0) {
+            return true;
+        }
+
+        // Someone who already holds a live seat on this plan is not taking a new one.
+        if ($userid > 0) {
+            $holdsseat = $DB->record_exists_select(
+                'local_moderncommerce_user_subscriptions',
+                "planid = :planid AND userid = :userid AND status IN ('active', 'trial', 'grace')",
+                ['planid' => (int) $plan->id, 'userid' => $userid]
+            );
+            if ($holdsseat) {
+                return true;
+            }
+        }
+
+        return self::seats_in_use((int) $plan->id) < $maxseats;
+    }
+
+    /**
      * Check if a plan has an active promo.
      *
      * @param object $plan Plan record.

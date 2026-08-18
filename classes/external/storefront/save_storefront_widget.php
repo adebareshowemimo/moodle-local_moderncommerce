@@ -106,9 +106,8 @@ class save_storefront_widget extends external_api {
         $w->set('title', $title);
         $w->set('subtitle', $subtitle);
         $w->set('settings', json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-        $w->set('styleconfig', json_encode(
-            preset_service::sanitize_styleconfig(preset_service::decode_object($params['styleconfig'])),
-            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+        $w->set('styleconfig', preset_service::encode_object(
+            preset_service::sanitize_styleconfig(preset_service::decode_object($params['styleconfig']))
         ));
         $w->update();
 

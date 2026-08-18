@@ -73,6 +73,15 @@ class widget_types {
     /** @var string Centered learning promise statement. */
     const LEARNINGPROMISE = 'learningpromise';
 
+    /** @var string Portrait + signed message from a named leader (ED/CEO, VC, Director). */
+    const LEADERMESSAGE = 'leadermessage';
+
+    /** @var string Responsive grid of icon feature/benefit cards (up to 12, 3 or 4 per row). */
+    const FEATUREGRID = 'featuregrid';
+
+    /** @var string Subscription plan pricing table (plans, prices, feature lists). */
+    const SUBSCRIPTIONPLANS = 'subscriptionplans';
+
     /** @var string Structured policy sections for terms/privacy/refunds. */
     const POLICY = 'policy';
 
@@ -118,6 +127,9 @@ class widget_types {
             self::NEWSLETTER,
             self::CONTENT,
             self::MEDIASTORYCAROUSEL,
+            self::LEADERMESSAGE,
+            self::FEATUREGRID,
+            self::SUBSCRIPTIONPLANS,
             self::LEARNINGPROMISE,
             self::BELIEF,
             self::POLICY,
@@ -163,6 +175,9 @@ class widget_types {
             self::NEWSLETTER,
             self::VIDEOHERO,
             self::MEDIASTORYCAROUSEL,
+            self::LEADERMESSAGE,
+            self::FEATUREGRID,
+            self::SUBSCRIPTIONPLANS,
             self::BREADCRUMB,
             self::CONTENT,
             self::LEARNINGPROMISE,

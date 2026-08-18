@@ -422,6 +422,319 @@ class field_schema {
                     'default' => 'Modern Commerce',
                     'showwhen' => ['field' => 'showquote', 'truthy' => true]],
             ],
+            'featuregrid' => [
+                // Heading. These two are lifted out of the settings JSON onto the widget
+                // row by save_storefront_widget, so declaring them here is what makes the
+                // section heading editable in the drawer.
+                ['name' => 'title', 'label' => 'Heading', 'type' => 'text', 'default' => ''],
+                ['name' => 'subtitle', 'label' => 'Subheading', 'type' => 'text', 'default' => ''],
+
+                // Layout.
+                [
+                    'name' => 'style',
+                    'label' => 'Card style',
+                    'type' => 'select',
+                    'default' => 'topbar',
+                    'choices' => [
+                        'topbar' => 'Top bar — coloured rule across the card top',
+                        'plain' => 'Plain — clean card, no accent',
+                        'tile' => 'Icon tile — tinted circle behind the icon',
+                        'bordered' => 'Bordered — accent-coloured border',
+                    ],
+                ],
+                [
+                    'name' => 'columns',
+                    'label' => 'Cards per row (desktop)',
+                    'type' => 'select',
+                    'default' => '3',
+                    'choices' => [
+                        '3' => '3 per row',
+                        '4' => '4 per row',
+                    ],
+                ],
+                ['name' => 'showheader', 'label' => 'Show section heading', 'type' => 'checkbox', 'default' => true],
+                ['name' => 'centercards', 'label' => 'Centre card content', 'type' => 'checkbox', 'default' => true],
+
+                // Cards — up to 12 are rendered; extras beyond that are ignored.
+                [
+                    'name' => 'cards',
+                    'label' => 'Cards (up to 12)',
+                    'type' => 'list',
+                    'default' => [],
+                    'fields' => [
+                        ['name' => 'icon', 'label' => 'Icon', 'type' => 'icon', 'default' => 'star'],
+                        ['name' => 'title', 'label' => 'Title', 'type' => 'text', 'default' => ''],
+                        ['name' => 'text', 'label' => 'Text', 'type' => 'textarea', 'default' => ''],
+                        ['name' => 'iconcolor', 'label' => 'Icon colour', 'type' => 'color', 'default' => ''],
+                        ['name' => 'accentcolor', 'label' => 'Accent colour', 'type' => 'color', 'default' => ''],
+                        ['name' => 'linklabel', 'label' => 'Link label', 'type' => 'text', 'default' => ''],
+                        ['name' => 'linkurl', 'label' => 'Link URL', 'type' => 'url', 'default' => '',
+                            'showwhen' => ['field' => 'linklabel', 'truthy' => true]],
+                    ],
+                ],
+
+                // Styling.
+                ['name' => 'bgcolor', 'label' => 'Section background', 'type' => 'color', 'default' => ''],
+                ['name' => 'titlecolor', 'label' => 'Heading colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'titlefontsize', 'label' => 'Heading font size (px)', 'type' => 'number', 'default' => 0],
+                ['name' => 'subtitlecolor', 'label' => 'Subheading colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'subtitlefontsize', 'label' => 'Subheading font size (px)', 'type' => 'number',
+                    'default' => 0],
+                ['name' => 'cardbgcolor', 'label' => 'Card background', 'type' => 'color', 'default' => ''],
+                ['name' => 'cardbordercolor', 'label' => 'Card border colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'cardborderwidth', 'label' => 'Card border weight (px)', 'type' => 'number',
+                    'default' => 1],
+                ['name' => 'cardradius', 'label' => 'Card radius (px)', 'type' => 'number', 'default' => 12],
+                // Widget-level fallback for cards that leave their own colour blank.
+                ['name' => 'iconcolor', 'label' => 'Default icon colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'iconsize', 'label' => 'Icon size (px)', 'type' => 'number', 'default' => 40],
+                ['name' => 'iconbgcolor', 'label' => 'Icon tile background', 'type' => 'color', 'default' => '',
+                    'showwhen' => ['field' => 'style', 'equals' => 'tile']],
+                ['name' => 'cardtitlecolor', 'label' => 'Card title colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'cardtitlefontsize', 'label' => 'Card title font size (px)', 'type' => 'number',
+                    'default' => 0],
+                ['name' => 'textcolor', 'label' => 'Card text colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'textfontsize', 'label' => 'Card text font size (px)', 'type' => 'number', 'default' => 0],
+                ['name' => 'linkcolor', 'label' => 'Card link colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'paddingtop', 'label' => 'Padding top (px)', 'type' => 'number', 'default' => 72],
+                ['name' => 'paddingbottom', 'label' => 'Padding bottom (px)', 'type' => 'number', 'default' => 72],
+            ],
+            'subscriptionplans' => [
+                // Heading. Lifted onto the widget row by save_storefront_widget, so
+                // declaring them here is what makes them editable in the drawer.
+                ['name' => 'title', 'label' => 'Heading', 'type' => 'text', 'default' => ''],
+                ['name' => 'subtitle', 'label' => 'Subheading', 'type' => 'text', 'default' => ''],
+                ['name' => 'showheader', 'label' => 'Show section heading', 'type' => 'checkbox', 'default' => true],
+
+                // Layout.
+                [
+                    'name' => 'style',
+                    'label' => 'Card style',
+                    'type' => 'select',
+                    'default' => 'elevated',
+                    'choices' => [
+                        'elevated' => 'Elevated — raised cards, highlighted plan lifted',
+                        'bordered' => 'Bordered — flat cards with an accent border',
+                        'minimal' => 'Minimal — plain columns divided by rules',
+                    ],
+                ],
+                [
+                    'name' => 'columns',
+                    'label' => 'Plans per row (desktop)',
+                    'type' => 'select',
+                    'default' => '3',
+                    'choices' => [
+                        '2' => '2 per row',
+                        '3' => '3 per row',
+                        '4' => '4 per row',
+                    ],
+                ],
+
+                // Plan selection. Plans themselves are managed on the Subscriptions
+                // admin page; this widget only chooses which of them to display.
+                [
+                    'name' => 'billingcycle',
+                    'label' => 'Billing cycle',
+                    'type' => 'select',
+                    'default' => 'both',
+                    'choices' => [
+                        'both' => 'Monthly and yearly, with a switch',
+                        'monthly' => 'Monthly only',
+                        'yearly' => 'Yearly only',
+                    ],
+                ],
+                ['name' => 'defaultcycle', 'label' => 'Cycle selected first', 'type' => 'select',
+                    'default' => 'monthly',
+                    'choices' => ['monthly' => 'Monthly', 'yearly' => 'Yearly'],
+                    'showwhen' => ['field' => 'billingcycle', 'equals' => 'both']],
+                ['name' => 'monthlylabel', 'label' => 'Monthly switch label', 'type' => 'text',
+                    'default' => 'Monthly',
+                    'showwhen' => ['field' => 'billingcycle', 'equals' => 'both']],
+                ['name' => 'yearlylabel', 'label' => 'Yearly switch label', 'type' => 'text',
+                    'default' => 'Yearly',
+                    'showwhen' => ['field' => 'billingcycle', 'equals' => 'both']],
+                ['name' => 'savingslabel', 'label' => 'Savings badge next to the yearly switch', 'type' => 'text',
+                    'default' => 'Save 2 months',
+                    'showwhen' => ['field' => 'billingcycle', 'equals' => 'both']],
+                [
+                    'name' => 'plancodes',
+                    'label' => 'Limit to plan codes (comma separated, blank for all)',
+                    'type' => 'text',
+                    'default' => '',
+                ],
+                ['name' => 'maxplans', 'label' => 'Maximum plans to show', 'type' => 'number', 'default' => 4],
+
+                // Card content toggles.
+                ['name' => 'showdescription', 'label' => 'Show plan description', 'type' => 'checkbox',
+                    'default' => true],
+                ['name' => 'showfeatures', 'label' => 'Show feature list', 'type' => 'checkbox', 'default' => true],
+                ['name' => 'maxfeatures', 'label' => 'Maximum features per plan', 'type' => 'number', 'default' => 10,
+                    'showwhen' => ['field' => 'showfeatures', 'truthy' => true]],
+                ['name' => 'showtrial', 'label' => 'Show free-trial note', 'type' => 'checkbox', 'default' => true],
+                ['name' => 'showpromo', 'label' => 'Strike through the regular price when a promo is live',
+                    'type' => 'checkbox', 'default' => true],
+                ['name' => 'highlightfeatured', 'label' => 'Highlight the featured plan', 'type' => 'checkbox',
+                    'default' => true],
+                ['name' => 'featuredlabel', 'label' => 'Highlight badge label', 'type' => 'text',
+                    'default' => 'Most popular',
+                    'showwhen' => ['field' => 'highlightfeatured', 'truthy' => true]],
+
+                // Call to action.
+                ['name' => 'ctalabel', 'label' => 'Button label', 'type' => 'text', 'default' => 'Choose plan'],
+                [
+                    'name' => 'ctaurl',
+                    'label' => 'Button URL (blank goes straight to checkout for the chosen plan)',
+                    'type' => 'url',
+                    'default' => '',
+                ],
+
+                // Styling.
+                ['name' => 'bgcolor', 'label' => 'Section background', 'type' => 'color', 'default' => ''],
+                ['name' => 'titlecolor', 'label' => 'Heading colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'titlefontsize', 'label' => 'Heading font size (px)', 'type' => 'number', 'default' => 0],
+                ['name' => 'subtitlecolor', 'label' => 'Subheading colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'subtitlefontsize', 'label' => 'Subheading font size (px)', 'type' => 'number',
+                    'default' => 0],
+                ['name' => 'cardbgcolor', 'label' => 'Card background', 'type' => 'color', 'default' => ''],
+                ['name' => 'cardbordercolor', 'label' => 'Card border colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'cardborderwidth', 'label' => 'Card border weight (px)', 'type' => 'number', 'default' => 1],
+                ['name' => 'cardradius', 'label' => 'Card radius (px)', 'type' => 'number', 'default' => 12],
+                ['name' => 'accentcolor', 'label' => 'Accent colour (highlighted plan)', 'type' => 'color',
+                    'default' => ''],
+                ['name' => 'plannamecolor', 'label' => 'Plan name colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'plannamefontsize', 'label' => 'Plan name font size (px)', 'type' => 'number',
+                    'default' => 0],
+                ['name' => 'pricecolor', 'label' => 'Price colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'pricefontsize', 'label' => 'Price font size (px)', 'type' => 'number', 'default' => 40],
+                ['name' => 'cyclecolor', 'label' => 'Billing cycle colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'textcolor', 'label' => 'Description colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'textfontsize', 'label' => 'Description font size (px)', 'type' => 'number', 'default' => 0],
+                ['name' => 'featurecolor', 'label' => 'Feature text colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'featureiconcolor', 'label' => 'Feature icon colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'buttoncolor', 'label' => 'Button background', 'type' => 'color', 'default' => ''],
+                ['name' => 'buttontextcolor', 'label' => 'Button text colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'buttonradius', 'label' => 'Button radius (px)', 'type' => 'number', 'default' => 8],
+                ['name' => 'paddingtop', 'label' => 'Padding top (px)', 'type' => 'number', 'default' => 72],
+                ['name' => 'paddingbottom', 'label' => 'Padding bottom (px)', 'type' => 'number', 'default' => 72],
+            ],
+            'leadermessage' => [
+                // Design.
+                [
+                    'name' => 'style',
+                    'label' => 'Design style',
+                    'type' => 'select',
+                    'default' => 'elevated',
+                    'choices' => [
+                        'elevated' => 'Elevated editorial — soft-shadowed portrait, accent shape',
+                        'overlay' => 'Portrait card — raised card, floating name badge',
+                        'quote' => 'Quote-led — pull-quote copy, circular portrait',
+                        'flat' => 'Flat — plain heading, portrait and paragraphs',
+                    ],
+                ],
+                [
+                    'name' => 'mediaposition',
+                    'label' => 'Portrait position',
+                    'type' => 'select',
+                    'default' => 'right',
+                    'choices' => [
+                        'right' => 'Portrait right',
+                        'left' => 'Portrait left',
+                    ],
+                ],
+
+                // Content.
+                // Each block has a switch so an admin can drop any element they
+                // do not need without having to blank its fields.
+                ['name' => 'showeyebrow', 'label' => 'Show eyebrow label', 'type' => 'checkbox', 'default' => false],
+                ['name' => 'eyebrow', 'label' => 'Eyebrow label', 'type' => 'text', 'default' => '',
+                    'showwhen' => ['field' => 'showeyebrow', 'truthy' => true]],
+                ['name' => 'showtitle', 'label' => 'Show heading', 'type' => 'checkbox', 'default' => true],
+                // Lifted onto the widget row on save (see save_storefront_widget); declaring
+                // it here is what makes the heading editable in the drawer.
+                ['name' => 'title', 'label' => 'Heading', 'type' => 'text', 'default' => '',
+                    'showwhen' => ['field' => 'showtitle', 'truthy' => true]],
+                [
+                    'name' => 'message',
+                    'label' => 'Message',
+                    'type' => 'textarea',
+                    'default' => '',
+                ],
+                ['name' => 'justifytext', 'label' => 'Justify message text', 'type' => 'checkbox', 'default' => false],
+
+                // Portrait.
+                ['name' => 'showphoto', 'label' => 'Show portrait', 'type' => 'checkbox', 'default' => true],
+                [
+                    'name' => 'photosource',
+                    'label' => 'Portrait source',
+                    'type' => 'select',
+                    'default' => 'upload',
+                    'choices' => ['upload' => 'Uploaded photo', 'url' => 'Photo URL'],
+                    'showwhen' => ['field' => 'showphoto', 'truthy' => true],
+                ],
+                ['name' => 'photofile', 'label' => 'Uploaded portrait', 'type' => 'image', 'default' => '',
+                    'showwhen' => ['field' => 'photosource', 'equals' => 'upload']],
+                ['name' => 'photourl', 'label' => 'Portrait URL', 'type' => 'url', 'default' => '',
+                    'showwhen' => ['field' => 'photosource', 'equals' => 'url']],
+
+                // Attribution.
+                ['name' => 'showattribution', 'label' => 'Show name and role', 'type' => 'checkbox',
+                    'default' => true],
+                ['name' => 'leadername', 'label' => 'Name', 'type' => 'text', 'default' => '',
+                    'showwhen' => ['field' => 'showattribution', 'truthy' => true]],
+                ['name' => 'leaderrole', 'label' => 'Role or title', 'type' => 'text', 'default' => '',
+                    'showwhen' => ['field' => 'showattribution', 'truthy' => true]],
+
+                // Signature.
+                ['name' => 'showsignature', 'label' => 'Show signature image', 'type' => 'checkbox',
+                    'default' => false],
+                [
+                    'name' => 'signaturesource',
+                    'label' => 'Signature source',
+                    'type' => 'select',
+                    'default' => 'upload',
+                    'choices' => ['upload' => 'Uploaded signature', 'url' => 'Signature URL'],
+                    'showwhen' => ['field' => 'showsignature', 'truthy' => true],
+                ],
+                ['name' => 'signaturefile', 'label' => 'Uploaded signature', 'type' => 'image', 'default' => '',
+                    'showwhen' => ['field' => 'signaturesource', 'equals' => 'upload']],
+                ['name' => 'signatureurl', 'label' => 'Signature URL', 'type' => 'url', 'default' => '',
+                    'showwhen' => ['field' => 'signaturesource', 'equals' => 'url']],
+
+                // Call to action.
+                ['name' => 'showcta', 'label' => 'Show button', 'type' => 'checkbox', 'default' => false],
+                ['name' => 'ctalabel', 'label' => 'Button label', 'type' => 'text', 'default' => '',
+                    'showwhen' => ['field' => 'showcta', 'truthy' => true]],
+                ['name' => 'ctaurl', 'label' => 'Button link', 'type' => 'url', 'default' => '',
+                    'showwhen' => ['field' => 'showcta', 'truthy' => true]],
+
+                // Styling.
+                ['name' => 'showaccent', 'label' => 'Show accent rule under heading', 'type' => 'checkbox',
+                    'default' => true],
+                ['name' => 'bgcolor', 'label' => 'Background colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'accentcolor', 'label' => 'Accent colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'eyebrowcolor', 'label' => 'Eyebrow colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'eyebrowfontsize', 'label' => 'Eyebrow font size (px)', 'type' => 'number', 'default' => 0],
+                ['name' => 'titlecolor', 'label' => 'Heading colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'titlefontsize', 'label' => 'Heading font size (px)', 'type' => 'number', 'default' => 0],
+                ['name' => 'textcolor', 'label' => 'Message colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'textfontsize', 'label' => 'Message font size (px)', 'type' => 'number', 'default' => 0],
+                ['name' => 'namecolor', 'label' => 'Name colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'namefontsize', 'label' => 'Name font size (px)', 'type' => 'number', 'default' => 0],
+                ['name' => 'rolecolor', 'label' => 'Role colour', 'type' => 'color', 'default' => ''],
+                ['name' => 'rolefontsize', 'label' => 'Role font size (px)', 'type' => 'number', 'default' => 0],
+                ['name' => 'buttoncolor', 'label' => 'Button background', 'type' => 'color', 'default' => '',
+                    'showwhen' => ['field' => 'showcta', 'truthy' => true]],
+                ['name' => 'buttontextcolor', 'label' => 'Button text colour', 'type' => 'color', 'default' => '',
+                    'showwhen' => ['field' => 'showcta', 'truthy' => true]],
+                ['name' => 'buttonradius', 'label' => 'Button radius (px)', 'type' => 'number', 'default' => 8,
+                    'showwhen' => ['field' => 'showcta', 'truthy' => true]],
+                ['name' => 'mediaradius', 'label' => 'Portrait radius (px)', 'type' => 'number', 'default' => 16,
+                    'showwhen' => ['field' => 'showphoto', 'truthy' => true]],
+                ['name' => 'mediawidth', 'label' => 'Portrait column width (%)', 'type' => 'number', 'default' => 38,
+                    'showwhen' => ['field' => 'showphoto', 'truthy' => true]],
+                ['name' => 'paddingtop', 'label' => 'Padding top (px)', 'type' => 'number', 'default' => 72],
+                ['name' => 'paddingbottom', 'label' => 'Padding bottom (px)', 'type' => 'number', 'default' => 72],
+            ],
             'mediastorycarousel' => [
                 [
                     'name' => 'mediaposition',
@@ -1153,6 +1466,7 @@ class field_schema {
             ],
             'catalog' => [
                 ['name' => 'title', 'label' => 'Title', 'type' => 'text', 'default' => ''],
+                ['name' => 'showheader', 'label' => 'Show hero section', 'type' => 'checkbox', 'default' => true],
                 ['name' => 'perpage', 'label' => 'Items per page', 'type' => 'number', 'default' => 12],
                 [
                     'name' => 'sidebarposition',

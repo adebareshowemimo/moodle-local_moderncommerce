@@ -43,7 +43,7 @@ class videohero_resolver implements widget_resolver {
      * @return array
      */
     public function resolve(widget $instance, array $context): array {
-        $s = $instance->get_settings_array();
+        $s = $instance->get_resolved_settings_array();
         $ctx = context_system::instance();
 
         $heading = trim((string) ($s['heading'] ?? '')) !== ''

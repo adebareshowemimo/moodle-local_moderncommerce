@@ -1339,5 +1339,78 @@ function xmldb_local_moderncommerce_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026081200, 'local', 'moderncommerce');
     }
 
+    if ($oldversion < 2026081601) {
+        // Store the reusable Paystack authorization so subscription renewals can
+        // charge the same card again without the buyer being present.
+        global $DB;
+
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('local_moderncommerce_user_subscriptions');
+
+        $field = new xmldb_field(
+            'paystack_authorization_code',
+            XMLDB_TYPE_CHAR,
+            '100',
+            null,
+            null,
+            null,
+            null,
+            'paystack_subscription_code'
+        );
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field(
+            'paystack_email',
+            XMLDB_TYPE_CHAR,
+            '255',
+            null,
+            null,
+            null,
+            null,
+            'paystack_authorization_code'
+        );
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026081601, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026081700) {
+        // Custom storefront pages an administrator can create at runtime. The six
+        // built-in pages are not stored here - they remain hardcoded and are merged
+        // with these rows by public_page::page_catalog().
+        global $DB;
+
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('local_moderncommerce_storepage');
+
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('slug', XMLDB_TYPE_CHAR, '30', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('title', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('summary', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+            $table->add_field('icon', XMLDB_TYPE_CHAR, '50', null, XMLDB_NOTNULL, null, 'bi-file-text');
+            $table->add_field('template', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'content');
+            $table->add_field('enabled', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
+            $table->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_key('usermodified_fk', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
+
+            $table->add_index('slug_uix', XMLDB_INDEX_UNIQUE, ['slug']);
+            $table->add_index('enabled_sort_ix', XMLDB_INDEX_NOTUNIQUE, ['enabled', 'sortorder']);
+
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026081700, 'local', 'moderncommerce');
+    }
+
     return true;
 }

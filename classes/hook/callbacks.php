@@ -301,8 +301,12 @@ class callbacks {
             return;
         }
 
+        // Moodle does not revision arbitrary plugin CSS paths automatically.
+        // Tie the public URL to the installed plugin version so rebuilt
+        // bundles cannot remain hidden behind a browser's stale cache.
+        $cssrevision = (int)get_config('local_moderncommerce', 'version');
         foreach (self::get_style_urls_for_current_page() as $cssurl) {
-            $PAGE->requires->css($cssurl);
+            $PAGE->requires->css(new \moodle_url($cssurl, ['rev' => $cssrevision]));
         }
 
         $css = \local_moderncommerce\branding::build_css();
@@ -424,6 +428,8 @@ class callbacks {
         $storefrontroutes = [
             '/local/moderncommerce/index.php',
             '/local/moderncommerce/about.php',
+            // Dispatcher for every admin-created custom page.
+            '/local/moderncommerce/page.php',
             '/local/moderncommerce/privacy.php',
             '/local/moderncommerce/refund-policy.php',
             '/local/moderncommerce/support.php',

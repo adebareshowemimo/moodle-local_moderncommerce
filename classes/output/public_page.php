@@ -26,6 +26,7 @@ namespace local_moderncommerce\output;
 
 use html_writer;
 use local_moderncommerce\persistent\widget;
+use local_moderncommerce\storefront\storepage_service;
 use local_moderncommerce\storefront\zones;
 use moodle_url;
 
@@ -36,13 +37,26 @@ class public_page {
     /** @var string Plugin component name. */
     private const COMPONENT = 'local_moderncommerce';
 
+    /** @var string Block region above the page content. */
+    public const BLOCK_REGION_ABOVE = 'mc-above';
+
+    /** @var string Block region inside the page content card, below the widgets. */
+    public const BLOCK_REGION_CONTENT = 'mc-content';
+
+    /** @var string Block region below the page content. */
+    public const BLOCK_REGION_BELOW = 'mc-below';
+
     /**
      * Get supported editable public pages.
+     *
+     * The six built-in pages are hardcoded here; admin-created custom pages are
+     * merged in from the storepage table. Union (+) rather than array_merge keeps
+     * the built-ins first and lets them win any key clash.
      *
      * @return array<string, array>
      */
     public static function page_catalog(): array {
-        return [
+        $builtins = [
             'catalog' => [
                 'title' => get_string('p1_publicpage_catalog_title', self::COMPONENT),
                 'summary' => get_string('p1_publicpage_catalog_summary', self::COMPONENT),
@@ -80,6 +94,8 @@ class public_page {
                 'route' => '/local/moderncommerce/refund-policy.php',
             ],
         ];
+
+        return $builtins + storepage_service::catalog_entries();
     }
 
     /**
@@ -111,9 +127,157 @@ class public_page {
             return true;
         }
 
+        // Custom pages own their published state in the storepage table. Reading it from
+        // config instead would let a stale publicpage_<slug>_enabled row silently hide a
+        // page that was deleted and recreated under the same slug.
+        $custom = storepage_service::by_slug($key);
+        if ($custom !== null) {
+            return (bool)(int)$custom->enabled;
+        }
+
         $value = get_config(self::COMPONENT, self::config_name($key, 'enabled'));
 
         return $value === false || $value === null || $value === '' ? true : (bool) (int) $value;
+    }
+
+    /**
+     * Configure $PAGE and emit a complete public content page, start to finish.
+     *
+     * Every public content page is the same 40 lines of boilerplate: publish check, title
+     * from the catalog (or its admin override), standard layout, then the widget render.
+     * All the entry files delegate here - the built-ins (about.php, terms.php and friends,
+     * which keep their own files so their public URLs stay stable) and page.php, which
+     * serves every admin-created custom page.
+     *
+     * The caller is responsible for setting a context first only when it needs to throw
+     * beforehand, as page.php does for an unknown slug.
+     *
+     * @param string $key Page key or custom-page slug, as used in page_catalog().
+     * @param object $output Moodle renderer.
+     */
+    public static function render_page(string $key, $output): void {
+        self::setup_page($key);
+
+        echo $output->header();
+        echo self::block_region(self::BLOCK_REGION_ABOVE, $output);
+        echo self::render_widget_page($key, $output);
+        echo self::block_region(self::BLOCK_REGION_BELOW, $output);
+        echo $output->footer();
+    }
+
+    /**
+     * Render one of the storefront's own block regions.
+     *
+     * These are page-declared regions (see setup_page()), so nothing in the theme layout
+     * renders them - the page has to emit them itself, the way core's /my/index.php does.
+     * The "add a block" control only appears to a manager in edit mode; for everyone else
+     * an empty region renders nothing at all.
+     *
+     * @param string $region Region name, one of the BLOCK_REGION_* constants.
+     * @param object $output Moodle renderer.
+     * @return string
+     */
+    public static function block_region(string $region, $output): string {
+        global $PAGE;
+
+        if (!in_array($region, $PAGE->blocks->get_regions(), true)) {
+            return '';
+        }
+
+        $editing = $PAGE->user_is_editing();
+        if (!$editing && !$PAGE->blocks->region_has_content($region, $output)) {
+            return '';
+        }
+
+        $html = html_writer::start_div('mc-public-blocks mc-public-blocks--' . $region);
+        if ($editing) {
+            // The core add-block button renders nothing unless the theme declares
+            // $THEME->addblockposition (Boost and its children do; Classic, for one, does
+            // not). Fall back to a plain link to the same bui_addblock URL so these
+            // regions stay usable whatever theme the site runs.
+            $button = $output->addblockbutton($region);
+            if (trim($button) === '') {
+                $button = html_writer::link(
+                    new moodle_url($PAGE->url, [
+                        'bui_addblock' => '',
+                        'bui_blockregion' => $region,
+                        'sesskey' => sesskey(),
+                    ]),
+                    get_string('addblock'),
+                    ['class' => 'mc-button mc-btn-soft mc-public-blocks__add', 'data-mc-button' => 'soft']
+                );
+            }
+            $html .= $button;
+        }
+        $html .= $output->custom_block_region($region);
+        $html .= html_writer::end_div();
+
+        return $html;
+    }
+
+    /**
+     * Apply the publish check and the standard $PAGE setup for a public content page.
+     *
+     * Split out of render_page() for support.php, which must run its form POST handling
+     * (and possibly redirect) between the setup and the render.
+     *
+     * @param string $key Page key or custom-page slug, as used in page_catalog().
+     * @return string The resolved page title, after any admin override.
+     */
+    public static function setup_page(string $key): string {
+        global $PAGE;
+
+        $catalog = self::page_catalog();
+        if (!isset($catalog[$key])) {
+            throw new \coding_exception('Unknown Modern Commerce public page: ' . $key);
+        }
+
+        $context = \context_system::instance();
+        self::require_enabled($key);
+
+        $title = self::setting($key, 'title', $catalog[$key]['title']);
+
+        $PAGE->set_context($context);
+        // Custom pages carry their slug in 'params' (page.php?slug=...); built-ins have none.
+        $PAGE->set_url(new moodle_url($catalog[$key]['route'], $catalog[$key]['params'] ?? []));
+        $PAGE->set_pagelayout('standard');
+        $PAGE->add_body_class('mc-public-storefront-page');
+        $PAGE->set_title($title);
+        $PAGE->set_heading($title);
+        $PAGE->set_blocks_editing_capability('local/moderncommerce:managestorefront');
+
+        // Standard Moodle blocks work on these pages out of the box: the 'standard' layout
+        // exposes the side-pre region and the capability above grants edit mode. Every
+        // custom page is served by page.php, though, so they all share the pagetype
+        // 'local-moderncommerce-page' - without a subpage a block added to one custom page
+        // would appear on all of them. Scoping by slug keeps each page's blocks its own.
+        if (!empty($catalog[$key]['custom'])) {
+            $PAGE->set_subpage($key);
+        }
+
+        // Three storefront-owned regions, rendered by block_region() rather than by the
+        // theme layout. These must be declared before $OUTPUT->header(): block_manager
+        // refuses new regions once the blocks have loaded, which happens during header
+        // output. They sit alongside the theme's own side-pre drawer region.
+        //
+        // Pass $custom = true so each region is recorded in $SESSION->custom_block_regions
+        // against this pagetype; the AJAX block chooser rebuilds the page from that session
+        // data and would otherwise reject these regions as unknown.
+        $defaultregion = $PAGE->blocks->get_default_region();
+        $PAGE->blocks->add_regions([
+            self::BLOCK_REGION_ABOVE,
+            self::BLOCK_REGION_CONTENT,
+            self::BLOCK_REGION_BELOW,
+        ], true);
+
+        // The first region added becomes the page default when there is none yet.
+        // Restore the theme's own default (side-pre) so blocks added from the drawer
+        // keep landing there rather than in our content region.
+        if (!empty($defaultregion)) {
+            $PAGE->blocks->set_default_region($defaultregion);
+        }
+
+        return $title;
     }
 
     /**
@@ -183,6 +347,9 @@ class public_page {
             $html .= self::render_sections($sections);
         }
 
+        // Extra markup the caller wants inside the page card, e.g. the in-content blocks.
+        $html .= (string)($options['appendhtml'] ?? '');
+
         $html .= html_writer::end_div();
 
         return $html;
@@ -214,9 +381,14 @@ class public_page {
         $globalbottom = self::render_global_band(zones::GLOBAL_BOTTOM, $output, $key);
         $hasglobalbreadcrumb = self::has_global_breadcrumb();
 
+        // The in-content block region lives inside the page card on both render paths, so
+        // it picks up the card's width and padding.
+        $contentblocks = self::block_region(self::BLOCK_REGION_CONTENT, $output);
+
         $haswidgets = widget::record_exists_select('pagetype = ?', [$key]);
         if (!$haswidgets && !$editing) {
             $options['skipbreadcrumbs'] = $hasglobalbreadcrumb;
+            $options['appendhtml'] = $contentblocks;
             return $globaltop . self::render($key, $output, $options) . $globalbottom;
         }
 
@@ -237,6 +409,7 @@ class public_page {
             'context' => ['hostpage' => $key],
             'toolbarTargetId' => ($editing && $canmanage) ? $toolbarid : '',
         ]);
+        $html .= $contentblocks;
         $html .= html_writer::end_div();
         $html .= $globalbottom;
 
@@ -403,6 +576,12 @@ class public_page {
      * @return array
      */
     public static function default_sections(string $key): array {
+        // A custom page has no built-in copy to fall back on: show just its hero until
+        // the admin places widgets, rather than the About page's placeholder cards.
+        if (storepage_service::exists($key)) {
+            return [];
+        }
+
         switch ($key) {
             case 'support':
                 return [
@@ -615,7 +794,10 @@ class public_page {
             return get_string($identifier, self::COMPONENT);
         };
 
-        return [
+        // The storefront editor validates widget fields from the shared schema rules, so it
+        // needs the generic validation messages -- without them a failed rule renders its
+        // raw label key ('error:invalidcolour') instead of a sentence.
+        return validation_labels::all() + [
             'customize' => get_string('storefront_customize', self::COMPONENT),
             'managetitle' => get_string('storefront_manage_page_title', self::COMPONENT, $title),
             'manageintro' => get_string('storefront_manage_page_intro', self::COMPONENT),

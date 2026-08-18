@@ -40,7 +40,7 @@ class instructors_resolver implements widget_resolver {
      * @return array
      */
     public function resolve(widget $instance, array $context): array {
-        $settings = $instance->get_settings_array();
+        $settings = $instance->get_resolved_settings_array();
         $instructors = [];
 
         foreach (($settings['instructors'] ?? []) as $person) {

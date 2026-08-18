@@ -311,6 +311,58 @@ class seed {
             'cardborderwidth' => 1,
         ]);
 
+        // Appended after the existing home sections: self::widget() never renumbers
+        // rows it already created, so reusing an in-use sortorder would collide on a
+        // site seeded before this widget existed.
+        self::widget(
+            'featuregrid',
+            zones::HOME_FEATURED,
+            3,
+            'Built for your whole workforce',
+            'Everything your teams need to train, certify, and stay current.',
+            [
+                'style' => 'topbar',
+                'columns' => '3',
+                'showheader' => 1,
+                'centercards' => 1,
+                'cards' => [
+                    [
+                        'icon' => 'mortarboard-fill',
+                        'title' => 'Accredited courses',
+                        'text' => 'Standardised training tracks built around the competencies your roles need.',
+                        'iconcolor' => '#1e7d47',
+                        'accentcolor' => '#1e7d47',
+                    ],
+                    [
+                        'icon' => 'award-fill',
+                        'title' => 'E-certificates',
+                        'text' => 'Learners download a securely verified certificate as soon as they pass.',
+                        'iconcolor' => '#e8a33d',
+                        'accentcolor' => '#e8a33d',
+                    ],
+                    [
+                        'icon' => 'phone-fill',
+                        'title' => 'Mobile optimised',
+                        'text' => 'Bandwidth-efficient rendering so remote teams can learn on local networks.',
+                        'iconcolor' => '#0f8ea8',
+                        'accentcolor' => '#0f8ea8',
+                    ],
+                ],
+                'bgcolor' => 'var(--mc-page-bg)',
+                'titlecolor' => 'var(--mc-secondary)',
+                'subtitlecolor' => 'var(--mc-text-muted)',
+                'cardbgcolor' => 'var(--mc-surface)',
+                'cardbordercolor' => 'var(--mc-border)',
+                'cardborderwidth' => 1,
+                'cardradius' => 12,
+                'iconsize' => 40,
+                'cardtitlecolor' => 'var(--mc-text)',
+                'textcolor' => 'var(--mc-text-muted)',
+                'paddingtop' => 72,
+                'paddingbottom' => 72,
+            ]
+        );
+
         self::widget('catalog', zones::CATALOG_MAIN, 0, '', '', [
             'title' => 'Explore the full catalog',
             'perpage' => 12,
@@ -600,6 +652,57 @@ class seed {
             'paddingleft' => 20,
             'paddingright' => 20,
         ], zones::PAGE_ABOUT);
+
+        // Appended after the existing About sections rather than inserted among them:
+        // self::widget() is idempotent and never renumbers rows it already created, so
+        // taking an in-use sortorder would collide on any site seeded before this widget
+        // existed. Admins can drag it anywhere from the storefront editor.
+        self::widget(
+            'leadermessage',
+            zones::PAGE_MAIN,
+            4,
+            'Welcome message from the ED/CEO',
+            '',
+            [
+                'style' => 'elevated',
+                'mediaposition' => 'right',
+                'showeyebrow' => 1,
+                'eyebrow' => 'From the leadership',
+                'showtitle' => 1,
+                'message' => '<p>On behalf of the management and staff, I am delighted to welcome you to our '
+                    . 'official learning portal. This platform represents a milestone in our commitment to '
+                    . 'making high-quality training available to every member of our workforce.</p>'
+                    . '<p>Here you will find accredited, self-paced modules built around the competencies '
+                    . 'that matter most in your role. By developing these skills you are helping us raise '
+                    . 'the standard of everything we deliver. Welcome, and let us build something better '
+                    . 'together.</p>',
+                'justifytext' => 0,
+                'showphoto' => 1,
+                'photosource' => 'url',
+                'photourl' => 'https://images.unsplash.com/photo-1560250097-0b93528c311a'
+                    . '?auto=format&fit=crop&q=80&w=900&h=1100',
+                'showattribution' => 1,
+                'leadername' => 'Dr Amina Bello',
+                'leaderrole' => 'Executive Director / CEO',
+                'showsignature' => 0,
+                'showcta' => 0,
+                'showaccent' => 1,
+                'bgcolor' => 'var(--mc-surface)',
+                'accentcolor' => 'var(--mc-primary)',
+                'eyebrowcolor' => 'var(--mc-primary)',
+                'titlecolor' => 'var(--mc-secondary)',
+                'titlefontsize' => 40,
+                'textcolor' => 'var(--mc-text-muted)',
+                'textfontsize' => 17,
+                'namecolor' => 'var(--mc-text)',
+                'rolecolor' => 'var(--mc-text-muted)',
+                'mediaradius' => 18,
+                'mediawidth' => 38,
+                'paddingtop' => 80,
+                'paddingbottom' => 80,
+            ],
+            zones::PAGE_ABOUT
+        );
 
         self::widget('learningpromise', zones::PAGE_MAIN, 1, 'Skills are the key to unlocking potential', '', [
             'title' => 'Skills are the key to unlocking potential',
@@ -1142,7 +1245,9 @@ class seed {
     private static function reset_widgets(): void {
         global $DB;
 
-        [$pagesql, $pageparams] = $DB->get_in_or_equal(zones::pages(), SQL_PARAMS_NAMED, 'mcpage');
+        // Scoped to the built-ins on purpose: zones::pages() also returns admin-created
+        // custom pages, and this method deletes every widget it matches.
+        [$pagesql, $pageparams] = $DB->get_in_or_equal(zones::builtin_pages(), SQL_PARAMS_NAMED, 'mcpage');
         $widgets = $DB->get_records_select(widget::TABLE, "pagetype {$pagesql}", $pageparams, '', 'id,type');
         if (empty($widgets)) {
             return;

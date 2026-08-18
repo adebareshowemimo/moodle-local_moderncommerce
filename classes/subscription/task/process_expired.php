@@ -74,6 +74,15 @@ class process_expired extends \core\task\scheduled_task {
 
         foreach ($subscriptions as $subscription) {
             try {
+                // A subscriber who asked to cancel at period end wants out, not a
+                // grace extension: close it cleanly the moment the term expires.
+                if (!empty($subscription->cancel_at_period_end)) {
+                    subscription_service::cancel($subscription->id, 'Cancelled at period end');
+                    mtrace("Subscription {$subscription->id} cancelled at end of period.");
+                    $this->send_expired_notification($subscription);
+                    continue;
+                }
+
                 if ($subscription->grace_period_days > 0) {
                     // Enter grace period.
                     subscription_service::enter_grace_period($subscription->id);
@@ -83,7 +92,7 @@ class process_expired extends \core\task\scheduled_task {
                     $this->send_grace_notification($subscription);
                 } else {
                     // No grace period, suspend immediately.
-                    subscription_service::suspend($subscription->id, 'Subscription period ended');
+                    subscription_service::suspend($subscription->id);
                     mtrace("Subscription {$subscription->id} suspended (no grace period).");
 
                     // Send expiration notification.
@@ -116,7 +125,7 @@ class process_expired extends \core\task\scheduled_task {
 
         foreach ($subscriptions as $subscription) {
             try {
-                subscription_service::suspend($subscription->id, 'Grace period ended');
+                subscription_service::suspend($subscription->id);
                 mtrace("Subscription {$subscription->id} suspended after grace period.");
 
                 // Send final expiration notification.
@@ -128,19 +137,40 @@ class process_expired extends \core\task\scheduled_task {
     }
 
     /**
+     * Build the email placeholders for a subscription.
+     *
+     * The placeholder helper lives in the plugin's lib.php, which a scheduled
+     * task does not get automatically, and it needs the plan and user alongside
+     * the subscription.
+     *
+     * @param object $subscription Subscription record.
+     * @return array|null Placeholders, or null when the plan or user is missing.
+     */
+    private function placeholders_for(object $subscription): ?array {
+        global $DB, $CFG;
+
+        require_once($CFG->dirroot . '/local/moderncommerce/lib.php');
+
+        $user = $DB->get_record('user', ['id' => $subscription->userid]);
+        $plan = $DB->get_record('local_moderncommerce_subscription_plans', ['id' => $subscription->planid]);
+        if (!$user || !$plan) {
+            return null;
+        }
+
+        return local_moderncommerce_subscription_prepare_placeholders($subscription, $plan, $user);
+    }
+
+    /**
      * Send grace period notification.
      *
      * @param object $subscription Subscription record.
      */
     private function send_grace_notification(object $subscription): void {
-        global $DB;
-
-        $user = $DB->get_record('user', ['id' => $subscription->userid]);
-        if (!$user) {
+        $placeholders = $this->placeholders_for($subscription);
+        if ($placeholders === null) {
             return;
         }
 
-        $placeholders = local_moderncommerce_subscription_prepare_placeholders($subscription);
         $placeholders['grace_end_date'] = userdate($subscription->grace_end_date);
         $placeholders['renew_url'] = (new \moodle_url('/local/moderncommerce/learner/subscription.php', [
             'id' => $subscription->id,
@@ -169,12 +199,11 @@ class process_expired extends \core\task\scheduled_task {
     private function send_expired_notification(object $subscription): void {
         global $DB;
 
-        $user = $DB->get_record('user', ['id' => $subscription->userid]);
-        if (!$user) {
+        $placeholders = $this->placeholders_for($subscription);
+        if ($placeholders === null) {
             return;
         }
 
-        $placeholders = local_moderncommerce_subscription_prepare_placeholders($subscription);
         $placeholders['resubscribe_url'] = (new \moodle_url('/local/moderncommerce/learner/index.php'))->out(false)
             . '#/library';
         $placeholders['subscription_url'] = $placeholders['resubscribe_url'];

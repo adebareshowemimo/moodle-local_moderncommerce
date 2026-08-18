@@ -27,16 +27,5 @@ require(__DIR__ . '/../../config.php');
 // phpcs:enable moodle.Files.RequireLogin.Missing
 
 use local_moderncommerce\output\public_page;
-$context = context_system::instance();
-public_page::require_enabled('terms');
-$PAGE->set_context($context);
-$PAGE->set_url(new moodle_url('/local/moderncommerce/terms.php'));
-$PAGE->set_pagelayout('standard');
-$PAGE->add_body_class('mc-public-storefront-page');
-$PAGE->set_title(public_page::setting('terms', 'title', get_string('termsandconditions', 'local_moderncommerce')));
-$PAGE->set_heading(public_page::setting('terms', 'title', get_string('termsandconditions', 'local_moderncommerce')));
-$PAGE->set_blocks_editing_capability('local/moderncommerce:managestorefront');
 
-echo $OUTPUT->header();
-echo public_page::render_widget_page('terms', $OUTPUT);
-echo $OUTPUT->footer();
+public_page::render_page('terms', $OUTPUT);

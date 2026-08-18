@@ -110,6 +110,7 @@ type CatalogProps = {
 
 type CatalogDisplaySettings = {
     title: string;
+    showheader: boolean;
     perpage: number;
     sidebarposition: "left" | "right";
     bgcolor: string;
@@ -203,6 +204,7 @@ const displaySettingsDefaults = (
 
     return {
         title: settings?.title || "",
+        showheader: settings?.showheader !== false,
         perpage: configuredPerPage,
         sidebarposition: settings?.sidebarposition === "right" ? "right" : "left",
         bgcolor: settingText(settings?.bgcolor),
@@ -1238,17 +1240,34 @@ export default function Catalog({
     return (
         <div className={sectionClassName} style={sectionStyle}>
             <div className={mcClasses("mc-catalog-container")}>
-                <CatalogHero
-                    labels={labels}
-                    title={catalogTitle}
-                    total={total}
-                    draft={draft}
-                    loading={loading}
-                    style={catalogHeroStyle(display)}
-                    onSearchChange={(search) => setDraft({...draft, search})}
-                    onSearchSubmit={handleSearch}
-                    onFilterToggle={() => setSidebarOpen(true)}
-                />
+                {display.showheader ? (
+                    <CatalogHero
+                        labels={labels}
+                        title={catalogTitle}
+                        total={total}
+                        draft={draft}
+                        loading={loading}
+                        style={catalogHeroStyle(display)}
+                        onSearchChange={(search) => setDraft({...draft, search})}
+                        onSearchSubmit={handleSearch}
+                        onFilterToggle={() => setSidebarOpen(true)}
+                    />
+                ) : (
+                    /* The hero owns the only filter toggle, so a hidden header still needs
+                       one for narrow screens where the sidebar is off-canvas. */
+                    <div className={mcClasses("mc-catalog-mobile-header")}>
+                        <h2 className={mcClasses("mc-catalog-title-mobile")}>{catalogTitle}</h2>
+                        <button
+                            type="button"
+                            className={mcClasses("mc-button mc-catalog-filter-toggle")}
+                            data-mc-button="light"
+                            onClick={() => setSidebarOpen(true)}
+                        >
+                            <i className="bi bi-sliders" aria-hidden="true" />
+                            {label(labels, "catalog_filter_button")}
+                        </button>
+                    </div>
+                )}
 
                 {(message || error) && (
                     <div className={noticeClassName} role="alert">

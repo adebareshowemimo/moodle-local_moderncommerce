@@ -27,6 +27,8 @@ use local_moderncommerce\logging\paylog_service;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class paystack_gateway implements gateway_interface, gateway_return_interface {
+    use subscription_mandate_trait;
+
     /** @var string Paystack API base URL */
     const API_URL = 'https://api.paystack.co';
 
@@ -208,6 +210,18 @@ class paystack_gateway implements gateway_interface, gateway_return_interface {
         }
 
         $verification = $this->verify_payment($reference);
+
+        // Paystack returns a reusable authorization for card charges. Storing it
+        // is what lets the renewal task charge the same card again later; a
+        // non-reusable channel (bank transfer, USSD) simply has nothing to save.
+        $authorization = $verification->authorization ?? null;
+        if (is_array($authorization) && !empty($authorization['reusable'])) {
+            $this->store_mandate_fields((int) ($params['orderid'] ?? 0), [
+                'paystack_authorization_code' => $authorization['authorization_code'] ?? '',
+                'paystack_email' => $verification->raw_data['customer']['email'] ?? '',
+            ]);
+        }
+
         return (object) [
             'status' => $verification->status === 'success' ? 'success' : 'failed',
             'orderid' => null,
@@ -435,6 +449,73 @@ class paystack_gateway implements gateway_interface, gateway_return_interface {
      * @param string $endpoint API endpoint
      * @param array $data Request data
      * @return array Response data
+     */
+    /**
+     * Charge a stored Paystack authorization, for subscription renewals.
+     *
+     * @param string $authorizationcode Reusable authorization code.
+     * @param string $email Customer email the authorization belongs to.
+     * @param float $amount Amount in major units.
+     * @param string $currency ISO currency code.
+     * @param array $metadata Extra metadata to attach.
+     * @return array{success: bool, reference: string, error: string, requiresaction: bool}
+     */
+    public function charge_saved_authorization(
+        string $authorizationcode,
+        string $email,
+        float $amount,
+        string $currency,
+        array $metadata = []
+    ): array {
+        $result = ['success' => false, 'reference' => '', 'error' => '', 'requiresaction' => false];
+
+        if ($authorizationcode === '' || $email === '' || $amount <= 0) {
+            $result['error'] = 'Missing authorization, email, or amount';
+            return $result;
+        }
+
+        $payload = [
+            'authorization_code' => $authorizationcode,
+            'email' => $email,
+            // Paystack works in the currency's minor unit, as with the initial charge.
+            'amount' => (int) round($amount * 100),
+            'currency' => strtoupper($currency ?: 'NGN'),
+        ];
+        if (!empty($metadata)) {
+            $payload['metadata'] = json_encode($metadata);
+        }
+
+        try {
+            $response = $this->make_request('POST', '/transaction/charge_authorization', $payload);
+        } catch (\Exception $e) {
+            $result['error'] = $e->getMessage();
+            return $result;
+        }
+
+        if (empty($response['status'])) {
+            $result['error'] = (string) ($response['message'] ?? 'Paystack declined the charge');
+            return $result;
+        }
+
+        $data = $response['data'] ?? [];
+        $result['reference'] = (string) ($data['reference'] ?? '');
+
+        if (($data['status'] ?? '') === 'success') {
+            $result['success'] = true;
+            return $result;
+        }
+
+        $result['error'] = (string) ($data['gateway_response'] ?? 'Payment failed');
+        return $result;
+    }
+
+    /**
+     * Make an authenticated request to the Paystack API.
+     *
+     * @param string $method HTTP method.
+     * @param string $endpoint API endpoint path.
+     * @param array $data Request payload.
+     * @return array Decoded response.
      */
     protected function make_request($method, $endpoint, $data = []) {
         global $CFG;

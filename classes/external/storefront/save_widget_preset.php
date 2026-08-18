@@ -112,8 +112,8 @@ class save_widget_preset extends external_api {
         $record = (object) [
             'type' => $cleantype,
             'name' => $cleanname,
-            'styleconfig' => json_encode($style, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-            'settingspatch' => json_encode($patch, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            'styleconfig' => preset_service::encode_object($style),
+            'settingspatch' => preset_service::encode_object($patch),
             'usermodified' => (int) $USER->id,
             'timemodified' => $now,
         ];

@@ -33,7 +33,10 @@ class preset_service {
 
     /** @var string[] Type-specific settings keys that are visual enough for presets. */
     private const SETTINGS_KEYS = [
-        'style', 'design', 'layout', 'mode', 'align', 'alignment', 'navposition', 'columns',
+        'showheader', 'showquote', 'showcount', 'showarrows', 'showdots', 'showfeatures', 'showdescription',
+        'showtrial', 'showpromo', 'highlightfeatured', 'showeyebrow', 'showtitle', 'justifytext', 'showphoto',
+        'showattribution', 'showsignature', 'showcta', 'showaccent', 'autoplay', 'greyscale', 'pauseonhover',
+        'centercards', 'style', 'design', 'layout', 'mode', 'align', 'alignment', 'navposition', 'columns',
         'tone', 'theme', 'mediaposition', 'sidebarposition', 'navicon',
         'bgcolor', 'textcolor', 'headingcolor', 'headingfontsize', 'accentcolor', 'overlaycolor', 'gradientstart',
         'gradientend', 'breadcrumbcolor', 'titlecolor', 'subtitlecolor', 'paddingtop', 'paddingbottom',
@@ -53,20 +56,29 @@ class preset_service {
         'cardmetatextcolor', 'labelcolor', 'labelfontsize', 'sublabelcolor', 'sublabelfontsize',
         'benefitnumbercolor', 'benefitnumberfontsize', 'benefittitlecolor', 'benefittitlefontsize',
         'benefittextcolor', 'benefittextfontsize', 'benefitbordercolor',
-        'countcolor', 'countfontsize', 'margintop', 'marginbottom', 'logoheight',
+        'countcolor', 'countfontsize', 'margintop', 'marginbottom', 'logoheight', 'visiblelogos', 'speed', 'logogap',
         'panelbgcolor', 'panelbordercolor', 'panelborderwidth', 'panelradius', 'panelpaddingtop',
         'panelpaddingright', 'panelpaddingbottom', 'panelpaddingleft', 'inputbgcolor', 'inputbordercolor', 'inputtextcolor',
         'placeholdercolor', 'formlabelcolor', 'linkcolor', 'ratingcolor', 'ratingtextcolor', 'originalpricecolor',
         'avatarbgcolor', 'avatarcolor',
         'quotecolor', 'quotefontsize', 'textfontsize', 'namecolor', 'namefontsize', 'rolecolor', 'rolefontsize',
-        'biocolor', 'biofontsize', 'mediaradius', 'questioncolor', 'answercolor', 'itembgcolor',
-        'itembordercolor', 'pricecolor', 'badgebgcolor', 'badgebordercolor', 'badgetextcolor',
+        'biocolor', 'biofontsize', 'mediaradius', 'questioncolor', 'answercolor', 'itembgcolor', 'eyebrowfontsize',
+        'mediawidth', 'itembordercolor', 'pricecolor', 'badgebgcolor', 'badgebordercolor', 'badgetextcolor',
+        'plannamecolor', 'plannamefontsize', 'pricefontsize', 'cyclecolor', 'featurecolor', 'featureiconcolor',
         'badgeradius', 'badgefontsize',
         'coursebadgebgcolor', 'coursebadgebordercolor', 'coursebadgetextcolor',
         'programbadgebgcolor', 'programbadgebordercolor', 'programbadgetextcolor',
         'bundlebadgebgcolor', 'bundlebadgebordercolor', 'bundlebadgetextcolor',
         'filterbgcolor', 'filterbordercolor', 'filterborderwidth', 'filterradius', 'filtertitlecolor', 'filtertextcolor',
         'tabbgcolor', 'tabbordercolor', 'tabtextcolor', 'tabactivebgcolor', 'tabactivetextcolor',
+    ];
+
+    /** @var string[] Settings keys that are booleans (stored 1/0), not text. */
+    private const BOOLEAN_KEYS = [
+        'showheader', 'showquote', 'showcount', 'showarrows', 'showdots', 'showfeatures', 'showdescription',
+        'showtrial', 'showpromo', 'highlightfeatured', 'showeyebrow', 'showtitle', 'justifytext', 'showphoto',
+        'showattribution', 'showsignature', 'showcta', 'showaccent', 'autoplay', 'greyscale', 'pauseonhover',
+        'centercards',
     ];
 
     /** @var string[] Settings keys that must be sanitised as colours. */
@@ -84,7 +96,8 @@ class preset_service {
         'panelbgcolor', 'panelbordercolor', 'inputbgcolor', 'inputbordercolor', 'inputtextcolor',
         'placeholdercolor', 'formlabelcolor', 'linkcolor', 'ratingcolor', 'ratingtextcolor', 'avatarbgcolor', 'avatarcolor',
         'quotecolor', 'namecolor', 'rolecolor', 'biocolor', 'questioncolor', 'answercolor', 'itembgcolor',
-        'itembordercolor', 'pricecolor', 'originalpricecolor', 'badgebgcolor', 'badgebordercolor',
+        'plannamecolor', 'cyclecolor', 'featurecolor', 'featureiconcolor', 'itembordercolor', 'pricecolor',
+        'originalpricecolor', 'badgebgcolor', 'badgebordercolor',
         'badgetextcolor', 'coursebadgebgcolor', 'coursebadgebordercolor', 'coursebadgetextcolor',
         'programbadgebgcolor', 'programbadgebordercolor', 'programbadgetextcolor',
         'bundlebadgebgcolor', 'bundlebadgebordercolor', 'bundlebadgetextcolor',
@@ -101,11 +114,12 @@ class preset_service {
         'visiblecards', 'iconsize', 'cardborderwidth', 'filterborderwidth', 'cardtitlefontsize',
         'cardtextfontsize', 'labelfontsize', 'sublabelfontsize',
         'benefitnumberfontsize', 'benefittitlefontsize', 'benefittextfontsize',
-        'countfontsize', 'margintop', 'marginbottom', 'logoheight', 'badgeradius', 'badgefontsize',
-        'panelborderwidth', 'panelradius',
+        'countfontsize', 'margintop', 'marginbottom', 'logoheight', 'visiblelogos', 'speed', 'logogap',
+        'badgeradius', 'badgefontsize', 'panelborderwidth', 'panelradius',
         'panelpaddingtop', 'panelpaddingright', 'panelpaddingbottom', 'panelpaddingleft', 'filterradius',
         'quotefontsize', 'textfontsize',
-        'namefontsize', 'rolefontsize', 'biofontsize', 'mediaradius',
+        'namefontsize', 'rolefontsize', 'biofontsize', 'mediaradius', 'eyebrowfontsize', 'mediawidth',
+        'plannamefontsize', 'pricefontsize',
     ];
 
     /** @var string[] Universal styleconfig keys accepted from presets. */
@@ -174,10 +188,21 @@ class preset_service {
                 $out[$key] = self::colour((string) $raw[$key]);
                 continue;
             }
+            if (in_array($key, self::BOOLEAN_KEYS, true)) {
+                // Stored as 1/0; PARAM_ALPHANUMEXT would keep '0' as a truthy string.
+                $out[$key] = self::boolean($raw[$key]) ? 1 : 0;
+                continue;
+            }
             if (in_array($key, self::NUMBER_KEYS, true)) {
                 $max = 240;
-                if ($key === 'columns' || $key === 'visiblecards') {
+                if ($key === 'columns' || $key === 'visiblecards' || $key === 'visiblelogos') {
                     $max = 6;
+                } else if ($key === 'speed') {
+                    $max = 240;
+                } else if ($key === 'logogap') {
+                    $max = 160;
+                } else if ($key === 'mediawidth') {
+                    $max = 60;
                 } else if ($key === 'overlayopacity') {
                     $max = 100;
                 } else if (str_ends_with($key, 'borderwidth')) {
@@ -221,10 +246,21 @@ class preset_service {
      * @return array
      */
     public static function decode_object(string $json): array {
+
         $decoded = json_decode($json, true);
         return is_array($decoded) ? $decoded : [];
     }
 
+    /**
+     * Encode an associative settings array as a JSON object, including when empty.
+     *
+     * @param array $value Sanitised settings.
+     * @return string JSON object string.
+     */
+    public static function encode_object(array $value): string {
+
+        return json_encode($value === [] ? new \stdClass() : $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
     /**
      * Normalise a DB preset record for external/API output.
      *
@@ -260,6 +296,23 @@ class preset_service {
             return $value;
         }
         return '';
+    }
+
+    /**
+     * Interpret a stored checkbox setting as a boolean.
+     *
+     * @param mixed $value Raw value.
+     * @return bool
+     */
+    private static function boolean($value): bool {
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            return $value !== '' && $value !== '0' && strtolower($value) !== 'false';
+        }
+
+        return !empty($value);
     }
 
     /**

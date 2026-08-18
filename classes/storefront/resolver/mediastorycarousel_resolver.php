@@ -66,7 +66,7 @@ class mediastorycarousel_resolver implements widget_resolver {
      * @return array
      */
     public function resolve(widget $instance, array $context): array {
-        $settings = $instance->get_settings_array();
+        $settings = $instance->get_resolved_settings_array();
         $ctx = context_system::instance();
         $slides = $this->resolve_slides($settings, $ctx);
         $navstyle = self::nav_style_for_settings($settings);

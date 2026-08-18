@@ -14,6 +14,7 @@
 
 import {useEffect, useMemo, useState} from "react";
 import {toast} from "./design_system";
+import {IconPicker} from "./icon_picker";
 import {
     callService,
     mergePresetIntoData,
@@ -60,7 +61,7 @@ type VariantSummary = {
     title: string;
 };
 
-type BreadcrumbSettingItem = "breadcrumb" | "title" | "subtitle" | "overlay" | "padding" | "position";
+type BreadcrumbSettingItem = "background" | "breadcrumb" | "title" | "subtitle" | "overlay" | "padding" | "position";
 type VideoHeroSettingItem = "background" | "heading" | "body" | "buttons" | "panel" | "infocard" | "spacing";
 type CountdownSettingItem = "background" | "heading" | "timer" | "button" | "expired" | "spacing";
 type CategoriesSettingItem = "layout" | "heading" | "cards" | "icons" | "count" | "spacing";
@@ -108,6 +109,8 @@ const typeIcons: Record<string, string> = {
     newsletter: "bi-envelope-paper",
     content: "bi-layout-text-window",
     mediastorycarousel: "bi-film",
+    featuregrid: "bi-grid-3x3-gap-fill",
+    subscriptionplans: "bi-credit-card-2-front",
     learningpromise: "bi-patch-check",
     belief: "bi-lightbulb",
     policy: "bi-file-earmark-text",
@@ -134,6 +137,8 @@ const typeDescriptions: Record<string, string> = {
     newsletter: "Preview the storefront lead-capture block for email signups.",
     content: "Compare flexible editorial sections for explanatory copy, images, and calls to action.",
     mediastorycarousel: "Preview story-led media panels for programme narratives and learning outcomes.",
+    featuregrid: "Compare icon feature cards for benefits, capabilities, and programme highlights.",
+    subscriptionplans: "Compare subscription pricing tables built from your live plans, prices, and feature matrix.",
     learningpromise: "Show a focused brand promise statement for learning pages.",
     belief: "Preview a full-width principles band for company and about pages.",
     policy: "Display structured policy copy with dates, sections, and supporting bullets.",
@@ -161,6 +166,7 @@ const safeKeySet = new Set(safePresetFieldNames);
 // would reject the plain string keys this set is used to membership-test.
 const universalStyleKeySet = new Set<string>(universalStyleFields.map((field) => field.key));
 const breadcrumbSettingItems: Array<{key: BreadcrumbSettingItem; label: string; icon: string}> = [
+    {key: "background", label: "Background", icon: "bi-palette"},
     {key: "breadcrumb", label: "Breadcrumb", icon: "bi-signpost-split"},
     {key: "title", label: "Title", icon: "bi-type-h1"},
     {key: "subtitle", label: "Subtitle", icon: "bi-text-paragraph"},
@@ -196,6 +202,8 @@ const categoriesSettingItems: Array<{key: CategoriesSettingItem; label: string; 
 const galleryVisualProfiles: Record<string, GalleryVisualSection[]> = {
     slider: [
         {key: "design", label: "Design", icon: "bi-sliders", patchKeys: ["design"]},
+        {key: "motion", label: "Motion", icon: "bi-play-circle", patchKeys: ["autoplay"]},
+        {key: "controls", label: "Controls", icon: "bi-toggles", patchKeys: ["showarrows", "showdots"]},
         {key: "button", label: "Button", icon: "bi-cursor",
             patchKeys: ["buttoncolor", "buttontextcolor", "buttonfontsize", "buttonradius"]},
         {key: "appearance", label: "Appearance", icon: "bi-palette",
@@ -229,6 +237,16 @@ const galleryVisualProfiles: Record<string, GalleryVisualSection[]> = {
         {key: "text", label: "Text", icon: "bi-fonts",
             patchKeys: ["labelcolor", "labelfontsize", "sublabelcolor", "sublabelfontsize"]},
         {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", patchKeys: ["paddingtop", "paddingbottom"]},
+    ],
+    partners: [
+        {key: "layout", label: "Layout", icon: "bi-layout-three-columns",
+            patchKeys: ["style", "visiblelogos", "speed", "pauseonhover"]},
+        {key: "logos", label: "Logo style", icon: "bi-image",
+            patchKeys: ["greyscale", "logoheight", "logogap"]},
+        {key: "heading", label: "Heading", icon: "bi-type-h2",
+            patchKeys: ["headingcolor", "headingfontsize"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand",
+            patchKeys: ["bgcolor", "paddingtop", "paddingbottom"]},
     ],
     testimonials: [
         {key: "background", label: "Background", icon: "bi-palette", patchKeys: ["bgcolor"]},
@@ -278,12 +296,55 @@ const galleryVisualProfiles: Record<string, GalleryVisualSection[]> = {
                 "mediaradius"]},
         {key: "text", label: "Text", icon: "bi-fonts",
             patchKeys: ["titlecolor", "titlefontsize", "subtitlecolor", "subtitlefontsize", "textcolor", "textfontsize"]},
+        {key: "icon", label: "Icon", icon: "bi-stars", patchKeys: ["iconbgcolor", "iconcolor", "iconsize"]},
         {key: "benefits", label: "Benefits", icon: "bi-list-ol",
             patchKeys: ["benefitnumbercolor", "benefitnumberfontsize", "benefittitlecolor", "benefittitlefontsize",
                 "benefittextcolor", "benefittextfontsize", "benefitbordercolor"]},
         {key: "button", label: "Button", icon: "bi-cursor", patchKeys: ["buttoncolor", "buttontextcolor", "buttonradius"]},
         {key: "spacing", label: "Spacing", icon: "bi-arrows-expand",
             patchKeys: ["paddingtop", "paddingbottom", "paddingleft", "paddingright"]},
+    ],
+    leadermessage: [
+        {key: "layout", label: "Layout", icon: "bi-layout-split",
+            patchKeys: ["style", "mediaposition", "showphoto", "mediawidth", "mediaradius", "justifytext"]},
+        {key: "visibility", label: "Visible elements", icon: "bi-eye",
+            patchKeys: ["showeyebrow", "showtitle", "showattribution", "showsignature", "showcta", "showaccent"]},
+        {key: "background", label: "Background", icon: "bi-palette", patchKeys: ["bgcolor", "accentcolor"]},
+        {key: "text", label: "Text", icon: "bi-fonts",
+            patchKeys: ["eyebrowcolor", "eyebrowfontsize", "titlecolor", "titlefontsize", "textcolor", "textfontsize",
+                "namecolor", "namefontsize", "rolecolor", "rolefontsize"]},
+        {key: "button", label: "Button", icon: "bi-cursor",
+            patchKeys: ["buttoncolor", "buttontextcolor", "buttonradius"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", patchKeys: ["paddingtop", "paddingbottom"]},
+    ],
+    featuregrid: [
+        {key: "layout", label: "Layout", icon: "bi-grid-3x3-gap",
+            patchKeys: ["style", "columns", "showheader", "centercards"]},
+        {key: "heading", label: "Heading", icon: "bi-type-h2",
+            patchKeys: ["titlecolor", "titlefontsize", "subtitlecolor", "subtitlefontsize"]},
+        {key: "cards", label: "Cards", icon: "bi-collection",
+            patchKeys: ["cardbgcolor", "cardbordercolor", "cardborderwidth", "cardradius"]},
+        {key: "icons", label: "Icons", icon: "bi-stars", patchKeys: ["iconbgcolor", "iconcolor", "iconsize"]},
+        {key: "text", label: "Text", icon: "bi-fonts",
+            patchKeys: ["cardtitlecolor", "cardtitlefontsize", "textcolor", "textfontsize", "linkcolor"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand",
+            patchKeys: ["bgcolor", "paddingtop", "paddingbottom"]},
+    ],
+    subscriptionplans: [
+        {key: "layout", label: "Layout", icon: "bi-layout-three-columns",
+            patchKeys: ["style", "columns", "showheader", "showdescription", "showfeatures", "showtrial", "showpromo",
+                "highlightfeatured"]},
+        {key: "heading", label: "Heading", icon: "bi-type-h2",
+            patchKeys: ["titlecolor", "titlefontsize", "subtitlecolor", "subtitlefontsize"]},
+        {key: "cards", label: "Cards", icon: "bi-window",
+            patchKeys: ["bgcolor", "cardbgcolor", "cardbordercolor", "cardborderwidth", "cardradius", "accentcolor"]},
+        {key: "pricing", label: "Pricing", icon: "bi-cash-coin",
+            patchKeys: ["plannamecolor", "plannamefontsize", "pricecolor", "pricefontsize", "cyclecolor"]},
+        {key: "features", label: "Features", icon: "bi-check2-square",
+            patchKeys: ["textcolor", "textfontsize", "featurecolor", "featureiconcolor"]},
+        {key: "button", label: "Button", icon: "bi-cursor",
+            patchKeys: ["buttoncolor", "buttontextcolor", "buttonradius"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", patchKeys: ["paddingtop", "paddingbottom"]},
     ],
     learningpromise: [
         {key: "background", label: "Background", icon: "bi-palette", patchKeys: ["bgcolor"]},
@@ -364,7 +425,7 @@ const galleryVisualProfiles: Record<string, GalleryVisualSection[]> = {
         {key: "heading", label: "Heading", icon: "bi-type-h2",
             patchKeys: ["titlecolor", "titlefontsize", "textcolor", "textfontsize", "accentcolor", "eyebrowcolor"]},
         {key: "hero", label: "Hero", icon: "bi-window",
-            patchKeys: ["herobgcolor", "herobordercolor", "heroradius", "heropanelbgcolor",
+            patchKeys: ["showheader", "herobgcolor", "herobordercolor", "heroradius", "heropanelbgcolor",
                 "heropanelbordercolor", "heropaneltextcolor", "heropanelaccentcolor",
                 "heropanelvaluecolor", "heropanelvaluefontsize"]},
         {key: "cards", label: "Course cards", icon: "bi-collection",
@@ -390,6 +451,26 @@ const galleryVisualProfiles: Record<string, GalleryVisualSection[]> = {
     ],
 };
 const visualFieldLabels: Record<string, string> = {
+    showheader: "Show hero section",
+    showdescription: "Show plan descriptions",
+    showfeatures: "Show plan features",
+    showtrial: "Show trial details",
+    showpromo: "Show promotion details",
+    highlightfeatured: "Highlight featured plan",
+    showeyebrow: "Show eyebrow label",
+    showtitle: "Show heading",
+    justifytext: "Justify message text",
+    showphoto: "Show portrait",
+    showattribution: "Show name and role",
+    showsignature: "Show signature",
+    showcta: "Show button",
+    showaccent: "Show accent",
+    autoplay: "Autoplay",
+    showarrows: "Show arrows",
+    showdots: "Show dots",
+    greyscale: "Greyscale logos",
+    pauseonhover: "Pause on hover",
+    centercards: "Centre cards",
     style: "Style",
     design: "Design",
     layout: "Layout",
@@ -467,6 +548,9 @@ const visualFieldLabels: Record<string, string> = {
     margintop: "Margin top",
     marginbottom: "Margin bottom",
     logoheight: "Logo height",
+    visiblelogos: "Visible logos",
+    speed: "Scroll speed",
+    logogap: "Logo gap",
     panelbgcolor: "Panel background",
     panelbordercolor: "Panel border colour",
     panelborderwidth: "Panel border weight",
@@ -494,6 +578,8 @@ const visualFieldLabels: Record<string, string> = {
     biocolor: "Bio colour",
     biofontsize: "Bio font size",
     mediaradius: "Media radius",
+    eyebrowfontsize: "Eyebrow font size",
+    mediawidth: "Portrait width",
     herobgcolor: "Hero background",
     herobordercolor: "Hero border colour",
     heroradius: "Hero radius",
@@ -516,6 +602,12 @@ const visualFieldLabels: Record<string, string> = {
     itembgcolor: "Item background",
     itembordercolor: "Item border colour",
     pricecolor: "Price colour",
+    plannamecolor: "Plan name colour",
+    plannamefontsize: "Plan name font size",
+    pricefontsize: "Price font size",
+    cyclecolor: "Billing cycle colour",
+    featurecolor: "Feature text colour",
+    featureiconcolor: "Feature icon colour",
     badgebgcolor: "Badge background",
     badgebordercolor: "Badge border colour",
     badgetextcolor: "Badge text colour",
@@ -545,9 +637,41 @@ const visualFieldLabels: Record<string, string> = {
 const colorKey = (key: string): boolean => key.includes("color") || key === "bg" || key === "bgcolor"
     || key === "gradientstart" || key === "gradientend";
 const numberKey = (key: string): boolean => key.includes("font") || key.includes("padding")
-    || key.includes("spacing") || key.includes("radius") || key === "columns"
+    || key.includes("spacing") || key.includes("radius")
     || key === "overlayopacity" || key === "visiblecards" || key === "iconsize"
-    || key.endsWith("borderwidth") || key === "panelborderwidth" || key.includes("margin") || key === "logoheight";
+    || key.endsWith("borderwidth") || key === "panelborderwidth" || key.includes("margin") || key === "logoheight"
+    || key === "visiblelogos" || key === "speed" || key === "logogap" || key === "mediawidth";
+// Boolean widget settings are stored as 1/0, so they need a switch rather than the
+// text input the generic renderer would otherwise fall through to.
+const boolKey = (key: string): boolean => key.startsWith("show") || key.startsWith("hide")
+    || key === "autoplay" || key === "greyscale" || key === "pauseonhover" || key === "centercards"
+    || key === "justifytext" || key === "highlightfeatured";
+const boolValue = (value: unknown, fallback = true): boolean => {
+    if (value === "" || value === null || typeof value === "undefined") {
+        return fallback;
+    }
+    return value !== 0 && value !== "0" && value !== false && value !== "false";
+};
+const gallerySelectChoices: Record<string, Record<string, string[]>> = {
+    slider: {design: ["overlay", "split", "card"]},
+    featured: {
+        align: ["left", "center"], layout: ["carousel", "grid"], columns: ["2", "3", "4", "5"],
+        navposition: ["topleft", "topcenter", "topright", "bottomleft", "bottomcenter", "bottomright"],
+    },
+    related: {
+        align: ["left", "center"], layout: ["carousel", "grid"], columns: ["2", "3", "4", "5"],
+        navposition: ["topleft", "topcenter", "topright", "bottomleft", "bottomcenter", "bottomright"],
+    },
+    partners: {style: ["grid", "carousel", "marquee"]},
+    mediastorycarousel: {mediaposition: ["left", "right"]},
+    content: {layout: ["card", "centered", "split"], mediaposition: ["left", "right"]},
+    leadermessage: {style: ["elevated", "overlay", "quote", "flat"], mediaposition: ["right", "left"]},
+    featuregrid: {style: ["topbar", "plain", "tile", "bordered"], columns: ["3", "4"]},
+    subscriptionplans: {style: ["elevated", "bordered", "minimal"], columns: ["2", "3", "4"]},
+    cta: {tone: ["primary", "quiet", "success"]},
+    footer: {style: ["default", "modern-classical", "enterprise-navy"], mode: ["light", "dark"]},
+    catalog: {sidebarposition: ["left", "right"]},
+};
 const hexColour = (value: string): boolean => /^#[0-9a-f]{6}$/i.test(value);
 
 const galleryVisibilityRules: Record<string, GalleryVisibilityRule | GalleryVisibilityRule[]> = {
@@ -635,6 +759,10 @@ const compactPresetObject = (
             if (Number.isFinite(value)) {
                 out[key] = value;
             }
+            return;
+        }
+        if (typeof value === "boolean") {
+            out[key] = value ? 1 : 0;
             return;
         }
         if (typeof value === "string") {
@@ -1312,10 +1440,11 @@ export default function StorefrontGallery(props: Props) {
         key: string,
         label: string,
         value: unknown,
-        onChange: (value: string | number) => void,
+        onChange: (value: string | number | boolean) => void,
         choices: string[] = []
     ) => {
         const current = value === null || typeof value === "undefined" ? "" : String(value);
+        const selectChoices = gallerySelectChoices[selectedWidget?.type ?? ""]?.[key] ?? choices;
         if (colorKey(key)) {
             return (
                 <label className="mcg-field" key={key}>
@@ -1329,6 +1458,22 @@ export default function StorefrontGallery(props: Props) {
                     </div>
                 </label>
             );
+        }
+        if (boolKey(key)) {
+            return (
+                <label className="mcg-switch" key={key}>
+                    <span>{label}</span>
+                    <input type="checkbox" checked={boolValue(value)}
+                        onChange={(event) => onChange(event.currentTarget.checked)} />
+                    <i aria-hidden="true" />
+                </label>
+            );
+        }
+        if (key === "navicon") {
+            const iconChoices = Array.from(new Set([...choices, current].filter(Boolean)));
+            return <IconPicker key={key} label={label} value={current}
+                options={iconChoices.map((choice) => ({value: choice, label: titleCase(choice)}))}
+                onChange={(next) => onChange(next)} />;
         }
         if (key === "align" || key === "alignment") {
             return (
@@ -1355,13 +1500,13 @@ export default function StorefrontGallery(props: Props) {
                 </label>
             );
         }
-        if (choices.length > 1 && !numberKey(key)) {
+        if (selectChoices.length > 0 && !numberKey(key)) {
             return (
                 <label className="mcg-field" key={key}>
                     <span>{label}</span>
                     <select value={current} onChange={(event) => onChange(event.currentTarget.value)}>
                         <option value="">Default</option>
-                        {choices.map((choice) => (
+                        {selectChoices.map((choice) => (
                             <option key={choice} value={choice}>{titleCase(choice)}</option>
                         ))}
                     </select>
@@ -1412,6 +1557,17 @@ export default function StorefrontGallery(props: Props) {
 
     const renderBreadcrumbItemControls = () => {
         switch (effectiveBreadcrumbItem) {
+            case "background":
+                return (
+                    <>
+                        {renderControl("bgcolor", l(labels, "visual_bgcolor", "Background colour"),
+                            breadcrumbPatchValue("bgcolor"), (value) => updateSettingsPatch("bgcolor", value))}
+                        {renderControl("textcolor", l(labels, "visual_textcolor", "Base text colour"),
+                            breadcrumbPatchValue("textcolor"), (value) => updateSettingsPatch("textcolor", value))}
+                        {renderControl("accentcolor", l(labels, "visual_accentcolor", "Accent colour"),
+                            breadcrumbPatchValue("accentcolor"), (value) => updateSettingsPatch("accentcolor", value))}
+                    </>
+                );
             case "title":
                 return (
                     <>

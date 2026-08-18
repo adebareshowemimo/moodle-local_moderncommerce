@@ -45,13 +45,16 @@ use local_moderncommerce\storefront\resolver\countdown_resolver;
 use local_moderncommerce\storefront\resolver\cta_resolver;
 use local_moderncommerce\storefront\resolver\faq_resolver;
 use local_moderncommerce\storefront\resolver\featured_resolver;
+use local_moderncommerce\storefront\resolver\featuregrid_resolver;
 use local_moderncommerce\storefront\resolver\footer_resolver;
 use local_moderncommerce\storefront\resolver\instructors_resolver;
+use local_moderncommerce\storefront\resolver\leadermessage_resolver;
 use local_moderncommerce\storefront\resolver\learningpromise_resolver;
 use local_moderncommerce\storefront\resolver\mediastorycarousel_resolver;
 use local_moderncommerce\storefront\resolver\newsletter_resolver;
 use local_moderncommerce\storefront\resolver\partners_resolver;
 use local_moderncommerce\storefront\resolver\policy_resolver;
+use local_moderncommerce\storefront\resolver\subscriptionplans_resolver;
 use local_moderncommerce\storefront\resolver\supportform_resolver;
 use local_moderncommerce\storefront\resolver\testimonials_resolver;
 use local_moderncommerce\storefront\resolver\trustbadges_resolver;
@@ -76,7 +79,8 @@ class gallery_builder {
         return [
             'slider', 'videohero', 'breadcrumb', 'featured', 'related', 'categories',
             'trustbadges', 'partners', 'countdown', 'testimonials', 'instructors', 'newsletter',
-            'content', 'mediastorycarousel', 'learningpromise', 'belief', 'policy',
+            'content', 'mediastorycarousel', 'leadermessage', 'featuregrid', 'subscriptionplans',
+            'learningpromise', 'belief', 'policy',
             'faq', 'cta', 'supportform', 'contactcards', 'footer', 'catalog',
         ];
     }
@@ -174,7 +178,7 @@ class gallery_builder {
             'title' => $title,
             'subtitle' => $subtitle,
             'settings' => $settings !== [] ? json_encode($settings) : '{}',
-            'styleconfig' => json_encode((array)($variant['styleconfig'] ?? [])),
+            'styleconfig' => preset_service::encode_object((array)($variant['styleconfig'] ?? [])),
             'data' => json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
             'bg' => (string)($variant['bg'] ?? ''),
             'spacingtop' => (int)($variant['spacingtop'] ?? 0),
@@ -244,6 +248,9 @@ class gallery_builder {
             'videohero' => videohero_resolver::class,
             'breadcrumb' => breadcrumb_resolver::class,
             'mediastorycarousel' => mediastorycarousel_resolver::class,
+            'leadermessage' => leadermessage_resolver::class,
+            'featuregrid' => featuregrid_resolver::class,
+            'subscriptionplans' => subscriptionplans_resolver::class,
             'catalog' => catalog_resolver::class,
             'content' => content_resolver::class,
             'learningpromise' => learningpromise_resolver::class,
@@ -283,6 +290,9 @@ class gallery_builder {
             'newsletter' => self::newsletter_variants(),
             'content' => self::content_variants(),
             'mediastorycarousel' => self::mediastory_variants(),
+            'leadermessage' => self::leadermessage_variants(),
+            'featuregrid' => self::featuregrid_variants(),
+            'subscriptionplans' => self::subscriptionplans_variants(),
             'learningpromise' => self::learningpromise_variants(),
             'belief' => self::belief_variants(),
             'policy' => self::policy_variants(),
@@ -1066,6 +1076,368 @@ class gallery_builder {
     }
 
     /**
+     * Feature grid: one entry per card treatment, alternating 3-up and 4-up so
+     * the gallery demonstrates both densities.
+     *
+     * @return array
+     */
+    private static function featuregrid_variants(): array {
+        $cards = [
+            [
+                'icon' => 'mortarboard-fill',
+                'title' => 'Accredited courses',
+                'text' => 'Standardised training tracks built for clinic and community operations.',
+                'iconcolor' => '#1e7d47',
+                'accentcolor' => '#1e7d47',
+            ],
+            [
+                'icon' => 'award-fill',
+                'title' => 'E-certificates',
+                'text' => 'Download securely verified certificates as soon as you pass.',
+                'iconcolor' => '#e8a33d',
+                'accentcolor' => '#e8a33d',
+            ],
+            [
+                'icon' => 'phone-fill',
+                'title' => 'Mobile optimised',
+                'text' => 'Bandwidth-efficient rendering built for remote teams on local networks.',
+                'iconcolor' => '#0f8ea8',
+                'accentcolor' => '#0f8ea8',
+            ],
+            [
+                'icon' => 'people-fill',
+                'title' => 'Guided cohorts',
+                'text' => 'Run scheduled intakes with facilitators and shared progress reporting.',
+                'iconcolor' => '#7c3aed',
+                'accentcolor' => '#7c3aed',
+            ],
+        ];
+
+        $treatments = [
+            'topbar' => ['Top bar', 3],
+            'tile' => ['Icon tile', 4],
+            'bordered' => ['Bordered', 3],
+            'plain' => ['Plain', 4],
+        ];
+
+        $variants = [];
+        foreach ($treatments as $style => [$label, $columns]) {
+            $variants[] = [
+                'stylelabel' => $label,
+                'title' => 'Built for frontline teams',
+                'subtitle' => 'Everything your workforce needs to train, certify, and stay current.',
+                'settings' => [
+                    'style' => $style,
+                    'columns' => (string) $columns,
+                    'showheader' => 1,
+                    'centercards' => 1,
+                    // 4-up shows all four demo cards; 3-up drops the last for a full row.
+                    'cards' => $columns === 4 ? $cards : array_slice($cards, 0, 3),
+                    'bgcolor' => 'var(--mc-page-bg)',
+                    'cardbgcolor' => 'var(--mc-surface)',
+                    'cardradius' => 12,
+                    'iconsize' => 40,
+                    'paddingtop' => 72,
+                    'paddingbottom' => 72,
+                ],
+            ];
+        }
+
+        return $variants;
+    }
+
+    /**
+     * Subscription plans: one entry per card treatment.
+     *
+     * Previews the site's real plans wherever any exist, so the gallery shows the
+     * same catalogue, prices, and feature matrix an admin has actually configured
+     * (including anything created by the subscription seeder). Only a site with no
+     * plans at all falls back to the synthetic cards below, which keeps the gallery
+     * from rendering an empty band on a fresh install.
+     *
+     * @return array
+     */
+    private static function subscriptionplans_variants(): array {
+        $treatments = [
+            'elevated' => 'Elevated',
+            'bordered' => 'Bordered',
+            'minimal' => 'Minimal',
+        ];
+
+        $title = 'Simple pricing for every learner';
+        $subtitle = 'Choose a plan and switch or cancel whenever your goals change.';
+
+        if (self::has_subscription_plans()) {
+            $variants = [];
+            foreach ($treatments as $style => $label) {
+                $variants[] = [
+                    'stylelabel' => $label,
+                    'title' => $title,
+                    'subtitle' => $subtitle,
+                    // No 'direct' key: the real resolver runs and reads live plans.
+                    'settings' => [
+                        'style' => $style,
+                        'columns' => 3,
+                        'billingcycle' => 'both',
+                        'defaultcycle' => 'monthly',
+                        'savingslabel' => 'Save 2 months',
+                        'maxplans' => 3,
+                        'ctalabel' => 'Choose plan',
+                        'ctaurl' => '#',
+                        'featuredlabel' => 'Most popular',
+                        'bgcolor' => 'var(--mc-page-bg)',
+                        'titlecolor' => 'var(--mc-text)',
+                        'titlefontsize' => 34,
+                        // Explicit tone rather than --mc-text-muted, which sits a
+                        // shade under 4.5:1 on the gallery's tinted panel.
+                        'subtitlecolor' => '#556070',
+                        'subtitlefontsize' => 17,
+                        'cardbgcolor' => 'var(--mc-surface)',
+                        'cardbordercolor' => 'var(--mc-border)',
+                        'cardradius' => 12,
+                        'accentcolor' => 'var(--mc-primary)',
+                        'plannamecolor' => 'var(--mc-text)',
+                        'plannamefontsize' => 19,
+                        'pricecolor' => 'var(--mc-text)',
+                        'pricefontsize' => 40,
+                        'cyclecolor' => 'var(--mc-text-muted)',
+                        'textcolor' => 'var(--mc-text-muted)',
+                        'textfontsize' => 15,
+                        'featurecolor' => 'var(--mc-text)',
+                        'featureiconcolor' => 'var(--mc-primary)',
+                        'buttoncolor' => 'var(--mc-primary)',
+                        'buttontextcolor' => 'var(--mc-text-inverse)',
+                        'buttonradius' => 8,
+                        'paddingtop' => 72,
+                        'paddingbottom' => 72,
+                    ],
+                ];
+            }
+            return $variants;
+        }
+
+        return self::subscriptionplans_placeholder_variants($treatments, $title, $subtitle);
+    }
+
+    /**
+     * Whether this site has any subscription plan to preview.
+     *
+     * @return bool
+     */
+    private static function has_subscription_plans(): bool {
+        global $DB;
+
+        try {
+            return $DB->record_exists('local_moderncommerce_subscription_plans', ['status' => 'active']);
+        } catch (\Throwable $e) {
+            // Table missing on a partially upgraded site: fall back to demo cards.
+            return false;
+        }
+    }
+
+    /**
+     * Synthetic plan cards for sites with no subscription plans configured.
+     *
+     * @param array<string, string> $treatments Style key to display label.
+     * @param string $title Section heading.
+     * @param string $subtitle Section subheading.
+     * @return array
+     */
+    private static function subscriptionplans_placeholder_variants(
+        array $treatments,
+        string $title,
+        string $subtitle
+    ): array {
+        $features = static function (array $names): array {
+            return array_map(
+                static fn(string $name): array => ['name' => $name, 'icon' => 'check-circle'],
+                $names
+            );
+        };
+
+        $plans = [
+            [
+                'id' => 1,
+                'name' => 'Starter',
+                'code' => 'starter',
+                'description' => 'For individual learners getting started.',
+                'billingcycle' => 'monthly',
+                'isfree' => false,
+                'displayprice' => '$19',
+                'haspromo' => false,
+                'displayregularprice' => '',
+                'trialdays' => 14,
+                'featured' => false,
+                'features' => $features([
+                    'Access to all starter courses',
+                    'Completion certificates',
+                    'Learner dashboard',
+                ]),
+            ],
+            [
+                'id' => 2,
+                'name' => 'Professional',
+                'code' => 'professional',
+                'description' => 'For learners building a full career path.',
+                'billingcycle' => 'monthly',
+                'isfree' => false,
+                'displayprice' => '$39',
+                'haspromo' => true,
+                'displayregularprice' => '$49',
+                'trialdays' => 14,
+                'featured' => true,
+                'features' => $features([
+                    'Everything in Starter',
+                    'All bundles and programmes',
+                    'Priority support',
+                    'Downloadable resources',
+                ]),
+            ],
+            [
+                'id' => 3,
+                'name' => 'Team',
+                'code' => 'team',
+                'description' => 'For organisations training a whole group.',
+                'billingcycle' => 'monthly',
+                'isfree' => false,
+                'displayprice' => '$99',
+                'haspromo' => false,
+                'displayregularprice' => '',
+                'trialdays' => 0,
+                'featured' => false,
+                'features' => $features([
+                    'Everything in Professional',
+                    'Up to 25 seats',
+                    'Team progress reporting',
+                    'Invoice billing',
+                ]),
+            ],
+        ];
+
+        // Both cycles so the placeholder demonstrates the monthly/yearly switch too.
+        $yearly = array_map(static function (array $plan): array {
+            $plan['billingcycle'] = 'yearly';
+            $plan['trialdays'] = $plan['trialdays'] ?? 0;
+            return $plan;
+        }, $plans);
+        $yearly[0]['displayprice'] = '$190';
+        $yearly[1]['displayprice'] = '$390';
+        $yearly[1]['displayregularprice'] = '$468';
+        $yearly[1]['haspromo'] = true;
+        $yearly[2]['displayprice'] = '$990';
+
+        $base = [
+            'plans' => $plans,
+            'cycles' => [
+                ['key' => 'monthly', 'label' => 'Monthly', 'plans' => $plans],
+                ['key' => 'yearly', 'label' => 'Yearly', 'plans' => $yearly],
+            ],
+            'defaultcycle' => 'monthly',
+            'showcycleswitch' => true,
+            'savingslabel' => 'Save 2 months',
+            'cyclegrouplabel' => get_string('billingcycle', 'local_moderncommerce'),
+            'columns' => 3,
+            'showheader' => true,
+            'showfeatures' => true,
+            'ctalabel' => 'Choose plan',
+            'ctaurl' => '#',
+            'featuredlabel' => 'Most popular',
+            'bgcolor' => 'var(--mc-page-bg)',
+            'titlecolor' => 'var(--mc-text)',
+            'titlefontsize' => 34,
+            'subtitlecolor' => '#556070',
+            'subtitlefontsize' => 17,
+            'cardbgcolor' => 'var(--mc-surface)',
+            'cardbordercolor' => 'var(--mc-border)',
+            'cardborderwidth' => 1,
+            'cardradius' => 12,
+            'accentcolor' => 'var(--mc-primary)',
+            'plannamecolor' => 'var(--mc-text)',
+            'plannamefontsize' => 19,
+            'pricecolor' => 'var(--mc-text)',
+            'pricefontsize' => 40,
+            'cyclecolor' => 'var(--mc-text-muted)',
+            'textcolor' => 'var(--mc-text-muted)',
+            'textfontsize' => 15,
+            'featurecolor' => 'var(--mc-text)',
+            'featureiconcolor' => 'var(--mc-primary)',
+            'buttoncolor' => 'var(--mc-primary)',
+            'buttontextcolor' => 'var(--mc-text-inverse)',
+            'buttonradius' => 8,
+            'paddingtop' => 72,
+            'paddingbottom' => 72,
+        ];
+
+        $variants = [];
+        foreach ($treatments as $style => $label) {
+            $variants[] = [
+                'stylelabel' => $label,
+                'title' => $title,
+                'subtitle' => $subtitle,
+                'direct' => $base + [
+                    'style' => $style,
+                    'title' => $title,
+                    'subtitle' => $subtitle,
+                ],
+            ];
+        }
+
+        return $variants;
+    }
+
+    /**
+     * Leader message: one entry per design treatment, alternating the portrait
+     * side so the gallery shows both layouts.
+     *
+     * @return array
+     */
+    private static function leadermessage_variants(): array {
+        $message = '<p>On behalf of the management and staff, I am delighted to welcome you to our official '
+            . 'learning portal. This platform represents a critical milestone in our commitment to '
+            . 'strengthening skills across the organisation.</p>'
+            . '<p>Through this portal you will access accredited, self-paced modules designed to build the '
+            . 'competencies that matter most in your role. Welcome, and let us build something better '
+            . 'together.</p>';
+
+        $base = [
+            'message' => $message,
+            'showeyebrow' => 1,
+            'eyebrow' => 'From the leadership',
+            'showtitle' => 1,
+            'showphoto' => 1,
+            'photosource' => 'url',
+            'photourl' => self::img('1560250097-0b93528c311a', 900, 1100),
+            'showattribution' => 1,
+            'leadername' => 'Dr Amina Bello',
+            'leaderrole' => 'Executive Director / CEO',
+            'showaccent' => 1,
+            'paddingtop' => 72,
+            'paddingbottom' => 72,
+        ];
+
+        $treatments = [
+            'elevated' => ['Elevated editorial', 'right'],
+            'overlay' => ['Portrait card', 'left'],
+            'quote' => ['Quote-led', 'right'],
+            'flat' => ['Flat', 'left'],
+        ];
+
+        $variants = [];
+        foreach ($treatments as $style => [$label, $position]) {
+            $variants[] = [
+                'stylelabel' => $label,
+                'title' => 'Welcome message from the ED/CEO',
+                'settings' => $base + [
+                    'style' => $style,
+                    'mediaposition' => $position,
+                ],
+            ];
+        }
+
+        return $variants;
+    }
+
+    /**
      * Full-width belief band (single appearance).
      *
      * @return array
@@ -1399,6 +1771,7 @@ class gallery_builder {
             'title' => 'Course catalog',
             'settings' => [
                 'title' => 'Explore the full catalog',
+                'showheader' => true,
                 'perpage' => 12,
                 'sidebarposition' => 'left',
                 'bgcolor' => 'var(--mc-page-bg)',

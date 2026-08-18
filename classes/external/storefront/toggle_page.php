@@ -32,6 +32,8 @@ use core_external\external_value;
 use core_external\external_warnings;
 use invalid_parameter_exception;
 use local_moderncommerce\output\public_page;
+use local_moderncommerce\persistent\storepage;
+use local_moderncommerce\storefront\storepage_service;
 
 /**
  * Toggles whether an optional public store page is visible to buyers.
@@ -71,11 +73,21 @@ class toggle_page extends external_api {
             throw new invalid_parameter_exception('This page cannot be disabled.');
         }
 
-        set_config(
-            public_page::config_name($params['page'], 'enabled'),
-            !empty($params['enabled']) ? '1' : '0',
-            'local_moderncommerce'
-        );
+        // Custom pages own their published state in the storepage table; the built-ins
+        // keep theirs in plugin config.
+        $custom = storepage_service::by_slug($params['page']);
+        if ($custom !== null) {
+            $page = new storepage((int) $custom->id);
+            $page->set('enabled', !empty($params['enabled']) ? 1 : 0);
+            $page->update();
+            storepage_service::purge_cache();
+        } else {
+            set_config(
+                public_page::config_name($params['page'], 'enabled'),
+                !empty($params['enabled']) ? '1' : '0',
+                'local_moderncommerce'
+            );
+        }
 
         return [
             'success' => true,

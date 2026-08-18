@@ -677,20 +677,22 @@ class data_manager {
         ]);
         $rows++;
 
+        // The 'videohero' value is the real widget type key, and the styleconfig keys must come from
+        // preset_service::STYLE_KEYS -- anything else is dropped when the preset is applied.
         self::upsert('local_moderncommerce_widget_preset', [
-            'type' => 'hero',
+            'type' => 'videohero',
             'name' => 'Demo editorial hero',
         ], [
-            'type' => 'hero',
+            'type' => 'videohero',
             'name' => 'Demo editorial hero',
             'styleconfig' => json_encode([
-                'bgcolor' => 'var(--mc-secondary)',
-                'titlecolor' => 'var(--mc-text-inverse)',
-                'cardradius' => 8,
+                'bg' => 'var(--mc-secondary)',
+                'headingcolor' => 'var(--mc-text-inverse)',
+                'radius' => 8,
             ]),
             'settingspatch' => json_encode([
                 'alignment' => 'left',
-                'eyebrow' => 'Featured learning path',
+                'headingcolor' => 'var(--mc-text-inverse)',
             ]),
             'usermodified' => $userid,
             'timecreated' => $now,

@@ -192,6 +192,17 @@ class subscription_service {
             access_service::grant_plan_access($subscription->userid, $planid, $subscriptionid);
         }
 
+        // Access rows carry their own expiry, stamped from the end date at the
+        // time they were granted. Without this the rows keep the term that just
+        // elapsed, and a paying renewed subscriber is refused until the access
+        // sync task next runs.
+        $DB->set_field(
+            'local_moderncommerce_subscription_access',
+            'expires_at',
+            $newenddate,
+            ['subscriptionid' => $subscriptionid]
+        );
+
         // Log history.
         $action = ($newplanid && $newplanid !== $oldplanid) ? 'upgraded' : 'renewed';
         self::log_history(
@@ -305,6 +316,11 @@ class subscription_service {
 
         $DB->update_record('local_moderncommerce_user_subscriptions', $subscription);
 
+        // A cancelled subscription no longer entitles the holder to anything, so
+        // pull the enrolments now rather than waiting up to six hours for the
+        // access sync task to notice.
+        access_service::revoke_plan_access($subscription->userid, $subscription->planid);
+
         // Log history.
         self::log_history($subscriptionid, $subscription->userid, 'cancelled', null, null, null, null, null, null, $reason);
 
@@ -403,7 +419,7 @@ class subscription_service {
     /**
      * Log subscription history.
      */
-    private static function log_history(
+    public static function log_history(
         int $subscriptionid,
         int $userid,
         string $action,

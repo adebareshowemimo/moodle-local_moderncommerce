@@ -31,6 +31,7 @@ use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
 use core_external\external_warnings;
+use local_moderncommerce\output\public_page;
 use local_moderncommerce\storefront\page_builder;
 
 /**
@@ -70,6 +71,21 @@ class get_storefront_page extends external_api {
 
         $isloggedin = isloggedin() && !isguestuser();
         $contextids = self::parse_context($params['context']);
+
+        // An unpublished page serves no content to visitors. Managers still get the
+        // widgets so they can build the page before publishing it. Only navigable pages
+        // are gated: the site-wide 'global' scope is not in the page catalog and must
+        // keep rendering its bands.
+        if (
+            array_key_exists($params['page'], public_page::page_catalog())
+            && !public_page::is_enabled($params['page'])
+            && !has_capability('local/moderncommerce:managestorefront', $systemcontext)
+        ) {
+            return [
+                'zones' => [],
+                'warnings' => [],
+            ];
+        }
 
         $zones = page_builder::build($params['page'], $contextids, $params['zone'], $isloggedin);
 

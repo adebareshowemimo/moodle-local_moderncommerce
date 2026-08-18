@@ -52,6 +52,13 @@ const asText = (value: unknown): string => (typeof value === "string" ? value.tr
 
 export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 export const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+/**
+ * Colours a storefront widget accepts: a hex value, or a Modern Commerce design token.
+ * Mirrors preset_service::colour() in PHP, which sanitises widget and preset colours to
+ * the same two shapes -- widget defaults and presets ship tokens like var(--mc-secondary),
+ * so a hex-only rule would reject the plugin's own seeded values.
+ */
+export const WIDGET_COLOUR_RE = /^(?:#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|var\(--mc-[a-z0-9-]+\))$/;
 export const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 type EmptyOption = {allowEmpty?: boolean};
@@ -113,6 +120,11 @@ export const url = <T = Record<string, unknown>>(
 
 export const hexColour = <T = Record<string, unknown>>(message: string, options?: EmptyOption): Rule<T> =>
     (value) => (skipBlank(value, options) ? undefined : (HEX_RE.test(asText(value)) ? undefined : message));
+
+export const widgetColour = <T = Record<string, unknown>>(message: string, options?: EmptyOption): Rule<T> =>
+    (value) => (skipBlank(value, options)
+        ? undefined
+        : (WIDGET_COLOUR_RE.test(asText(value)) ? undefined : message));
 
 export const slug = <T = Record<string, unknown>>(message: string, options?: EmptyOption): Rule<T> =>
     (value) => (skipBlank(value, options) ? undefined : (SLUG_RE.test(asText(value)) ? undefined : message));

@@ -1522,6 +1522,30 @@
       </INDEXES>
     </TABLE>
 
+    <TABLE NAME="local_moderncommerce_storepage" COMMENT="Admin-created custom public storefront pages">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="slug" TYPE="char" LENGTH="30" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="title" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="summary" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="icon" TYPE="char" LENGTH="50" NOTNULL="true" DEFAULT="bi-file-text" SEQUENCE="false"/>
+        <FIELD NAME="template" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="content" SEQUENCE="false"/>
+        <FIELD NAME="enabled" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="usermodified_fk" TYPE="foreign" FIELDS="usermodified" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="slug_uix" UNIQUE="true" FIELDS="slug"/>
+        <INDEX NAME="enabled_sort_ix" UNIQUE="false" FIELDS="enabled, sortorder"/>
+      </INDEXES>
+    </TABLE>
+
     <TABLE NAME="local_moderncommerce_subscriber" COMMENT="Storefront newsletter / lead-capture subscribers">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
@@ -1903,6 +1927,8 @@
         <FIELD NAME="stripe_payment_method_id" TYPE="char" LENGTH="100" COMMENT="Default Stripe payment method"/>
         <FIELD NAME="paypal_subscription_id" TYPE="char" LENGTH="100" COMMENT="PayPal billing agreement ID"/>
         <FIELD NAME="paystack_subscription_code" TYPE="char" LENGTH="100" COMMENT="Paystack subscription code"/>
+        <FIELD NAME="paystack_authorization_code" TYPE="char" LENGTH="100" COMMENT="Reusable Paystack authorization for renewals"/>
+        <FIELD NAME="paystack_email" TYPE="char" LENGTH="255" COMMENT="Email the Paystack authorization belongs to"/>
         <FIELD NAME="flutterwave_subscription_id" TYPE="char" LENGTH="100" COMMENT="Flutterwave subscription ID"/>
         <FIELD NAME="next_billing_date" TYPE="int" LENGTH="10" COMMENT="Next automatic billing date"/>
         <FIELD NAME="payment_failed_count" TYPE="int" LENGTH="2" DEFAULT="0" COMMENT="Number of consecutive payment failures"/>

@@ -29,15 +29,9 @@ require(__DIR__ . '/../../config.php');
 use local_moderncommerce\output\public_page;
 use local_moderncommerce\services\captcha_service;
 use local_moderncommerce\services\contact_service;
-$context = context_system::instance();
-public_page::require_enabled('support');
-$PAGE->set_context($context);
-$PAGE->set_url(new moodle_url('/local/moderncommerce/support.php'));
-$PAGE->set_pagelayout('standard');
-$PAGE->add_body_class('mc-public-storefront-page');
-$PAGE->set_title(public_page::setting('support', 'title', 'Course purchase support'));
-$PAGE->set_heading(public_page::setting('support', 'title', 'Course purchase support'));
-$PAGE->set_blocks_editing_capability('local/moderncommerce:managestorefront');
+// Publish check plus the standard public-page $PAGE setup. The render happens at the foot
+// of this file instead of here, because the form POST below may redirect.
+public_page::setup_page('support');
 
 $supportemail = public_page::support_email();
 $categories = [
@@ -128,5 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 echo $OUTPUT->header();
+echo public_page::block_region(public_page::BLOCK_REGION_ABOVE, $OUTPUT);
 echo public_page::render_widget_page('support', $OUTPUT);
+echo public_page::block_region(public_page::BLOCK_REGION_BELOW, $OUTPUT);
 echo $OUTPUT->footer();

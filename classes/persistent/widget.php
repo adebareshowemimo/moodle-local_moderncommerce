@@ -25,6 +25,7 @@
 namespace local_moderncommerce\persistent;
 
 use core\persistent;
+use local_moderncommerce\storefront\preset_service;
 
 /**
  * Represents one widget placed into a page zone.
@@ -32,6 +33,9 @@ use core\persistent;
 class widget extends persistent {
     /** @var string Table name. */
     const TABLE = 'local_moderncommerce_widget';
+
+    /** @var object|null|false Cached preset record; false until first lookup. */
+    private $presetrecord = false;
 
     /**
      * Property definitions.
@@ -149,5 +153,80 @@ class widget extends persistent {
         }
         $decoded = json_decode($raw, true);
         return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * Settings as rendered: preset defaults underneath the widget's own settings.
+     *
+     * Applying a preset copies its visual values into the widget. The preset patch is kept
+     * as a fallback for older/incomplete records, while explicit widget values must win so
+     * controls such as "Show hero section" continue to work after save and reload.
+     *
+     * @return array
+     */
+    public function get_resolved_settings_array(): array {
+        $settings = $this->get_settings_array();
+        $patch = $this->get_preset_settingspatch();
+
+        return $patch === [] ? $settings : array_merge($patch, $settings);
+    }
+
+    /**
+     * Universal style config as rendered, with the linked preset applied underneath.
+     *
+     * @return array
+     */
+    public function get_resolved_style_array(): array {
+        $style = $this->get_style_array();
+        $preset = $this->get_preset_record();
+        if (!$preset) {
+            return $style;
+        }
+        $patch = preset_service::sanitize_styleconfig(
+            preset_service::decode_object((string)($preset->styleconfig ?? ''))
+        );
+
+        return $patch === [] ? $style : array_merge($patch, $style);
+    }
+
+    /**
+     * The style-only settings patch from this widget's linked preset, if any.
+     *
+     * @return array
+     */
+    private function get_preset_settingspatch(): array {
+        $preset = $this->get_preset_record();
+        if (!$preset) {
+            return [];
+        }
+
+        return preset_service::sanitize_settingspatch(
+            preset_service::decode_object((string)($preset->settingspatch ?? ''))
+        );
+    }
+
+    /**
+     * Load the preset referenced by this widget's settings, if it is still valid.
+     *
+     * @return object|null Preset record, or null when unset, missing, or type-mismatched.
+     */
+    private function get_preset_record(): ?object {
+        global $DB;
+
+        if ($this->presetrecord !== false) {
+            return $this->presetrecord;
+        }
+
+        $this->presetrecord = null;
+        $presetid = (int)($this->get_settings_array()['presetid'] ?? 0);
+        if ($presetid > 0) {
+            $preset = $DB->get_record(preset_service::TABLE, ['id' => $presetid]);
+            // A preset only applies to its own widget type; a mismatch means stale data.
+            if ($preset && (string)$preset->type === (string)$this->get('type')) {
+                $this->presetrecord = $preset;
+            }
+        }
+
+        return $this->presetrecord;
     }
 }

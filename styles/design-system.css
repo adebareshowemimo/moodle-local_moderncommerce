@@ -8571,10 +8571,6 @@ body.path-local-moderncommerce .footer-content-debugging.footer-dark {
   margin-bottom: 0 !important;
 }
 
-.path-local-moderncommerce #page-header {
-  display: none !important;
-}
-
 .path-local-moderncommerce #page-content.pb-3 {
   padding-bottom: 0 !important;
 }
@@ -13871,6 +13867,255 @@ body.mc-sidebar-open {
 
 .mc-page-visibility-switch--on .mc-page-visibility-switch__knob {
   transform: translateX(1.38rem);
+}
+
+/*
+ * Storefront block regions (above / in-content / below). These are page-declared regions
+ * rendered by public_page::block_region(), not by the theme layout, so they carry no theme
+ * styling of their own.
+ */
+.mc-public-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mc-public-blocks:empty {
+  display: none;
+}
+
+.mc-public-blocks--mc-above,
+.mc-public-blocks--mc-below {
+  max-width: var(--mc-container-width, 1200px);
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+.mc-public-blocks--mc-above {
+  margin-top: 1rem;
+}
+
+.mc-public-blocks--mc-below {
+  margin-bottom: 2rem;
+}
+
+.mc-public-blocks--mc-content {
+  margin-top: 1.5rem;
+}
+
+/* Blocks in these regions are page content, not drawer furniture: let them run full width. */
+.mc-public-blocks [data-blockregion] {
+  width: 100%;
+}
+
+.mc-public-blocks .block {
+  margin-bottom: 0;
+}
+
+/*
+ * Drawer titles are portalled to <body>, so a page-scoped ancestor cannot be relied on,
+ * and the surrounding heading rules use :where() (zero specificity). An active theme that
+ * styles bare h2/h3 - theme_modernui's ".mui-enabled h2" is the case in point - therefore
+ * wins the cascade and renders drawer headings in its own oversized, low-contrast
+ * heading style. Repeating the class lifts specificity above a plain element rule
+ * without resorting to !important.
+ */
+.mc-drawer .mc-drawer__title.mc-drawer__title {
+  color: var(--mc-text);
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+
+.mc-drawer .mc-drawer__subtitle.mc-drawer__subtitle {
+  color: var(--mc-text-muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+/* Section legends inside drawer forms, for the same reason. */
+.mc-drawer legend.mc-form-section__title {
+  color: var(--mc-text);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  float: none;
+  width: auto;
+  margin-bottom: 0.35rem;
+  padding: 0;
+}
+
+.mc-storepage-url {
+  display: block;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Icon typeahead, shared with the storefront widget editor but token-themed for admin. */
+.mc-storepage-iconfield .mc-sf-iconpick {
+  position: relative;
+}
+
+.mc-storepage-iconfield .mc-sf-iconpick > label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.mc-storepage-iconfield .mc-sf-iconpick__control {
+  display: flex;
+  align-items: stretch;
+}
+
+.mc-storepage-iconfield .mc-sf-iconpick__preview {
+  flex: 0 0 2.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--mc-border, var(--bs-border-color));
+  border-right: 0;
+  border-radius: var(--mc-radius-sm, 0.375rem) 0 0 var(--mc-radius-sm, 0.375rem);
+  background: var(--mc-surface-alt, var(--bs-tertiary-bg));
+  color: var(--mc-text, var(--bs-body-color));
+  font-size: 1.05rem;
+}
+
+.mc-storepage-iconfield .mc-sf-iconpick__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid var(--mc-border, var(--bs-border-color));
+  border-radius: 0 var(--mc-radius-sm, 0.375rem) var(--mc-radius-sm, 0.375rem) 0;
+  padding: 0.45rem 0.55rem;
+  background: var(--mc-surface, var(--bs-body-bg));
+  color: var(--mc-text, var(--bs-body-color));
+  font-size: 0.875rem;
+}
+
+.mc-storepage-iconfield .mc-sf-iconpick__menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 1060;
+  margin-top: 2px;
+  background: var(--mc-surface, var(--bs-body-bg));
+  border: 1px solid var(--mc-border, var(--bs-border-color));
+  border-radius: var(--mc-radius-sm, 0.375rem);
+  box-shadow: var(--mc-shadow-lg, 0 8px 24px rgba(15, 23, 42, 0.15));
+  max-height: 18rem;
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+
+.mc-storepage-iconfield .mc-sf-iconpick__empty {
+  padding: 0.5rem 0.75rem;
+  color: var(--mc-text-muted, var(--bs-secondary-color));
+  font-size: 0.85rem;
+}
+
+.mc-storepage-iconfield .mc-sf-iconpick__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 0.4rem 0.55rem;
+  border-radius: var(--mc-radius-sm, 0.375rem);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--mc-text, var(--bs-body-color));
+}
+
+.mc-storepage-iconfield .mc-sf-iconpick__item:hover {
+  background: var(--mc-surface-alt, var(--bs-tertiary-bg));
+}
+
+.mc-storepage-iconfield .mc-sf-iconpick__item > i {
+  width: 1.5rem;
+  text-align: center;
+  font-size: 1.05rem;
+  color: var(--mc-primary, var(--bs-primary));
+}
+
+.mc-storepage-iconfield .mc-sf-iconpick__name {
+  flex: 1 1 auto;
+}
+
+.mc-storepage-iconfield .mc-sf-iconpick__item code {
+  color: var(--mc-text-muted, var(--bs-secondary-color));
+  font-size: 0.72rem;
+}
+
+/* Live slug availability feedback. */
+.mc-storepage-slug--ok {
+  color: var(--mc-success-text, var(--bs-success-text-emphasis));
+}
+
+.mc-storepage-slug--taken {
+  color: var(--mc-danger-text, var(--bs-danger-text-emphasis));
+}
+
+.mc-storepage-copysource {
+  margin: 0.35rem 0;
+  max-width: 100%;
+}
+
+.mc-storepage-icon-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mc-storepage-icon-preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--mc-border, var(--bs-border-color));
+  border-radius: var(--mc-radius-sm, 0.375rem);
+  background: var(--mc-surface-alt, var(--bs-tertiary-bg));
+  font-size: 1.125rem;
+}
+
+.mc-storepage-templates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mc-storepage-template-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.75rem;
+  border: 1px solid var(--mc-border, var(--bs-border-color));
+  border-radius: var(--mc-radius-sm, 0.375rem);
+  cursor: pointer;
+}
+
+.mc-storepage-template-option:has(input:checked) {
+  border-color: var(--mc-primary, var(--bs-primary));
+  background: var(--mc-surface-alt, var(--bs-tertiary-bg));
+}
+
+.mc-storepage-template-option__label {
+  font-weight: 600;
+}
+
+.mc-storepage-templates:disabled .mc-storepage-template-option {
+  cursor: default;
+  opacity: 0.75;
 }
 
 .mc-page-visibility-switch:hover,

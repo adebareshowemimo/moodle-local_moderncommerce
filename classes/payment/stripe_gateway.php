@@ -28,6 +28,8 @@ use local_moderncommerce\logging\paylog_service;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class stripe_gateway implements gateway_interface, gateway_return_interface {
+    use subscription_mandate_trait;
+
     /** @var string Stripe API base URL */
     const API_URL = 'https://api.stripe.com/v1';
 
@@ -75,6 +77,16 @@ class stripe_gateway implements gateway_interface, gateway_return_interface {
                     ' - Order ' . $order->ordernumber,
                 'line_items[0][quantity]' => 1,
             ];
+
+            // Subscription orders must leave a reusable mandate behind, otherwise
+            // the renewal task has no card to charge later. Asking Stripe to set
+            // the payment method up for off-session use also creates a Customer,
+            // and both IDs are captured on return.
+            if (self::order_is_subscription($order)) {
+                $sessiondata['payment_intent_data[setup_future_usage]'] = 'off_session';
+                $sessiondata['customer_creation'] = 'always';
+            }
+
             $response = $this->make_request('POST', '/checkout/sessions', $sessiondata);
 
             if (!$response || empty($response['id'])) {
@@ -239,6 +251,14 @@ class stripe_gateway implements gateway_interface, gateway_return_interface {
             $paymentintent = $rawdata['payment_intent_details']['id'];
         }
 
+        // Store the reusable mandate before the order is fulfilled, so the
+        // subscription created by the payment observer already has a card on
+        // file for its first renewal.
+        $this->store_mandate_fields((int) ($params['orderid'] ?? 0), [
+            'stripe_customer_id' => $rawdata['customer'] ?? '',
+            'stripe_payment_method_id' => $rawdata['payment_intent_details']['payment_method'] ?? '',
+        ]);
+
         return (object) [
             'status' => ($session->payment_status ?? '') === 'paid' ? 'success' : 'failed',
             'orderid' => null,
@@ -312,6 +332,82 @@ class stripe_gateway implements gateway_interface, gateway_return_interface {
         }
 
         return $sessionid;
+    }
+
+    /**
+     * Charge a saved card off-session, for subscription renewals.
+     *
+     * Uses the same REST transport as the rest of this gateway rather than the
+     * Stripe PHP SDK, which this plugin does not bundle.
+     *
+     * @param string $customerid Stripe customer ID.
+     * @param string $paymentmethodid Stripe payment method ID.
+     * @param float $amount Amount in major units.
+     * @param string $currency ISO currency code.
+     * @param string $description Statement description.
+     * @param array $metadata Extra metadata to attach.
+     * @return array{success: bool, reference: string, error: string, requiresaction: bool}
+     */
+    public function charge_saved_card(
+        string $customerid,
+        string $paymentmethodid,
+        float $amount,
+        string $currency,
+        string $description = '',
+        array $metadata = []
+    ): array {
+        $result = ['success' => false, 'reference' => '', 'error' => '', 'requiresaction' => false];
+
+        if ($customerid === '' || $paymentmethodid === '' || $amount <= 0) {
+            $result['error'] = 'Missing customer, payment method, or amount';
+            return $result;
+        }
+
+        $payload = [
+            'amount' => (int) round($amount * 100),
+            'currency' => strtolower($currency ?: 'usd'),
+            'customer' => $customerid,
+            'payment_method' => $paymentmethodid,
+            'off_session' => 'true',
+            'confirm' => 'true',
+        ];
+        if ($description !== '') {
+            $payload['description'] = $description;
+        }
+        foreach ($metadata as $key => $value) {
+            $payload['metadata[' . $key . ']'] = (string) $value;
+        }
+
+        try {
+            $response = $this->make_request('POST', '/payment_intents', $payload);
+        } catch (\Exception $e) {
+            $result['error'] = $e->getMessage();
+            return $result;
+        }
+
+        if (!empty($response['error'])) {
+            $result['error'] = (string) ($response['error']['message'] ?? 'Stripe declined the payment');
+            return $result;
+        }
+
+        $status = (string) ($response['status'] ?? '');
+        $result['reference'] = (string) ($response['id'] ?? '');
+
+        if ($status === 'succeeded') {
+            $result['success'] = true;
+            return $result;
+        }
+
+        // The card needs the buyer present (typically 3-D Secure); this is not a
+        // hard decline, so the caller should prompt rather than count a failure.
+        if ($status === 'requires_action' || $status === 'requires_confirmation') {
+            $result['requiresaction'] = true;
+            $result['error'] = 'Payment requires customer authentication';
+            return $result;
+        }
+
+        $result['error'] = $status !== '' ? 'Payment status: ' . $status : 'Payment failed';
+        return $result;
     }
 
     /**

@@ -93,13 +93,15 @@ class process_trials extends \core\task\scheduled_task {
 
         foreach ($trials as $trial) {
             try {
-                // Send trial ending email.
-                $this->send_trial_ending_email($trial);
-
-                // Mark as warned.
-                $DB->set_field('local_moderncommerce_user_subscriptions', 'trial_warning_sent', 1, ['id' => $trial->id]);
-
-                mtrace("Sent trial ending warning for subscription {$trial->id}.");
+                // Only flag the trial once the mail actually went out. Setting it
+                // regardless would permanently suppress the warning for anyone
+                // processed while the mailer was unavailable.
+                if ($this->send_trial_ending_email($trial)) {
+                    $DB->set_field('local_moderncommerce_user_subscriptions', 'trial_warning_sent', 1, ['id' => $trial->id]);
+                    mtrace("Sent trial ending warning for subscription {$trial->id}.");
+                } else {
+                    mtrace("Trial ending warning not sent for subscription {$trial->id}; will retry next run.");
+                }
             } catch (\Exception $e) {
                 mtrace("Error sending trial warning for subscription {$trial->id}: " . $e->getMessage());
             }
@@ -274,26 +276,25 @@ class process_trials extends \core\task\scheduled_task {
      *
      * @param object $trial Trial subscription record.
      */
-    private function send_trial_ending_email(object $trial): void {
+    private function send_trial_ending_email(object $trial): bool {
         global $DB;
 
         $user = $DB->get_record('user', ['id' => $trial->userid]);
         if (!$user) {
-            return;
+            return false;
         }
 
         try {
-            if (class_exists('\\local_moderncommerce\subscription\\services\\email_service')) {
-                email_service::send('trial_ending', $user, [
-                    'plan_name' => $trial->plan_name,
-                    'trial_end_date' => userdate($trial->trial_end_date, get_string('strftimedatetime', 'core_langconfig')),
-                    'plan_price' => number_format($trial->price, 2),
-                    'billing_cycle' => $trial->billing_cycle,
-                    'convert_url' => (new \moodle_url('/local/moderncommerce/learner/subscription.php'))->out(false),
-                ]);
-            }
+            return email_service::send('trial_ending', $user, [
+                'plan_name' => $trial->plan_name,
+                'trial_end_date' => userdate($trial->trial_end_date, get_string('strftimedatetime', 'core_langconfig')),
+                'plan_price' => number_format($trial->price, 2),
+                'billing_cycle' => $trial->billing_cycle,
+                'convert_url' => (new \moodle_url('/local/moderncommerce/learner/subscription.php'))->out(false),
+            ]);
         } catch (\Exception $e) {
             mtrace("Failed to send trial ending email: " . $e->getMessage());
+            return false;
         }
     }
 

@@ -235,7 +235,7 @@ function local_moderncommerce_render_navbar_output(renderer_base $output): strin
         $cartorder = $cartposition === 'last' ? 1000 : -1000;
 
         $icon = html_writer::tag('i', '', [
-            'class' => 'icon bi bi-bag mui-cart__trigger-icon',
+            'class' => 'icon fa-solid fa-bag-shopping mui-cart__trigger-icon',
             'aria-hidden' => 'true',
         ]);
 

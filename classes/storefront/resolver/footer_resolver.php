@@ -44,7 +44,7 @@ class footer_resolver implements widget_resolver {
     public function resolve(widget $instance, array $context): array {
         global $SITE;
 
-        $settings = $instance->get_settings_array();
+        $settings = $instance->get_resolved_settings_array();
         $ctx = context_system::instance();
 
         $copyright = strtr((string) ($settings['copyright'] ?? '© {year} {sitename}'), [

@@ -17,12 +17,17 @@ import {CSSProperties, FC, FormEvent, useEffect, useId, useMemo, useState} from 
 import {createPortal} from "react-dom";
 import {McButton} from "./button";
 import {McDrawer} from "./drawer";
+import {IconPicker, normIcon} from "./icon_picker";
+import type {IconOption as SharedIconOption} from "./icon_picker";
 import {HeroSlider, SliderData, sliderDataDefaults} from "./storefront/slider";
 import ProductCarousel from "./storefront/product_carousel";
 import TrustStrip from "./storefront/trustbadges";
 import PartnerLogos from "./storefront/partners";
 import CountdownBar from "./storefront/countdown";
 import TestimonialGrid from "./storefront/testimonials";
+import LeaderMessage from "./storefront/leadermessage";
+import FeatureGrid, {FeatureCard} from "./storefront/featuregrid";
+import SubscriptionPlans, {SubscriptionPlan, PlanCycle} from "./storefront/subscription_plans";
 import CategoryTiles from "./storefront/categories";
 import InstructorSpotlight from "./storefront/instructors";
 import NewsletterForm from "./storefront/newsletter";
@@ -32,8 +37,8 @@ import Footer, {FooterData, footerDataDefaults} from "./storefront/footer";
 import Catalog from "./catalog";
 import {FieldError} from "./form";
 import {
-    email as emailRule, hexColour, integer, max, maxLength, min, minLength, number, required,
-    runRules, slug as slugRule, url as urlRule, when,
+    email as emailRule, integer, max, maxLength, min, minLength, number, required,
+    runRules, slug as slugRule, url as urlRule, when, widgetColour,
 } from "./validation";
 import type {FieldErrorMap, Rule, RuleMap} from "./validation";
 
@@ -83,7 +88,7 @@ type FieldVisibilityRule = {
     notequals?: FieldVisibilityValue | FieldVisibilityValue[];
     truthy?: boolean;
 };
-type IconOption = {value: string; label: string; domain?: string; keywords?: string};
+type IconOption = SharedIconOption;
 type Slide = {
     image: string; imagesource?: string; imageurl?: string; imagefile?: string;
     heading: string; subheading: string; ctalabel: string;
@@ -103,7 +108,7 @@ type WidgetEditorData = {
     id: number; type: string; fields: FieldDef[]; values: Record<string, unknown>;
     pagetype?: string; styleconfig: StyleConfig; slides: Slide[];
 };
-type SliderEditorItem = "design" | "motion" | "navigation" | "button" | "slides" | "appearance";
+type SliderEditorItem = "design" | "motion" | "controls" | "button" | "slides" | "appearance" | "spacing";
 type BreadcrumbEditorItem = "background" | "breadcrumb" | "title" | "subtitle" | "overlay" | "padding" | "position";
 type VideoHeroEditorItem = "background" | "heading" | "body" | "buttons" | "panel" | "infocard" | "spacing";
 type CountdownEditorItem = "background" | "heading" | "timer" | "button" | "expired" | "spacing";
@@ -119,10 +124,10 @@ type FocusedEditorSection = {
     slideEditor?: boolean;
 };
 const breadcrumbEditorItems: Array<{key: BreadcrumbEditorItem; label: string; icon: string}> = [
-    {key: "background", label: "Background", icon: "bi-image"},
+    {key: "background", label: "Background", icon: "bi-palette"},
     {key: "breadcrumb", label: "Breadcrumb", icon: "bi-signpost-split"},
     {key: "title", label: "Title", icon: "bi-type-h1"},
-    {key: "subtitle", label: "Subtitle", icon: "bi-body-text"},
+    {key: "subtitle", label: "Subtitle", icon: "bi-text-paragraph"},
     {key: "overlay", label: "Overlay", icon: "bi-layers"},
     {key: "padding", label: "Padding", icon: "bi-arrows-expand"},
     {key: "position", label: "Position", icon: "bi-text-center"},
@@ -173,14 +178,15 @@ const genericEditorItems: Array<{key: GenericEditorItem; label: string; icon: st
 const sliderEditorItems: Array<{key: SliderEditorItem; label: string; icon: string}> = [
     {key: "design", label: "Design", icon: "bi-sliders"},
     {key: "motion", label: "Motion", icon: "bi-play-circle"},
-    {key: "navigation", label: "Navigation", icon: "bi-toggles"},
+    {key: "controls", label: "Controls", icon: "bi-toggles"},
     {key: "button", label: "Button", icon: "bi-cursor"},
     {key: "slides", label: "Slides", icon: "bi-collection-play"},
     {key: "appearance", label: "Appearance", icon: "bi-palette"},
+    {key: "spacing", label: "Spacing", icon: "bi-arrows-expand"},
 ];
 const remainingEditorProfiles: Record<string, FocusedEditorSection[]> = {
     slider: [
-        {key: "design", label: "Slider Design", icon: "bi-sliders", fields: ["title", "design"]},
+        {key: "design", label: "Design", icon: "bi-sliders", fields: ["title", "design"]},
         {key: "motion", label: "Motion", icon: "bi-play-circle", fields: ["autoplay", "interval"]},
         {key: "controls", label: "Controls", icon: "bi-toggles", fields: ["showarrows", "showdots"]},
         {key: "button", label: "Button", icon: "bi-cursor",
@@ -189,18 +195,20 @@ const remainingEditorProfiles: Record<string, FocusedEditorSection[]> = {
         {key: "slides", label: "Slides", icon: "bi-collection-play", slideEditor: true},
     ],
     featured: [
-        {key: "heading", label: "Heading", icon: "bi-type-h2", fields: ["title", "subtitle", "align"]},
+        {key: "heading", label: "Heading", icon: "bi-type-h2", fields: ["title", "subtitle"]},
         {key: "products", label: "Products", icon: "bi-box-seam", fields: ["coursetype", "categoryid", "sort", "perpage"]},
-        {key: "layout", label: "Layout", icon: "bi-layout-three-columns", fields: ["layout", "columns", "navposition"]},
+        {key: "layout", label: "Layout", icon: "bi-layout-three-columns",
+            fields: ["align", "layout", "columns", "navposition"]},
         {key: "cards", label: "Cards", icon: "bi-collection",
             fields: ["cardbgcolor", "cardbordercolor", "cardborderwidth"]},
         {key: "button", label: "Button", icon: "bi-cursor", fields: ["buttoncolor", "buttontextcolor"]},
         {key: "appearance", label: "Appearance", icon: "bi-palette", includeUniversal: true},
     ],
     related: [
-        {key: "heading", label: "Heading", icon: "bi-type-h2", fields: ["title", "subtitle", "align"]},
+        {key: "heading", label: "Heading", icon: "bi-type-h2", fields: ["title", "subtitle"]},
         {key: "products", label: "Products", icon: "bi-box-seam", fields: ["coursetype", "categoryid", "sort", "perpage"]},
-        {key: "layout", label: "Layout", icon: "bi-layout-three-columns", fields: ["layout", "columns", "navposition"]},
+        {key: "layout", label: "Layout", icon: "bi-layout-three-columns",
+            fields: ["align", "layout", "columns", "navposition"]},
         {key: "cards", label: "Cards", icon: "bi-collection",
             fields: ["cardbgcolor", "cardbordercolor", "cardborderwidth"]},
         {key: "button", label: "Button", icon: "bi-cursor", fields: ["buttoncolor", "buttontextcolor"]},
@@ -222,13 +230,13 @@ const remainingEditorProfiles: Record<string, FocusedEditorSection[]> = {
             fields: ["style", "visiblelogos", "speed", "pauseonhover"]},
         {key: "heading", label: "Heading", icon: "bi-type-h2",
             fields: ["heading", "headingcolor", "headingfontsize"]},
-        {key: "logos", label: "Logos", icon: "bi-buildings", fields: ["logos"]},
-        {key: "treatment", label: "Logo style", icon: "bi-image",
-            fields: ["greyscale", "logoheight", "logogap"]},
+        {key: "logos", label: "Logo style", icon: "bi-image",
+            fields: ["logos", "greyscale", "logoheight", "logogap"]},
         {key: "spacing", label: "Spacing", icon: "bi-arrows-expand",
             fields: ["bgcolor", "paddingtop", "paddingbottom"]},
     ],
     testimonials: [
+        {key: "background", label: "Background", icon: "bi-palette", fields: ["bgcolor"]},
         {key: "heading", label: "Heading", icon: "bi-type-h2",
             fields: ["title", "subtitle", "titlecolor", "titlefontsize", "subtitlecolor", "subtitlefontsize"]},
         {key: "testimonials", label: "Testimonials", icon: "bi-chat-quote", fields: ["testimonials"]},
@@ -237,9 +245,10 @@ const remainingEditorProfiles: Record<string, FocusedEditorSection[]> = {
         {key: "text", label: "Text", icon: "bi-fonts",
             fields: ["quotecolor", "quotefontsize", "avatarbgcolor", "avatarcolor",
                 "namecolor", "namefontsize", "rolecolor", "rolefontsize"]},
-        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["bgcolor", "paddingtop", "paddingbottom"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["paddingtop", "paddingbottom"]},
     ],
     instructors: [
+        {key: "background", label: "Background", icon: "bi-palette", fields: ["bgcolor"]},
         {key: "heading", label: "Heading", icon: "bi-type-h2",
             fields: ["title", "subtitle", "titlecolor", "titlefontsize", "subtitlecolor", "subtitlefontsize"]},
         {key: "instructors", label: "Instructors", icon: "bi-person-video3", fields: ["instructors"]},
@@ -248,12 +257,13 @@ const remainingEditorProfiles: Record<string, FocusedEditorSection[]> = {
         {key: "avatar", label: "Avatar", icon: "bi-person-circle", fields: ["avatarbgcolor", "avatarcolor"]},
         {key: "text", label: "Text", icon: "bi-fonts",
             fields: ["namecolor", "namefontsize", "rolecolor", "rolefontsize", "biocolor", "biofontsize"]},
-        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["bgcolor", "paddingtop", "paddingbottom"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["paddingtop", "paddingbottom"]},
     ],
     newsletter: [
         {key: "heading", label: "Heading", icon: "bi-type-h2",
-            fields: ["title", "subtitle", "heading", "description", "titlecolor", "titlefontsize",
-                "textcolor", "textfontsize"]},
+            fields: ["title", "subtitle", "heading", "description"]},
+        {key: "text", label: "Text", icon: "bi-fonts",
+            fields: ["titlecolor", "titlefontsize", "textcolor", "textfontsize"]},
         {key: "form", label: "Form", icon: "bi-envelope",
             fields: ["placeholder", "buttonlabel", "successmessage", "inputbgcolor", "inputbordercolor",
                 "inputtextcolor", "placeholdercolor"]},
@@ -274,13 +284,16 @@ const remainingEditorProfiles: Record<string, FocusedEditorSection[]> = {
         {key: "slides", label: "Slides", icon: "bi-collection-play", fields: ["slides"]},
     ],
     content: [
-        {key: "intro", label: "Intro", icon: "bi-type", fields: ["eyebrow", "title", "subtitle"]},
+        {key: "intro", label: "Intro", icon: "bi-type",
+            fields: ["eyebrow", "title", "subtitle", "icon"]},
         {key: "body", label: "Body & Media", icon: "bi-card-image",
-            fields: ["body", "imagesource", "imagefile", "imageurl", "mediaradius"]},
+            fields: ["body", "imagesource", "imagefile", "imageurl"]},
         {key: "button", label: "Button", icon: "bi-cursor",
             fields: ["ctalabel", "ctaurl", "buttoncolor", "buttontextcolor", "buttonradius"]},
         {key: "layout", label: "Layout", icon: "bi-layout-text-window",
-            fields: ["layout", "mediaposition", "bgcolor", "panelbgcolor", "panelbordercolor", "cardradius"]},
+            fields: ["layout", "mediaposition", "bgcolor", "panelbgcolor", "panelbordercolor", "cardradius",
+                "mediaradius"]},
+        {key: "icon", label: "Icon", icon: "bi-stars", fields: ["iconbgcolor", "iconcolor", "iconsize"]},
         {key: "benefits", label: "Benefits", icon: "bi-list-ol",
             fields: ["benefits", "benefitnumbercolor", "benefitnumberfontsize", "benefittitlecolor",
                 "benefittitlefontsize", "benefittextcolor", "benefittextfontsize", "benefitbordercolor"]},
@@ -289,20 +302,72 @@ const remainingEditorProfiles: Record<string, FocusedEditorSection[]> = {
         {key: "spacing", label: "Spacing", icon: "bi-arrows-expand",
             fields: ["paddingtop", "paddingbottom", "paddingleft", "paddingright"]},
     ],
+    leadermessage: [
+        {key: "layout", label: "Layout", icon: "bi-layout-split",
+            fields: ["style", "mediaposition", "showphoto", "mediawidth", "mediaradius", "justifytext",
+                "photosource", "photofile", "photourl"]},
+        {key: "visibility", label: "Visible elements", icon: "bi-eye",
+            fields: ["showeyebrow", "showtitle", "showattribution", "showsignature", "showcta", "showaccent"]},
+        {key: "content", label: "Message", icon: "bi-body-text",
+            fields: ["eyebrow", "title", "message", "leadername", "leaderrole"]},
+        {key: "signature", label: "Signature", icon: "bi-pen",
+            fields: ["signaturesource", "signaturefile", "signatureurl"]},
+        {key: "background", label: "Background", icon: "bi-palette", fields: ["bgcolor", "accentcolor"]},
+        {key: "text", label: "Text", icon: "bi-fonts",
+            fields: ["eyebrowcolor", "eyebrowfontsize", "titlecolor", "titlefontsize", "textcolor", "textfontsize",
+                "namecolor", "namefontsize", "rolecolor", "rolefontsize"]},
+        {key: "button", label: "Button", icon: "bi-cursor",
+            fields: ["ctalabel", "ctaurl", "buttoncolor", "buttontextcolor", "buttonradius"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["paddingtop", "paddingbottom"]},
+    ],
+    featuregrid: [
+        {key: "layout", label: "Layout", icon: "bi-grid-3x3-gap",
+            fields: ["style", "columns", "showheader", "centercards"]},
+        {key: "heading", label: "Heading", icon: "bi-type-h2",
+            fields: ["title", "subtitle", "titlecolor", "titlefontsize", "subtitlecolor", "subtitlefontsize"]},
+        {key: "cards", label: "Cards", icon: "bi-collection",
+            fields: ["cards", "cardbgcolor", "cardbordercolor", "cardborderwidth", "cardradius"]},
+        {key: "icons", label: "Icons", icon: "bi-stars", fields: ["iconbgcolor", "iconcolor", "iconsize"]},
+        {key: "text", label: "Text", icon: "bi-fonts",
+            fields: ["cardtitlecolor", "cardtitlefontsize", "textcolor", "textfontsize", "linkcolor"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand",
+            fields: ["bgcolor", "paddingtop", "paddingbottom"]},
+    ],
+    subscriptionplans: [
+        {key: "layout", label: "Layout", icon: "bi-layout-three-columns",
+            fields: ["style", "columns", "showheader", "showdescription", "showfeatures", "showtrial", "showpromo",
+                "highlightfeatured"]},
+        {key: "heading", label: "Heading", icon: "bi-type-h2",
+            fields: ["title", "subtitle", "titlecolor", "titlefontsize", "subtitlecolor", "subtitlefontsize"]},
+        {key: "plans", label: "Plans", icon: "bi-card-list",
+            fields: ["billingcycle", "defaultcycle", "monthlylabel", "yearlylabel", "savingslabel", "plancodes",
+                "maxplans", "maxfeatures", "featuredlabel"]},
+        {key: "cards", label: "Cards", icon: "bi-window",
+            fields: ["bgcolor", "cardbgcolor", "cardbordercolor", "cardborderwidth", "cardradius", "accentcolor"]},
+        {key: "pricing", label: "Pricing", icon: "bi-cash-coin",
+            fields: ["plannamecolor", "plannamefontsize", "pricecolor", "pricefontsize", "cyclecolor"]},
+        {key: "features", label: "Features", icon: "bi-check2-square",
+            fields: ["textcolor", "textfontsize", "featurecolor", "featureiconcolor"]},
+        {key: "button", label: "Button", icon: "bi-cursor",
+            fields: ["ctalabel", "ctaurl", "buttoncolor", "buttontextcolor", "buttonradius"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["paddingtop", "paddingbottom"]},
+    ],
     learningpromise: [
+        {key: "background", label: "Background", icon: "bi-palette", fields: ["bgcolor"]},
         {key: "copy", label: "Copy", icon: "bi-body-text", fields: ["title", "body"]},
         {key: "text", label: "Text", icon: "bi-fonts",
             fields: ["headingcolor", "headingfontsize", "textcolor", "textfontsize"]},
-        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["bgcolor", "paddingtop", "paddingbottom"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["paddingtop", "paddingbottom"]},
     ],
     belief: [
+        {key: "background", label: "Background", icon: "bi-palette", fields: ["bgcolor"]},
         {key: "heading", label: "Heading", icon: "bi-type-h2",
             fields: ["title", "subtitle", "titlecolor", "titlefontsize", "subtitlecolor", "subtitlefontsize"]},
         {key: "points", label: "Points", icon: "bi-stars", fields: ["items", "closing"]},
         {key: "icons", label: "Icons", icon: "bi-patch-check", fields: ["iconcolor", "iconsize"]},
         {key: "text", label: "Text", icon: "bi-fonts",
             fields: ["textcolor", "textfontsize", "labelcolor", "labelfontsize"]},
-        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["bgcolor", "paddingtop", "paddingbottom"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["paddingtop", "paddingbottom"]},
     ],
     policy: [
         {key: "heading", label: "Heading", icon: "bi-type-h2",
@@ -320,26 +385,31 @@ const remainingEditorProfiles: Record<string, FocusedEditorSection[]> = {
             fields: ["title", "subtitle", "titlecolor", "titlefontsize", "subtitlecolor", "subtitlefontsize"]},
         {key: "questions", label: "Questions", icon: "bi-question-circle", fields: ["items"]},
         {key: "items", label: "Items", icon: "bi-list-check",
-            fields: ["itembgcolor", "itembordercolor", "cardborderwidth", "cardradius", "iconcolor"]},
+            fields: ["bgcolor", "itembgcolor", "itembordercolor", "cardborderwidth", "cardradius", "iconcolor"]},
         {key: "text", label: "Text", icon: "bi-fonts",
             fields: ["questioncolor", "labelfontsize", "answercolor", "textfontsize"]},
-        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["bgcolor", "paddingtop", "paddingbottom"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["paddingtop", "paddingbottom"]},
     ],
     cta: [
-        {key: "copy", label: "Copy", icon: "bi-body-text",
-            fields: ["heading", "text", "titlecolor", "titlefontsize", "textcolor", "textfontsize"]},
+        {key: "copy", label: "Copy", icon: "bi-body-text", fields: ["heading", "text"]},
+        {key: "layout", label: "Tone", icon: "bi-megaphone", fields: ["tone"]},
+        {key: "text", label: "Text", icon: "bi-fonts",
+            fields: ["titlecolor", "titlefontsize", "textcolor", "textfontsize"]},
         {key: "buttons", label: "Buttons", icon: "bi-cursor",
             fields: ["primarylabel", "primaryurl", "secondarylabel", "secondaryurl",
                 "primarybuttoncolor", "primarybuttontextcolor", "secondarybuttoncolor", "secondarybuttontextcolor",
                 "buttonradius"]},
         {key: "appearance", label: "Appearance", icon: "bi-palette",
-            fields: ["tone", "bgcolor", "cardradius", "paddingtop", "paddingbottom"]},
+            fields: ["bgcolor", "cardradius"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["paddingtop", "paddingbottom"]},
     ],
     supportform: [
         {key: "heading", label: "Heading", icon: "bi-type-h2",
-            fields: ["heading", "description", "titlecolor", "titlefontsize", "textcolor", "textfontsize"]},
-        {key: "form", label: "Form Labels", icon: "bi-ui-checks",
-            fields: ["messagelabel", "messageplaceholder", "formlabelcolor",
+            fields: ["heading", "description"]},
+        {key: "text", label: "Text", icon: "bi-fonts",
+            fields: ["titlecolor", "titlefontsize", "textcolor", "textfontsize", "formlabelcolor"]},
+        {key: "form", label: "Form", icon: "bi-ui-checks",
+            fields: ["messagelabel", "messageplaceholder",
                 "inputbgcolor", "inputbordercolor", "inputtextcolor"]},
         {key: "buttons", label: "Buttons", icon: "bi-cursor",
             fields: ["buttonlabel", "emailbuttonlabel", "buttoncolor", "buttontextcolor",
@@ -351,18 +421,17 @@ const remainingEditorProfiles: Record<string, FocusedEditorSection[]> = {
     contactcards: [
         {key: "heading", label: "Heading", icon: "bi-type-h2",
             fields: ["title", "subtitle", "titlecolor", "titlefontsize", "subtitlecolor", "subtitlefontsize"]},
-        {key: "cards", label: "Cards", icon: "bi-postcard", fields: ["cards"]},
-        {key: "cardstyle", label: "Card style", icon: "bi-postcard-heart",
-            fields: ["cardbgcolor", "cardbordercolor", "cardborderwidth", "cardradius"]},
+        {key: "cards", label: "Cards", icon: "bi-postcard",
+            fields: ["cards", "bgcolor", "cardbgcolor", "cardbordercolor", "cardborderwidth", "cardradius"]},
         {key: "icons", label: "Icons", icon: "bi-patch-check", fields: ["iconbgcolor", "iconcolor", "iconsize"]},
         {key: "text", label: "Text", icon: "bi-fonts",
             fields: ["labelcolor", "labelfontsize", "textcolor", "textfontsize", "linkcolor"]},
-        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["bgcolor", "paddingtop", "paddingbottom"]},
+        {key: "spacing", label: "Spacing", icon: "bi-arrows-expand", fields: ["paddingtop", "paddingbottom"]},
     ],
     footer: [
-        {key: "style", label: "Style", icon: "bi-layout-three-columns", fields: ["style", "mode"]},
+        {key: "layout", label: "Style", icon: "bi-layout-three-columns", fields: ["style", "mode", "logoheight"]},
         {key: "brand", label: "Brand", icon: "bi-building",
-            fields: ["logosource", "logo", "logoheight", "brandname", "description"]},
+            fields: ["logosource", "logo", "brandname", "description"]},
         {key: "contact", label: "Contact", icon: "bi-telephone", fields: ["address", "phone", "email"]},
         {key: "links", label: "Links", icon: "bi-link-45deg", fields: ["columns", "appstitle", "googleplayurl", "appstoreurl", "social"]},
         {key: "enterprise", label: "Enterprise", icon: "bi-shield-check", fields: ["languagelabel", "subscribeplaceholder", "compliancelabel"]},
@@ -379,7 +448,7 @@ const remainingEditorProfiles: Record<string, FocusedEditorSection[]> = {
             fields: ["title", "titlecolor", "titlefontsize", "textcolor", "textfontsize", "accentcolor",
                 "eyebrowcolor"]},
         {key: "hero", label: "Hero", icon: "bi-window",
-            fields: ["herobgcolor", "herobordercolor", "heroradius", "heropanelbgcolor",
+            fields: ["showheader", "herobgcolor", "herobordercolor", "heroradius", "heropanelbgcolor",
                 "heropanelbordercolor", "heropaneltextcolor", "heropanelaccentcolor",
                 "heropanelvaluecolor", "heropanelvaluefontsize"]},
         {key: "layout", label: "Layout", icon: "bi-layout-sidebar", fields: ["perpage", "sidebarposition"]},
@@ -396,8 +465,9 @@ const remainingEditorProfiles: Record<string, FocusedEditorSection[]> = {
                 "bundlebadgebgcolor", "bundlebadgebordercolor", "bundlebadgetextcolor"]},
         {key: "filters", label: "Filters", icon: "bi-funnel",
             fields: ["filterbgcolor", "filterbordercolor", "filterborderwidth", "filterradius",
-                "filtertitlecolor", "filtertextcolor", "inputbgcolor", "inputbordercolor", "inputtextcolor", "placeholdercolor",
-                "tabbgcolor", "tabbordercolor", "tabtextcolor", "tabactivebgcolor", "tabactivetextcolor"]},
+                "filtertitlecolor", "filtertextcolor", "inputbgcolor", "inputbordercolor", "inputtextcolor", "placeholdercolor"]},
+        {key: "tabs", label: "Tabs", icon: "bi-segmented-nav",
+            fields: ["tabbgcolor", "tabbordercolor", "tabtextcolor", "tabactivebgcolor", "tabactivetextcolor"]},
         {key: "appearance", label: "Appearance", icon: "bi-palette", fields: ["bgcolor"]},
         {key: "spacing", label: "Spacing", icon: "bi-arrows-expand",
             fields: ["paddingtop", "paddingbottom", "paddingleft", "paddingright", "margintop", "marginbottom"]},
@@ -740,7 +810,11 @@ export const safePresetFieldNames = [
     "heropanelbordercolor", "heropaneltextcolor", "heropanelaccentcolor",
     "heropanelvaluecolor", "heropanelvaluefontsize",
     "primarybuttoncolor", "primarybuttontextcolor", "secondarybuttoncolor", "secondarybuttontextcolor",
-    "showquote",
+    "showquote", "showheader", "showcount", "showarrows", "showdots", "showfeatures",
+    "showdescription", "showtrial", "showpromo", "highlightfeatured",
+    "showeyebrow", "showtitle", "justifytext", "showphoto", "showattribution",
+    "showsignature", "showcta", "showaccent",
+    "autoplay", "greyscale", "pauseonhover", "centercards",
     "infocardbgcolor", "infoiconbgcolor", "infoiconcolor", "infoheadingcolor", "infoheadingfontsize",
     "infotextcolor", "headingfontsize", "timerbgcolor", "timernumbercolor", "timernumberfontsize",
     "timerlabelcolor", "timerlabelfontsize", "buttoncolor", "buttontextcolor", "buttonfontsize",
@@ -748,14 +822,17 @@ export const safePresetFieldNames = [
     "cardbordercolor", "cardborderwidth", "cardfooterbgcolor", "cardtitlecolor", "cardtitlefontsize", "cardtextcolor",
     "cardtextfontsize", "cardmetabgcolor", "cardmetatextcolor", "labelcolor", "labelfontsize",
     "sublabelcolor", "sublabelfontsize", "countcolor", "countfontsize", "margintop", "marginbottom", "logoheight",
+    "visiblelogos", "speed", "logogap",
     "benefitnumbercolor", "benefitnumberfontsize", "benefittitlecolor", "benefittitlefontsize",
     "benefittextcolor", "benefittextfontsize", "benefitbordercolor",
     "panelbgcolor", "panelbordercolor", "panelborderwidth", "panelradius", "panelpaddingtop",
     "panelpaddingright", "panelpaddingbottom", "panelpaddingleft", "inputbgcolor", "inputbordercolor", "inputtextcolor",
     "placeholdercolor", "formlabelcolor", "linkcolor", "ratingcolor", "ratingtextcolor", "originalpricecolor", "avatarbgcolor", "avatarcolor",
     "quotecolor", "quotefontsize", "textfontsize", "namecolor", "namefontsize", "rolecolor", "rolefontsize",
-    "biocolor", "biofontsize", "mediaradius", "questioncolor", "answercolor", "itembgcolor", "itembordercolor",
+    "biocolor", "biofontsize", "mediaradius", "eyebrowfontsize", "mediawidth",
+    "questioncolor", "answercolor", "itembgcolor", "itembordercolor",
     "pricecolor", "badgebgcolor", "badgebordercolor", "badgetextcolor", "badgeradius", "badgefontsize",
+    "plannamecolor", "plannamefontsize", "pricefontsize", "cyclecolor", "featurecolor", "featureiconcolor",
     "coursebadgebgcolor", "coursebadgebordercolor", "coursebadgetextcolor",
     "programbadgebgcolor", "programbadgebordercolor", "programbadgetextcolor",
     "bundlebadgebgcolor", "bundlebadgebordercolor", "bundlebadgetextcolor",
@@ -782,6 +859,32 @@ export const mergePresetIntoData = (
         next.displaysettings = {...(next.displaysettings as Record<string, unknown>), ...settingsPatch};
     }
     return next;
+};
+
+/**
+ * Build a render-only widget while its settings drawer is open.
+ *
+ * The page response contains resolver output, whereas the editor owns raw schema
+ * values. Merging the current values into both the resolved payload and its
+ * displaysettings envelope gives controls immediate visual feedback without
+ * mutating the saved page response. Closing the drawer therefore restores the
+ * persisted widget automatically; Save still remains the only server write.
+ */
+const widgetPreviewFromEditor = (widget: WidgetInstance, editor: WidgetEditorData): WidgetInstance => {
+    if (widget.id !== editor.id) {
+        return widget;
+    }
+    const values = {...editor.values};
+    delete values.presetid;
+    const data = mergePresetIntoData(parseJson<Record<string, unknown>>(widget.data, {}), values);
+    return {
+        ...widget,
+        title: Object.prototype.hasOwnProperty.call(values, "title") ? String(values.title ?? "") : widget.title,
+        subtitle: Object.prototype.hasOwnProperty.call(values, "subtitle") ? String(values.subtitle ?? "") : widget.subtitle,
+        settings: JSON.stringify({...parseJson<Record<string, unknown>>(widget.settings, {}), ...values}),
+        styleconfig: JSON.stringify(editor.styleconfig),
+        data: JSON.stringify(data),
+    };
 };
 
 const styleNumber = (value: unknown): number => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
@@ -968,7 +1071,8 @@ export const rulesFromSchema = (
                 list.push(urlRule(t("error:invalidurl")));
                 break;
             case "hex":
-                list.push(hexColour(t("error:invalidcolour")));
+                // Widget colours may be a design token as well as a hex value.
+                list.push(widgetColour(t("error:invalidcolour")));
                 break;
             case "integer":
                 list.push(integer(t("error:invalidinteger")));
@@ -1650,6 +1754,186 @@ function LearningPromiseWidget({widget}: {widget: WidgetInstance}) {
     );
 }
 
+function FeatureGridWidget({widget}: {widget: WidgetInstance}) {
+    const cfg = parseJson<{
+        style: string; columns: number; cards: FeatureCard[];
+        title: string; subtitle: string; showheader: boolean; centercards: boolean;
+        bgcolor: string;
+        titlecolor: string; titlefontsize: number;
+        subtitlecolor: string; subtitlefontsize: number;
+        cardbgcolor: string; cardbordercolor: string; cardborderwidth: number; cardradius: number;
+        iconcolor: string; iconsize: number; iconbgcolor: string;
+        cardtitlecolor: string; cardtitlefontsize: number;
+        textcolor: string; textfontsize: number; linkcolor: string;
+        paddingtop: number; paddingbottom: number;
+    }>(widget.data, {
+        style: "topbar", columns: 3, cards: [],
+        title: widget.title, subtitle: widget.subtitle, showheader: true, centercards: true,
+        bgcolor: "",
+        titlecolor: "", titlefontsize: 0,
+        subtitlecolor: "", subtitlefontsize: 0,
+        cardbgcolor: "", cardbordercolor: "", cardborderwidth: 1, cardradius: 12,
+        iconcolor: "", iconsize: 40, iconbgcolor: "",
+        cardtitlecolor: "", cardtitlefontsize: 0,
+        textcolor: "", textfontsize: 0, linkcolor: "",
+        paddingtop: 72, paddingbottom: 72,
+    });
+
+    const style: CSSProperties & Record<string, string | number> = {};
+    setCssVar(style, "--mc-fg-bg", cfg.bgcolor);
+    setCssVar(style, "--mc-fg-title-color", cfg.titlecolor);
+    setPxVar(style, "--mc-fg-title-font-size", cfg.titlefontsize);
+    setCssVar(style, "--mc-fg-subtitle-color", cfg.subtitlecolor);
+    setPxVar(style, "--mc-fg-subtitle-font-size", cfg.subtitlefontsize);
+    setCssVar(style, "--mc-fg-card-bg", cfg.cardbgcolor);
+    setCssVar(style, "--mc-fg-card-border-color", cfg.cardbordercolor);
+    setPxVar(style, "--mc-fg-card-border-width", cfg.cardborderwidth);
+    setPxVar(style, "--mc-fg-card-radius", cfg.cardradius);
+    setCssVar(style, "--mc-fg-card-icon", cfg.iconcolor);
+    setPxVar(style, "--mc-fg-icon-size", cfg.iconsize);
+    setCssVar(style, "--mc-fg-icon-bg", cfg.iconbgcolor);
+    setCssVar(style, "--mc-fg-card-title-color", cfg.cardtitlecolor);
+    setPxVar(style, "--mc-fg-card-title-font-size", cfg.cardtitlefontsize);
+    setCssVar(style, "--mc-fg-card-text-color", cfg.textcolor);
+    setPxVar(style, "--mc-fg-card-text-font-size", cfg.textfontsize);
+    setCssVar(style, "--mc-fg-card-link-color", cfg.linkcolor);
+    setPxVar(style, "--mc-fg-padding-top", cfg.paddingtop);
+    setPxVar(style, "--mc-fg-padding-bottom", cfg.paddingbottom);
+
+    return <FeatureGrid {...cfg} cssvars={style} />;
+}
+
+function SubscriptionPlansWidget({widget}: {widget: WidgetInstance}) {
+    const cfg = parseJson<{
+        style: string; columns: number; plans: SubscriptionPlan[];
+        cycles: PlanCycle[]; defaultcycle: string; showcycleswitch: boolean; savingslabel: string;
+        cyclegrouplabel: string;
+        title: string; subtitle: string; showheader: boolean; showfeatures: boolean;
+        ctalabel: string; ctaurl: string; featuredlabel: string;
+        bgcolor: string;
+        titlecolor: string; titlefontsize: number;
+        subtitlecolor: string; subtitlefontsize: number;
+        cardbgcolor: string; cardbordercolor: string; cardborderwidth: number; cardradius: number;
+        accentcolor: string;
+        plannamecolor: string; plannamefontsize: number;
+        pricecolor: string; pricefontsize: number; cyclecolor: string;
+        textcolor: string; textfontsize: number;
+        featurecolor: string; featureiconcolor: string;
+        buttoncolor: string; buttontextcolor: string; buttonradius: number;
+        paddingtop: number; paddingbottom: number;
+    }>(widget.data, {
+        style: "elevated", columns: 3, plans: [],
+        cycles: [], defaultcycle: "monthly", showcycleswitch: false, savingslabel: "",
+        cyclegrouplabel: "",
+        title: widget.title, subtitle: widget.subtitle, showheader: true, showfeatures: true,
+        ctalabel: "", ctaurl: "", featuredlabel: "",
+        bgcolor: "",
+        titlecolor: "", titlefontsize: 0,
+        subtitlecolor: "", subtitlefontsize: 0,
+        cardbgcolor: "", cardbordercolor: "", cardborderwidth: 1, cardradius: 12,
+        accentcolor: "",
+        plannamecolor: "", plannamefontsize: 0,
+        pricecolor: "", pricefontsize: 40, cyclecolor: "",
+        textcolor: "", textfontsize: 0,
+        featurecolor: "", featureiconcolor: "",
+        buttoncolor: "", buttontextcolor: "", buttonradius: 8,
+        paddingtop: 72, paddingbottom: 72,
+    });
+
+    const style: CSSProperties & Record<string, string | number> = {};
+    setCssVar(style, "--mc-sp-bg", cfg.bgcolor);
+    setCssVar(style, "--mc-sp-title-color", cfg.titlecolor);
+    setPxVar(style, "--mc-sp-title-font-size", cfg.titlefontsize);
+    setCssVar(style, "--mc-sp-subtitle-color", cfg.subtitlecolor);
+    setPxVar(style, "--mc-sp-subtitle-font-size", cfg.subtitlefontsize);
+    setCssVar(style, "--mc-sp-card-bg", cfg.cardbgcolor);
+    setCssVar(style, "--mc-sp-card-border-color", cfg.cardbordercolor);
+    setPxVar(style, "--mc-sp-card-border-width", cfg.cardborderwidth);
+    setPxVar(style, "--mc-sp-card-radius", cfg.cardradius);
+    setCssVar(style, "--mc-sp-accent", cfg.accentcolor);
+    setCssVar(style, "--mc-sp-plan-name-color", cfg.plannamecolor);
+    setPxVar(style, "--mc-sp-plan-name-font-size", cfg.plannamefontsize);
+    setCssVar(style, "--mc-sp-price-color", cfg.pricecolor);
+    setPxVar(style, "--mc-sp-price-font-size", cfg.pricefontsize);
+    setCssVar(style, "--mc-sp-cycle-color", cfg.cyclecolor);
+    setCssVar(style, "--mc-sp-text-color", cfg.textcolor);
+    setPxVar(style, "--mc-sp-text-font-size", cfg.textfontsize);
+    setCssVar(style, "--mc-sp-feature-color", cfg.featurecolor);
+    setCssVar(style, "--mc-sp-feature-icon-color", cfg.featureiconcolor);
+    setCssVar(style, "--mc-sp-button-bg", cfg.buttoncolor);
+    setCssVar(style, "--mc-sp-button-color", cfg.buttontextcolor);
+    setPxVar(style, "--mc-sp-button-radius", cfg.buttonradius);
+    setPxVar(style, "--mc-sp-padding-top", cfg.paddingtop);
+    setPxVar(style, "--mc-sp-padding-bottom", cfg.paddingbottom);
+
+    return <SubscriptionPlans {...cfg} cssvars={style} />;
+}
+
+function LeaderMessageWidget({widget}: {widget: WidgetInstance}) {
+    const cfg = parseJson<{
+        style: string; mediaposition: string;
+        eyebrow: string; showeyebrow: boolean; title: string; showtitle: boolean;
+        message: string; justifytext: boolean;
+        photo: string; showphoto: boolean; photoalt: string;
+        leadername: string; leaderrole: string; showattribution: boolean;
+        signature: string; showsignature: boolean;
+        ctalabel: string; ctaurl: string; showcta: boolean;
+        showaccent: boolean;
+        bgcolor: string; accentcolor: string;
+        eyebrowcolor: string; eyebrowfontsize: number;
+        titlecolor: string; titlefontsize: number;
+        textcolor: string; textfontsize: number;
+        namecolor: string; namefontsize: number;
+        rolecolor: string; rolefontsize: number;
+        buttoncolor: string; buttontextcolor: string; buttonradius: number;
+        mediaradius: number; mediawidth: number;
+        paddingtop: number; paddingbottom: number;
+    }>(widget.data, {
+        style: "elevated", mediaposition: "right",
+        eyebrow: "", showeyebrow: false, title: widget.title, showtitle: true,
+        message: "", justifytext: false,
+        photo: "", showphoto: true, photoalt: "",
+        leadername: "", leaderrole: "", showattribution: true,
+        signature: "", showsignature: false,
+        ctalabel: "", ctaurl: "", showcta: false,
+        showaccent: true,
+        bgcolor: "", accentcolor: "",
+        eyebrowcolor: "", eyebrowfontsize: 0,
+        titlecolor: "", titlefontsize: 0,
+        textcolor: "", textfontsize: 0,
+        namecolor: "", namefontsize: 0,
+        rolecolor: "", rolefontsize: 0,
+        buttoncolor: "", buttontextcolor: "", buttonradius: 8,
+        mediaradius: 16, mediawidth: 38,
+        paddingtop: 72, paddingbottom: 72,
+    });
+
+    const style: CSSProperties & Record<string, string | number> = {};
+    setCssVar(style, "--mc-leader-bg", cfg.bgcolor);
+    setCssVar(style, "--mc-leader-accent", cfg.accentcolor);
+    setCssVar(style, "--mc-leader-eyebrow-color", cfg.eyebrowcolor);
+    setPxVar(style, "--mc-leader-eyebrow-font-size", cfg.eyebrowfontsize);
+    setCssVar(style, "--mc-leader-title-color", cfg.titlecolor);
+    setPxVar(style, "--mc-leader-title-font-size", cfg.titlefontsize);
+    setCssVar(style, "--mc-leader-text-color", cfg.textcolor);
+    setPxVar(style, "--mc-leader-text-font-size", cfg.textfontsize);
+    setCssVar(style, "--mc-leader-name-color", cfg.namecolor);
+    setPxVar(style, "--mc-leader-name-font-size", cfg.namefontsize);
+    setCssVar(style, "--mc-leader-role-color", cfg.rolecolor);
+    setPxVar(style, "--mc-leader-role-font-size", cfg.rolefontsize);
+    setCssVar(style, "--mc-leader-button-bg", cfg.buttoncolor);
+    setCssVar(style, "--mc-leader-button-color", cfg.buttontextcolor);
+    setPxVar(style, "--mc-leader-button-radius", cfg.buttonradius);
+    setPxVar(style, "--mc-leader-media-radius", cfg.mediaradius);
+    setPxVar(style, "--mc-leader-padding-top", cfg.paddingtop);
+    setPxVar(style, "--mc-leader-padding-bottom", cfg.paddingbottom);
+    if (cfg.mediawidth) {
+        style["--mc-leader-media-width"] = `${cfg.mediawidth}%`;
+    }
+
+    return <LeaderMessage {...cfg} cssvars={style} />;
+}
+
 function BeliefWidget({widget}: {widget: WidgetInstance}) {
     const cfg = parseJson<{
         title: string; subtitle: string; bgcolor: string; closing: string;
@@ -2190,6 +2474,8 @@ const WIDGETS: Record<string, FC<{widget: WidgetInstance}>> = {
     videohero: VideoHeroWidget, mediastorycarousel: MediaStoryCarouselWidget,
     breadcrumb: BreadcrumbWidget,
     content: ContentWidget, learningpromise: LearningPromiseWidget,
+    leadermessage: LeaderMessageWidget, featuregrid: FeatureGridWidget,
+    subscriptionplans: SubscriptionPlansWidget,
     belief: BeliefWidget, policy: PolicyWidget, faq: FaqWidget,
     cta: CtaWidget, supportform: SupportFormWidget, contactcards: ContactCardsWidget,
     footer: FooterWidget,
@@ -2297,11 +2583,18 @@ function FieldControl(
             value={value} labels={controlLabels} onChange={(v) => onChange(v)} />;
     }
     if (field.type === "checkbox") {
+        // An unset value means the widget predates the field, so fall back to the
+        // schema default rather than showing an unticked box for on-by-default fields.
+        const checked = typeof value === "undefined" || value === null
+            ? field.default === true || String(field.default) === "1"
+            : !!value;
         return (
             <div className="mc-sf-field">
-                <label htmlFor={id}>
-                    <input id={id} type="checkbox" checked={!!value}
-                        onChange={(e) => onChange(e.target.checked)} /> {field.label}
+                <label className="mc-sf-switch" htmlFor={id}>
+                    <span>{field.label}</span>
+                    <input id={id} type="checkbox" checked={checked}
+                        onChange={(e) => onChange(e.target.checked)} />
+                    <i aria-hidden="true" />
                 </label>
             </div>
         );
@@ -2432,80 +2725,8 @@ function FieldControl(
     );
 }
 
-const normIcon = (v: string): string => v.trim().replace(/^bi\s+/, "").replace(/^bi-/, "");
-const iconCls = (v: string): string => `bi bi-${normIcon(v) || "check-circle"}`;
 
 /** Searchable Bootstrap-icon typeahead with live previews (stores the bare icon name). */
-function IconPicker(
-    {value, label, options, onChange}:
-    {value: string; label: string; options: IconOption[]; onChange: (v: string) => void}
-) {
-    const inputId = useId();
-    const norm = normIcon(value);
-    const [query, setQuery] = useState(norm);
-    const [open, setOpen] = useState(false);
-    useEffect(() => { setQuery(norm); }, [norm]);
-
-    const filtered = useMemo(() => {
-        const needle = query.trim().toLowerCase();
-        const iconNeedle = normIcon(query).toLowerCase();
-        const matches = needle === "" ? options : options.filter((o) => {
-            const hay = [o.label, normIcon(o.value), o.domain ?? "", o.keywords ?? ""].join(" ").toLowerCase();
-            return hay.includes(needle) || hay.includes(iconNeedle);
-        });
-        const selected = options.find((o) => normIcon(o.value) === norm);
-        const ordered = selected && !matches.includes(selected) ? [selected, ...matches] : matches;
-        return ordered.slice(0, 50);
-    }, [norm, options, query]);
-
-    const commit = () => {
-        const raw = query.trim();
-        const nq = normIcon(raw);
-        const exact = options.find((o) =>
-            normIcon(o.value).toLowerCase() === nq.toLowerCase() || o.label.toLowerCase() === raw.toLowerCase());
-        const next = normIcon(exact?.value ?? filtered[0]?.value ?? nq) || "check-circle";
-        onChange(next);
-        setQuery(next);
-    };
-    const pick = (o: IconOption) => {
-        const next = normIcon(o.value) || "check-circle";
-        onChange(next);
-        setQuery(next);
-        setOpen(false);
-    };
-
-    return (
-        <div className="mc-sf-field mc-sf-iconpick">
-            <label htmlFor={inputId}>{label}</label>
-            <div className="mc-sf-iconpick__control">
-                <span className="mc-sf-iconpick__preview" aria-hidden="true"><i className={iconCls(norm)} /></span>
-                <input id={inputId} type="search" className="mc-sf-iconpick__input" value={query}
-                    placeholder="check-circle" role="combobox" aria-expanded={open ? "true" : "false"}
-                    aria-label={label} aria-autocomplete="list" autoComplete="off"
-                    onFocus={() => setOpen(true)}
-                    onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-                    onBlur={() => window.setTimeout(() => { commit(); setOpen(false); }, 150)} />
-            </div>
-            {open && (
-                <div className="mc-sf-iconpick__menu" role="listbox">
-                    {filtered.length === 0 && <div className="mc-sf-iconpick__empty">No icons found</div>}
-                    {filtered.map((o) => {
-                        const oi = normIcon(o.value);
-                        return (
-                            <button key={oi} type="button" className="mc-button mc-sf-iconpick__item" data-mc-button="ghost" role="option"
-                                onMouseDown={(e) => { e.preventDefault(); pick(o); }}>
-                                <i className={iconCls(oi)} aria-hidden="true" />
-                                <span className="mc-sf-iconpick__name">{o.label}</span>
-                                <code>{oi}</code>
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
-    );
-}
-
 /** File-upload control for a slide image: uploads to Moodle storage, stores the returned URL. */
 function SlideImageField(
     {value, label, uploadMethod, labels = {}, onChange}:
@@ -3326,7 +3547,7 @@ export default function Storefront(props: Props) {
                         {renderEditorSchemaField("interval", "Interval (ms)", "number")}
                     </>
                 );
-            case "navigation":
+            case "controls":
                 return (
                     <>
                         {renderEditorSchemaField("showarrows", "Show arrows", "checkbox")}
@@ -3344,12 +3565,20 @@ export default function Storefront(props: Props) {
                 );
             case "slides":
                 return renderSlidesEditor();
+            case "spacing":
+                return (
+                    <>
+                        <div className="mc-sf-section__title">Slider spacing</div>
+                        {renderStyleGrid(["spacingtop", "spacingbottom"])}
+                    </>
+                );
             case "appearance":
             default:
                 return (
                     <>
                         <div className="mc-sf-section__title">{labels.universalstyles ?? "Universal styles"}</div>
-                        {renderUniversalStyleGrid()}
+                        {renderStyleGrid(["bg", "headingcolor", "textcolor", "accentcolor",
+                            "headingfontsize", "bodyfontsize", "radius"])}
                     </>
                 );
         }
@@ -3403,7 +3632,6 @@ export default function Storefront(props: Props) {
                         <>
                             {renderEditorSchemaField("title", "Title")}
                             {renderEditorSchemaField("subtitle", "Subtitle")}
-                            {renderEditorSchemaField("align", "Heading alignment", "select")}
                         </>
                     );
                 case "products":
@@ -3418,6 +3646,7 @@ export default function Storefront(props: Props) {
                 case "layout":
                     return (
                         <>
+                            {renderEditorSchemaField("align", "Heading alignment", "select")}
                             {renderEditorSchemaField("layout", "Layout", "select")}
                             {renderEditorSchemaField("columns", "Columns", "select")}
                             {renderEditorSchemaField("navposition", "Arrow controls position", "select")}
@@ -3443,14 +3672,14 @@ export default function Storefront(props: Props) {
                         <>
                             <div className="mc-sf-section__title">{title} appearance</div>
                             {renderStyleGrid(["bg", "headingcolor", "textcolor", "accentcolor",
-                                "headingfontsize", "bodyfontsize"])}
+                                "headingfontsize", "bodyfontsize", "radius"])}
                         </>
                     );
                 case "spacing":
                     return (
                         <>
                             <div className="mc-sf-section__title">{title} spacing</div>
-                            {renderStyleGrid(["spacingtop", "spacingbottom", "radius"])}
+                            {renderStyleGrid(["spacingtop", "spacingbottom"])}
                         </>
                     );
                 default:
@@ -3660,6 +3889,15 @@ export default function Storefront(props: Props) {
                             ?? "Background images are shown by Image Hero and Gradient Media banner types."}
                     </div>
                 )}
+                {renderEditorSchemaField("bgcolor", "Background colour", "color")}
+                {renderEditorSchemaField("textcolor", "Base text colour", "color")}
+                {currentBreadcrumbStyle() === "gradient" && (
+                    <>
+                        {renderEditorSchemaField("gradientstart", "Gradient start", "color")}
+                        {renderEditorSchemaField("gradientend", "Gradient end", "color")}
+                    </>
+                )}
+                {renderEditorSchemaField("accentcolor", "Accent colour", "color")}
             </>
         );
     };
@@ -3671,6 +3909,7 @@ export default function Storefront(props: Props) {
             case "title":
                 return (
                     <>
+                        {renderEditorSchemaField("title", "Title")}
                         {renderBreadcrumbColourControl("titlecolor", labels.breadcrumb_fontcolor ?? "Font colour", "textcolor")}
                         {renderBreadcrumbNumberControl(
                             "titlefontsize",
@@ -3683,6 +3922,7 @@ export default function Storefront(props: Props) {
             case "subtitle":
                 return (
                     <>
+                        {renderEditorSchemaField("subtitle", "Subtitle", "textarea")}
                         {renderBreadcrumbColourControl("subtitlecolor", labels.breadcrumb_fontcolor ?? "Font colour", "textcolor")}
                         {renderBreadcrumbNumberControl(
                             "subtitlefontsize",
@@ -3736,6 +3976,11 @@ export default function Storefront(props: Props) {
             default:
                 return (
                     <>
+                        {renderEditorSchemaField("homelabel", "Home label")}
+                        {renderEditorSchemaField("homeurl", "Home URL", "url")}
+                        {renderEditorSchemaField("sectionlabel", "Section label")}
+                        {renderEditorSchemaField("sectionurl", "Section URL", "url")}
+                        {renderEditorSchemaField("excludedpages", "Excluded pages", "textarea")}
                         {renderBreadcrumbColourControl(
                             "breadcrumbcolor",
                             labels.breadcrumb_fontcolor ?? "Font colour",
@@ -4336,10 +4581,11 @@ export default function Storefront(props: Props) {
 
             {data?.zones.map((zone) => (
                 <div className={`mw-zone-render mw-zone-render--${zone.slug}`} key={zone.slug}>
-                    {zone.widgets.map((widget) => (
-                        <RenderedWidget key={widget.id} widget={widget} catalogLabels={catalogLabels}
-                            editing={isEditing} typeLabel={typeLabelFor(widget.type)} onGear={openEditor} />
-                    ))}
+                    {zone.widgets.map((widget) => {
+                        const renderedWidget = editor ? widgetPreviewFromEditor(widget, editor) : widget;
+                        return <RenderedWidget key={widget.id} widget={renderedWidget} catalogLabels={catalogLabels}
+                            editing={isEditing} typeLabel={typeLabelFor(widget.type)} onGear={openEditor} />;
+                    })}
                 </div>
             ))}
 

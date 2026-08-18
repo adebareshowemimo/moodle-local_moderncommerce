@@ -128,6 +128,11 @@ class subscribe_external extends external_api {
             throw new \moodle_exception('error:alreadysubscribed', 'local_moderncommerce');
         }
 
+        // A capped plan must not oversell; existing holders keep their seat.
+        if (!plan_api::has_available_seat($plan, $userid)) {
+            throw new \moodle_exception('error:planfull', 'local_moderncommerce');
+        }
+
         $price = (float) plan_api::get_effective_price($plan);
         $wanttrial = !empty($params['starttrial']) && (int) $plan->trial_days > 0 && !$current;
 
@@ -224,6 +229,11 @@ class subscribe_external extends external_api {
         $current = subscription_api::get_active_for_user($userid);
         if ($current && (int) $current->planid === (int) $plan->id) {
             throw new \moodle_exception('error:alreadysubscribed', 'local_moderncommerce');
+        }
+
+        // A capped plan must not oversell; existing holders keep their seat.
+        if (!plan_api::has_available_seat($plan, $userid)) {
+            throw new \moodle_exception('error:planfull', 'local_moderncommerce');
         }
 
         $transaction = $DB->start_delegated_transaction();

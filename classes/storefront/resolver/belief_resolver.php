@@ -71,7 +71,7 @@ class belief_resolver implements widget_resolver {
      * @return array
      */
     public function resolve(widget $instance, array $context): array {
-        $settings = $instance->get_settings_array();
+        $settings = $instance->get_resolved_settings_array();
         $ctx = context_system::instance();
         $items = self::items($settings['items'] ?? [], $ctx);
         if (empty($items)) {

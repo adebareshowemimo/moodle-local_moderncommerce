@@ -66,7 +66,7 @@ class slider_resolver implements widget_resolver {
             ];
         }
 
-        $settings = $instance->get_settings_array();
+        $settings = $instance->get_resolved_settings_array();
         $design = (string)($settings['design'] ?? 'overlay');
         if (!in_array($design, ['overlay', 'split', 'card'], true)) {
             $design = 'overlay';

@@ -18,7 +18,6 @@ namespace local_moderncommerce\subscription\task;
 
 use local_moderncommerce\subscription\services\subscription_service;
 use local_moderncommerce\subscription\services\email_service;
-use local_moderncommerce\subscription\recurring\recurring_payment_service;
 
 /**
  * Task to process recurring subscription payments.
@@ -39,6 +38,14 @@ class process_recurring_payments extends \core\task\scheduled_task {
 
     /** @var int Days between retry attempts */
     const RETRY_INTERVAL_DAYS = 3;
+
+    /**
+     * Set when the last charge stopped for customer authentication rather than
+     * being declined, so the attempt is not counted toward suspension.
+     *
+     * @var bool
+     */
+    private $requiresaction = false;
 
     /**
      * Get task name.
@@ -90,7 +97,12 @@ class process_recurring_payments extends \core\task\scheduled_task {
                       (s.next_billing_date IS NOT NULL AND s.next_billing_date <= :now1)
                       OR (s.next_billing_date IS NULL AND s.end_date <= :now2)
                   )
-                  AND (s.stripe_subscription_id IS NOT NULL OR s.paypal_subscription_id IS NOT NULL)";
+                  AND (
+                      s.stripe_subscription_id IS NOT NULL
+                      OR s.paypal_subscription_id IS NOT NULL
+                      OR (s.stripe_customer_id IS NOT NULL AND s.stripe_payment_method_id IS NOT NULL)
+                      OR s.paystack_authorization_code IS NOT NULL
+                  )";
 
         $subscriptions = $DB->get_records_sql($sql, [
             'now1' => $now,
@@ -119,10 +131,16 @@ class process_recurring_payments extends \core\task\scheduled_task {
         mtrace("Charging subscription {$subscription->id} for user {$subscription->userid}...");
 
         $success = false;
+        $this->requiresaction = false;
         try {
-            // Determine payment gateway.
-            if (!empty($subscription->stripe_subscription_id)) {
+            // Determine payment gateway. A saved card is enough for Stripe: the
+            // buyer does not need a Stripe-managed subscription object.
+            $hassavedcard = !empty($subscription->stripe_customer_id)
+                && !empty($subscription->stripe_payment_method_id);
+            if (!empty($subscription->stripe_subscription_id) || $hassavedcard) {
                 $success = $this->charge_via_stripe($subscription);
+            } else if (!empty($subscription->paystack_authorization_code)) {
+                $success = $this->charge_via_paystack($subscription);
             } else if (!empty($subscription->paypal_subscription_id)) {
                 $success = $this->charge_via_paypal($subscription);
             } else {
@@ -131,6 +149,11 @@ class process_recurring_payments extends \core\task\scheduled_task {
 
             if ($success) {
                 $this->handle_successful_payment($subscription);
+            } else if ($this->requiresaction) {
+                // Waiting on the cardholder, not a decline: leave the retry
+                // counter untouched so the subscription is not marched to
+                // suspension while the buyer completes authentication.
+                mtrace("Subscription {$subscription->id} left pending customer authentication.");
             } else {
                 $this->handle_failed_payment($subscription, 'Payment declined');
             }
@@ -146,71 +169,116 @@ class process_recurring_payments extends \core\task\scheduled_task {
      * @return bool Success.
      */
     private function charge_via_stripe(object $subscription): bool {
-        // Check if Stripe gateway is available.
-        if (!class_exists('\\local_moderncommerce\\payment\\stripe_gateway')) {
+        if (!class_exists('\local_moderncommerce\payment\stripe_gateway')) {
             mtrace("Stripe gateway not available.");
             return false;
         }
 
-        $stripesecretkey = get_config('local_moderncommerce', 'stripe_secret_key');
-        if (empty($stripesecretkey)) {
-            mtrace("Stripe not configured.");
+        $gateway = new \local_moderncommerce\payment\stripe_gateway();
+        if (!$gateway->is_enabled()) {
+            mtrace("Stripe is not enabled.");
             return false;
         }
 
-        // Use Stripe API to create a charge or invoice.
-        try {
-            \Stripe\Stripe::setApiKey($stripesecretkey);
+        // A Stripe-managed subscription bills itself; this task only reports on it.
+        if (!empty($subscription->stripe_subscription_id)) {
+            mtrace("Subscription {$subscription->id} is billed by Stripe Billing; skipping manual charge.");
+            return true;
+        }
 
-            // If we have a Stripe subscription ID, the billing is handled by Stripe.
-            // This is for subscriptions managed via Stripe Billing.
-            if (!empty($subscription->stripe_subscription_id)) {
-                // Check Stripe subscription status.
-                $stripesubscription = \Stripe\Subscription::retrieve($subscription->stripe_subscription_id);
-
-                if ($stripesubscription->status === 'active') {
-                    mtrace("Stripe subscription {$subscription->stripe_subscription_id} is active.");
-                    return true;
-                } else if ($stripesubscription->status === 'past_due') {
-                    mtrace("Stripe subscription {$subscription->stripe_subscription_id} is past due.");
-                    return false;
-                }
-            }
-
-            // For manual charging with stored payment method.
-            if (!empty($subscription->stripe_customer_id) && !empty($subscription->stripe_payment_method_id)) {
-                $amount = (int) ($subscription->price * 100); // Convert to cents.
-                $currency = strtolower($subscription->currency ?: 'usd');
-
-                $paymentintent = \Stripe\PaymentIntent::create([
-                    'amount' => $amount,
-                    'currency' => $currency,
-                    'customer' => $subscription->stripe_customer_id,
-                    'payment_method' => $subscription->stripe_payment_method_id,
-                    'off_session' => true,
-                    'confirm' => true,
-                    'description' => "Subscription renewal: {$subscription->plan_name}",
-                    'metadata' => [
-                        'subscription_id' => $subscription->id,
-                        'user_id' => $subscription->userid,
-                        'plan_id' => $subscription->planid,
-                    ],
-                ]);
-
-                if ($paymentintent->status === 'succeeded') {
-                    mtrace("Stripe payment succeeded for subscription {$subscription->id}.");
-                    return true;
-                }
-            }
-
-            return false;
-        } catch (\Stripe\Exception\CardException $e) {
-            mtrace("Stripe card error: " . $e->getMessage());
-            return false;
-        } catch (\Exception $e) {
-            mtrace("Stripe error: " . $e->getMessage());
+        if (empty($subscription->stripe_customer_id) || empty($subscription->stripe_payment_method_id)) {
+            mtrace("Subscription {$subscription->id} has no saved card.");
             return false;
         }
+
+        $amount = (float) ($subscription->price ?? 0);
+        if ($amount <= 0) {
+            mtrace("Subscription {$subscription->id} has no chargeable amount.");
+            return false;
+        }
+
+        $result = $gateway->charge_saved_card(
+            (string) $subscription->stripe_customer_id,
+            (string) $subscription->stripe_payment_method_id,
+            $amount,
+            (string) ($subscription->currency ?: 'USD'),
+            'Subscription renewal: ' . ($subscription->plan_name ?? ''),
+            [
+                'subscription_id' => $subscription->id,
+                'user_id' => $subscription->userid,
+                'plan_id' => $subscription->planid,
+            ]
+        );
+
+        if (!empty($result['success'])) {
+            mtrace("Stripe payment succeeded for subscription {$subscription->id}.");
+            return true;
+        }
+
+        // Authentication-required is not a decline: leave the retry counter alone
+        // and let the buyer complete it, rather than marching toward suspension.
+        if (!empty($result['requiresaction'])) {
+            mtrace("Subscription {$subscription->id} needs customer authentication; not counting as a failure.");
+            $this->requiresaction = true;
+            return false;
+        }
+
+        mtrace("Stripe payment failed for subscription {$subscription->id}: " . ($result['error'] ?? 'unknown'));
+        return false;
+    }
+
+    /**
+     * Charge via PayPal.
+     *
+     * @param object $subscription Subscription record.
+     * @return bool Success.
+     */
+    /**
+     * Charge a stored Paystack authorization.
+     *
+     * @param object $subscription Subscription record.
+     * @return bool Success.
+     */
+    private function charge_via_paystack(object $subscription): bool {
+        if (!class_exists('\\local_moderncommerce\\payment\\paystack_gateway')) {
+            mtrace("Paystack gateway not available.");
+            return false;
+        }
+
+        $gateway = new \local_moderncommerce\payment\paystack_gateway();
+        if (!$gateway->is_enabled()) {
+            mtrace("Paystack is not enabled.");
+            return false;
+        }
+
+        $amount = (float) ($subscription->price ?? 0);
+        if ($amount <= 0) {
+            mtrace("Subscription {$subscription->id} has no chargeable amount.");
+            return false;
+        }
+
+        // Fall back to the account email when the authorization did not carry one.
+        $email = (string) ($subscription->paystack_email ?: ($subscription->email ?? ''));
+
+        $result = $gateway->charge_saved_authorization(
+            (string) $subscription->paystack_authorization_code,
+            $email,
+            $amount,
+            (string) ($subscription->currency ?: 'NGN'),
+            [
+                'subscription_id' => $subscription->id,
+                'user_id' => $subscription->userid,
+                'plan_id' => $subscription->planid,
+            ]
+        );
+
+        if (!empty($result['success'])) {
+            mtrace("Paystack payment succeeded for subscription {$subscription->id}.");
+            return true;
+        }
+
+        mtrace("Paystack payment failed for subscription {$subscription->id}: " . ($result['error'] ?? 'unknown'));
+        return false;
     }
 
     /**
@@ -361,7 +429,7 @@ class process_recurring_payments extends \core\task\scheduled_task {
         // Check if max retries exceeded.
         if ($failedcount >= self::MAX_RETRY_ATTEMPTS) {
             // Suspend subscription.
-            subscription_service::suspend($subscription->id, 'Payment failed after ' . $failedcount . ' attempts');
+            subscription_service::suspend($subscription->id);
             $this->send_final_payment_failure($subscription);
             mtrace("Subscription {$subscription->id} suspended after {$failedcount} failed payment attempts.");
         } else {
@@ -391,7 +459,12 @@ class process_recurring_payments extends \core\task\scheduled_task {
                   AND s.payment_failed_count > 0
                   AND s.payment_failed_count < :maxretries
                   AND s.last_payment_attempt <= :retryafter
-                  AND (s.stripe_subscription_id IS NOT NULL OR s.paypal_subscription_id IS NOT NULL)";
+                  AND (
+                      s.stripe_subscription_id IS NOT NULL
+                      OR s.paypal_subscription_id IS NOT NULL
+                      OR (s.stripe_customer_id IS NOT NULL AND s.stripe_payment_method_id IS NOT NULL)
+                      OR s.paystack_authorization_code IS NOT NULL
+                  )";
 
         $subscriptions = $DB->get_records_sql($sql, [
             'maxretries' => self::MAX_RETRY_ATTEMPTS,

@@ -34,14 +34,17 @@ use local_moderncommerce\storefront\resolver\countdown_resolver;
 use local_moderncommerce\storefront\resolver\cta_resolver;
 use local_moderncommerce\storefront\resolver\faq_resolver;
 use local_moderncommerce\storefront\resolver\featured_resolver;
+use local_moderncommerce\storefront\resolver\featuregrid_resolver;
 use local_moderncommerce\storefront\resolver\footer_resolver;
 use local_moderncommerce\storefront\resolver\instructors_resolver;
+use local_moderncommerce\storefront\resolver\leadermessage_resolver;
 use local_moderncommerce\storefront\resolver\learningpromise_resolver;
 use local_moderncommerce\storefront\resolver\mediastorycarousel_resolver;
 use local_moderncommerce\storefront\resolver\newsletter_resolver;
 use local_moderncommerce\storefront\resolver\partners_resolver;
 use local_moderncommerce\storefront\resolver\policy_resolver;
 use local_moderncommerce\storefront\resolver\slider_resolver;
+use local_moderncommerce\storefront\resolver\subscriptionplans_resolver;
 use local_moderncommerce\storefront\resolver\supportform_resolver;
 use local_moderncommerce\storefront\resolver\testimonials_resolver;
 use local_moderncommerce\storefront\resolver\trustbadges_resolver;
@@ -72,6 +75,9 @@ class page_builder {
             'videohero' => videohero_resolver::class,
             'breadcrumb' => breadcrumb_resolver::class,
             'mediastorycarousel' => mediastorycarousel_resolver::class,
+            'leadermessage' => leadermessage_resolver::class,
+            'featuregrid' => featuregrid_resolver::class,
+            'subscriptionplans' => subscriptionplans_resolver::class,
             'catalog' => catalog_resolver::class,
             'content' => content_resolver::class,
             'learningpromise' => learningpromise_resolver::class,
@@ -160,8 +166,13 @@ class page_builder {
      * @return array
      */
     private static function envelope(widget $instance, string $type, array $payload): array {
-        $style = $instance->get_style_array();
-        $settings = (string)$instance->get('settings');
+        // Presets resolve at render time, so the envelope must carry the merged view --
+        // the raw columns would drop preset styling for every widget linked to one.
+        $style = $instance->get_resolved_style_array();
+        $settings = json_encode(
+            $instance->get_resolved_settings_array(),
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+        );
 
         return [
             'id' => (int)$instance->get('id'),
@@ -169,8 +180,8 @@ class page_builder {
             'sortorder' => (int)$instance->get('sortorder'),
             'title' => (string)$instance->get('title'),
             'subtitle' => (string)$instance->get('subtitle'),
-            'settings' => $settings !== '' ? $settings : '{}',
-            'styleconfig' => (string)($instance->get('styleconfig') ?: '{}'),
+            'settings' => $settings !== '' && $settings !== 'false' ? $settings : '{}',
+            'styleconfig' => json_encode($style, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '{}',
             'data' => json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
             'bg' => (string)($style['bg'] ?? ''),
             'spacingtop' => (int)($style['spacingtop'] ?? 0),

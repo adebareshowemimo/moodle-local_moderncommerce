@@ -32,6 +32,7 @@ use core_external\external_value;
 use core_external\external_warnings;
 use local_moderncommerce\api\order_api;
 use local_moderncommerce\subscription\api\subscription_api;
+use local_moderncommerce\subscription\services\subscription_service;
 use local_moderncommerce\subscription\services\upgrade_service;
 use moodle_url;
 
@@ -100,6 +101,21 @@ class change_subscription extends external_api {
                 return self::change_plan($subscription, (int)$params['planid'], $userid);
 
             case self::ACTION_CANCEL:
+                // Self-service cancellation can be switched off site-wide.
+                if ((int) (get_config('local_moderncommerce', 'allow_user_cancel') ?? 1) === 0) {
+                    return self::failure(get_string('error:cancelnotallowed', 'local_moderncommerce'));
+                }
+
+                // Immediate mode ends the subscription now; the default closes it
+                // at the end of the paid term so the buyer keeps what they paid for.
+                if ((string) get_config('local_moderncommerce', 'cancel_mode') === 'immediate') {
+                    subscription_service::cancel(
+                        (int) $subscription->id,
+                        get_string('cancelledbyuser', 'local_moderncommerce')
+                    );
+                    return self::success(get_string('subscriptioncancelled', 'local_moderncommerce'));
+                }
+
                 return self::set_cancel_at_period_end($subscription, true);
 
             case self::ACTION_RESUME:

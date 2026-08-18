@@ -360,8 +360,13 @@
     line-height: 1.2;
 }
 
-.mcg-panel p,
-.mcg-settings p {
+// Gallery chrome copy only. The `:not()` guards keep these defaults out of the
+// widget preview itself: .mcg-preview-shell renders real storefront markup, and
+// forcing a 72ch measure on its paragraphs pulled centred widget subtitles
+// off-centre, making previews disagree with the live page.
+.mcg-panel > p,
+.mcg-panel p:not(.mcg-preview-shell p),
+.mcg-settings p:not(.mcg-preview-shell p) {
     max-width: 72ch;
     margin: .5rem 0 0;
     color: var(--mcg-muted);
@@ -1023,6 +1028,10 @@
 
     .mcg-settings {
         position: sticky;
+        max-height: calc(100vh - 3rem);
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
     }
 }
 

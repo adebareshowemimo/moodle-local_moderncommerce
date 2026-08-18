@@ -39,7 +39,7 @@ class countdown_resolver implements widget_resolver {
      * @return array
      */
     public function resolve(widget $instance, array $context): array {
-        $settings = $instance->get_settings_array();
+        $settings = $instance->get_resolved_settings_array();
 
         $ctaurl = trim((string)($settings['ctaurl'] ?? ''));
         if ($ctaurl !== '' && !preg_match('#^https?://#i', $ctaurl) && $ctaurl[0] === '/') {

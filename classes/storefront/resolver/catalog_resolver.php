@@ -47,7 +47,7 @@ class catalog_resolver implements widget_resolver {
      * @return array
      */
     public function resolve(widget $instance, array $context): array {
-        $settings = $instance->get_settings_array();
+        $settings = $instance->get_resolved_settings_array();
 
         // A category tile deep-links as ?categoryid=N. The page passes it through the render
         // context, since this resolver runs inside a web service call and cannot read the
@@ -89,6 +89,7 @@ class catalog_resolver implements widget_resolver {
             'wishlistmethod' => 'local_moderncommerce_update_learner_wishlist',
             'displaysettings' => [
                 'title' => $title,
+                'showheader' => self::truthy($settings['showheader'] ?? true),
                 'perpage' => $perpage,
                 'sidebarposition' => $sidebarposition,
                 'bgcolor' => style_controls::colour($bgcolor),
@@ -176,5 +177,22 @@ class catalog_resolver implements widget_resolver {
                 'perpage' => $perpage,
             ],
         ];
+    }
+
+    /**
+     * Interpret a stored checkbox setting as a boolean.
+     *
+     * @param mixed $value Raw setting value.
+     * @return bool
+     */
+    private static function truthy($value): bool {
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            return $value !== '' && $value !== '0' && strtolower($value) !== 'false';
+        }
+
+        return !empty($value);
     }
 }

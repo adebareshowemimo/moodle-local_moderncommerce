@@ -17,8 +17,6 @@
 namespace local_moderncommerce\subscription\api;
 
 use local_moderncommerce\subscription\services\subscription_service;
-use local_moderncommerce\subscription\services\access_service;
-use local_moderncommerce\event\subscription_created;
 
 /**
  * Subscription API - CRUD operations for user subscriptions.
@@ -139,13 +137,11 @@ class subscription_api {
     public static function create(int $userid, int $planid, ?int $paymentid = null, bool $starttrial = false): int {
         global $DB;
 
-        // Get plan.
         $plan = plan_api::get($planid);
         if (!$plan || (string) $plan->status !== 'active') {
             throw new \moodle_exception('error:planinvalid', 'local_moderncommerce');
         }
 
-        // Check for existing active subscription to same plan.
         $existing = $DB->get_record_select(
             'local_moderncommerce_user_subscriptions',
             "userid = :userid AND planid = :planid AND status IN ('active', 'trial', 'grace')",
@@ -156,62 +152,18 @@ class subscription_api {
             throw new \moodle_exception('error:alreadysubscribed', 'local_moderncommerce');
         }
 
-        // Determine start and end dates.
-        $now = time();
-        $startdate = $now;
-        $trialenddate = null;
-
-        if ($starttrial && $plan->trial_days > 0) {
-            $status = subscription_service::STATUS_TRIAL;
-            $trialenddate = $now + ($plan->trial_days * 86400);
-            $enddate = $trialenddate + subscription_service::get_cycle_duration($plan->billing_cycle);
-        } else {
-            $status = subscription_service::STATUS_ACTIVE;
-            $enddate = $now + subscription_service::get_cycle_duration($plan->billing_cycle);
+        if (!plan_api::has_available_seat($plan, $userid)) {
+            throw new \moodle_exception('error:planfull', 'local_moderncommerce');
         }
 
-        // Create subscription record.
-        $subscription = new \stdClass();
-        $subscription->userid = $userid;
-        $subscription->planid = $planid;
-        $subscription->status = $status;
-        $subscription->start_date = $startdate;
-        $subscription->end_date = $enddate;
-        $subscription->trial_end_date = $trialenddate;
-        $subscription->grace_end_date = null;
-        $subscription->auto_renew = 1;
-        $subscription->payment_id = $paymentid;
-        $subscription->seats_used = 1;
-        $subscription->timecreated = $now;
-        $subscription->timemodified = $now;
+        // Delegate to the canonical implementation so both entry points share one
+        // set of trial, end-date, and auto-renew semantics. This wrapper keeps the
+        // pre-flight validation its callers expect.
+        $subscriptionid = subscription_service::activate($userid, $planid, $paymentid, $starttrial);
 
-        $subscriptionid = $DB->insert_record('local_moderncommerce_user_subscriptions', $subscription);
-
-        // Grant access.
-        access_service::grant_plan_access($userid, $planid, $subscriptionid);
-
-        // Log history.
-        subscription_service::log_history($subscriptionid, null, $status, 'Subscription created');
-
-        // Clear cache.
         self::clear_user_cache($userid);
 
-        // Trigger event.
-        $context = \context_system::instance();
-        $event = subscription_created::create([
-            'context' => $context,
-            'objectid' => $subscriptionid,
-            'userid' => $userid,
-            'relateduserid' => $userid,
-            'other' => [
-                'planid' => $planid,
-                'plan_name' => $plan->name,
-                'status' => $status,
-            ],
-        ]);
-        $event->trigger();
-
-        return $subscriptionid;
+        return (int) $subscriptionid;
     }
 
     /**
@@ -307,9 +259,21 @@ class subscription_api {
 
         $DB->set_field('local_moderncommerce_user_subscriptions', 'auto_renew', $autorenew ? 1 : 0, ['id' => $subscriptionid]);
 
-        // Log history.
+        // Log history. The signature is (subscriptionid, userid, action, ...),
+        // so the note goes in the trailing notes argument.
         $message = $autorenew ? 'Auto-renewal enabled' : 'Auto-renewal disabled';
-        subscription_service::log_history($subscriptionid, $subscription->status, $subscription->status, $message);
+        subscription_service::log_history(
+            $subscriptionid,
+            (int) $subscription->userid,
+            'autorenew_changed',
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            $message
+        );
 
         // Clear cache.
         self::clear_user_cache($subscription->userid);

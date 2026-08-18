@@ -72,6 +72,7 @@ class payment_observer {
             $existing = $DB->get_record('local_moderncommerce_user_subscriptions', ['id' => (int) $sub['from_subscription_id']]);
             if ($existing && (int) $existing->userid === $userid) {
                 upgrade_service::process_immediate_upgrade((int) $existing->id, $planid, (int) $order->id);
+                self::store_billing_mandate((int) $existing->id, $sub);
                 return;
             }
         }
@@ -85,6 +86,7 @@ class payment_observer {
                 } else {
                     subscription_service::reactivate((int) $existing->id, (int) $order->id);
                 }
+                self::store_billing_mandate((int) $existing->id, $sub);
                 return;
             }
         }
@@ -103,10 +105,78 @@ class payment_observer {
             } else if ($existing->status === 'suspended') {
                 subscription_service::reactivate((int) $existing->id, (int) $order->id);
             }
+            self::store_billing_mandate((int) $existing->id, $sub);
             return;
         }
 
+        // Seats can fill between raising the order and the payment landing. The
+        // buyer has already paid at this point, so honour the purchase and let an
+        // admin reconcile rather than silently swallowing it.
+        $plan = \local_moderncommerce\subscription\api\plan_api::get($planid, false);
+        if ($plan && !\local_moderncommerce\subscription\api\plan_api::has_available_seat($plan, $userid)) {
+            debugging(
+                'Modern Commerce: plan ' . $planid . ' is over its seat limit; order '
+                    . $order->id . ' was honoured anyway.',
+                DEBUG_NORMAL
+            );
+        }
+
         // Paid purchase, so no trial.
-        subscription_service::activate($userid, $planid, (int) $order->id, false);
+        $subscriptionid = subscription_service::activate($userid, $planid, (int) $order->id, false);
+        self::store_billing_mandate((int) $subscriptionid, $sub);
+    }
+
+    /**
+     * Copy the saved card captured at checkout onto the subscription.
+     *
+     * The gateway writes the customer and payment method into the order notes
+     * when the buyer completes a subscription checkout. Persisting them here is
+     * what allows the recurring payment task to charge off-session; without a
+     * mandate the subscription stays on manual renewal, so auto-renew is only
+     * switched on when a card is actually on file.
+     *
+     * @param int $subscriptionid Subscription that was just created or renewed.
+     * @param array $sub Subscription intent from the order notes.
+     * @return void
+     */
+    private static function store_billing_mandate(int $subscriptionid, array $sub): void {
+        global $DB;
+
+        if ($subscriptionid <= 0) {
+            return;
+        }
+
+        $update = ['id' => $subscriptionid];
+
+        // Stripe needs the customer and the payment method together.
+        $customerid = trim((string) ($sub['stripe_customer_id'] ?? ''));
+        $paymentmethodid = trim((string) ($sub['stripe_payment_method_id'] ?? ''));
+        if ($customerid !== '' && $paymentmethodid !== '') {
+            $update['stripe_customer_id'] = $customerid;
+            $update['stripe_payment_method_id'] = $paymentmethodid;
+        }
+
+        // Paystack charges a reusable authorization against the buyer's email.
+        $authcode = trim((string) ($sub['paystack_authorization_code'] ?? ''));
+        $authemail = trim((string) ($sub['paystack_email'] ?? ''));
+        if ($authcode !== '' && $authemail !== '') {
+            $update['paystack_authorization_code'] = $authcode;
+            $update['paystack_email'] = $authemail;
+        }
+
+        // Nothing reusable was captured, so the subscription stays manual-renewal.
+        if (count($update) === 1) {
+            return;
+        }
+
+        if (!$DB->record_exists('local_moderncommerce_user_subscriptions', ['id' => $subscriptionid])) {
+            return;
+        }
+
+        $update['auto_renew'] = 1;
+        $update['payment_failed_count'] = 0;
+        $update['timemodified'] = time();
+
+        $DB->update_record('local_moderncommerce_user_subscriptions', (object) $update);
     }
 }

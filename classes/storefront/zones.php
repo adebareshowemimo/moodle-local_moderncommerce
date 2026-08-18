@@ -87,7 +87,44 @@ class zones {
     const GLOBAL_BOTTOM = 'global_bottom';
 
     /**
+     * Zones exposed by the 'content' page template, in render order.
+     *
+     * @return string[]
+     */
+    public static function content_zones(): array {
+        return [
+            self::PAGE_HERO,
+            self::PAGE_MAIN,
+            self::PAGE_ASIDE,
+            self::PAGE_FOOTER,
+        ];
+    }
+
+    /**
+     * Zones exposed by the 'landing' page template, in render order.
+     *
+     * Deliberately omits CATALOG_MAIN, CATALOG_SIDEBAR and CATALOG_INGRID: those are
+     * the real catalog grid surface and its slots, and would render a duplicate
+     * product grid on a page that is not the catalog.
+     *
+     * @return string[]
+     */
+    public static function landing_zones(): array {
+        return [
+            self::HOME_ANNOUNCE,
+            self::HOME_HERO,
+            self::HOME_BELOWHERO,
+            self::HOME_FEATURED,
+            self::HOME_SOCIAL,
+            self::HOME_FOOTER,
+        ];
+    }
+
+    /**
      * Zone slugs available for a given page type, in render order.
+     *
+     * Built-in pages resolve from the static map. Anything else is looked up as an
+     * admin-created custom page and resolves to its template's zone set.
      *
      * @param string $pagetype Page type.
      * @return string[]
@@ -104,12 +141,7 @@ class zones {
             self::HOME_SOCIAL,
             self::HOME_FOOTER,
         ];
-        $publicpagezones = [
-            self::PAGE_HERO,
-            self::PAGE_MAIN,
-            self::PAGE_ASIDE,
-            self::PAGE_FOOTER,
-        ];
+        $publicpagezones = self::content_zones();
         $globalzones = [
             self::GLOBAL_TOP,
             self::GLOBAL_BOTTOM,
@@ -125,18 +157,44 @@ class zones {
             self::PAGE_GLOBAL => $globalzones,
         ];
 
-        return $map[$pagetype] ?? [];
+        if (isset($map[$pagetype])) {
+            return $map[$pagetype];
+        }
+
+        $custom = storepage_service::by_slug($pagetype);
+        if ($custom === null) {
+            return [];
+        }
+
+        return (string)$custom->template === storepage_service::TEMPLATE_LANDING
+            ? self::landing_zones()
+            : self::content_zones();
     }
 
     /**
-     * All known widget scopes (the navigable pages plus the site-wide global scope).
-     *
-     * Used by is_page() to validate the editor/builder `page` parameter. The global
-     * scope is NOT a navigable page - it is merged into every real page's render.
+     * Every zone slug known to the storefront, across all templates.
      *
      * @return string[]
      */
-    public static function pages(): array {
+    public static function all_zones(): array {
+        return array_values(array_unique(array_merge(
+            self::for_page(self::PAGE_CATALOG),
+            self::content_zones(),
+            self::landing_zones(),
+            [self::GLOBAL_TOP, self::GLOBAL_BOTTOM]
+        )));
+    }
+
+    /**
+     * The widget scopes that ship with the plugin.
+     *
+     * Kept separate from pages() so callers that must not touch admin-created pages -
+     * notably seed::reset_widgets(), which deletes every widget it matches - stay
+     * scoped to the built-ins.
+     *
+     * @return string[]
+     */
+    public static function builtin_pages(): array {
         return [
             self::PAGE_CATALOG,
             self::PAGE_ABOUT,
@@ -146,6 +204,19 @@ class zones {
             self::PAGE_REFUND,
             self::PAGE_GLOBAL,
         ];
+    }
+
+    /**
+     * All known widget scopes (the navigable pages plus the site-wide global scope).
+     *
+     * Used by is_page() to validate the editor/builder `page` parameter. The global
+     * scope is NOT a navigable page - it is merged into every real page's render.
+     * Includes admin-created custom pages.
+     *
+     * @return string[]
+     */
+    public static function pages(): array {
+        return array_merge(self::builtin_pages(), storepage_service::slugs());
     }
 
     /**
@@ -183,6 +254,12 @@ class zones {
         if (get_string_manager()->string_exists($key, 'local_moderncommerce')) {
             return get_string($key, 'local_moderncommerce');
         }
+
+        $custom = storepage_service::by_slug($pagetype);
+        if ($custom !== null) {
+            return format_string($custom->title);
+        }
+
         return ucwords($pagetype);
     }
 }

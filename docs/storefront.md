@@ -13,6 +13,118 @@ The storefront is the public-facing Modern Commerce experience. It includes land
 - `/local/moderncommerce/privacy.php`
 - `/local/moderncommerce/terms.php`
 - `/local/moderncommerce/refund-policy.php`
+- `/local/moderncommerce/page.php?slug=SLUG` - any admin-created custom page
+
+## Custom Store Pages
+
+The six routes above ship with the plugin. Administrators can add their own public pages
+(for example a Services or Promotions page) from **Store pages** in the admin console,
+without a developer or a plugin release.
+
+A custom page is a row in `local_moderncommerce_storepage` (slug, title, summary, icon,
+layout template, published flag). Every one of them is served by the single dispatcher
+`page.php?slug=SLUG`; no PHP file is generated. `public_page::page_catalog()` merges these
+rows over the built-in six, so custom pages pick up the widget builder, breadcrumbs, the
+publish toggle and the admin table with no extra wiring.
+
+### One renderer for every public page
+
+Built-in and custom pages share the same renderer, so there is one place to change page
+chrome rather than seven:
+
+- `public_page::render_page($key, $OUTPUT)` - publish check, `$PAGE` setup, then the widget
+  render. Each built-in entry file (`about.php`, `terms.php`, `privacy.php`,
+  `refund-policy.php`) is now a three-line delegate to this, and `page.php` calls it too
+  after resolving the slug.
+- `public_page::setup_page($key)` - the same publish check and `$PAGE` setup without the
+  render, returning the resolved title. Used by `support.php`, which must handle its form
+  POST (and possibly redirect) between setup and render.
+
+Page titles come from `page_catalog()` and are overridden per page by the
+`publicpage_<key>_title` config value, so no entry file hardcodes an English title.
+
+Two layout templates decide which widget zones a page exposes:
+
+| Template | Zones |
+| --- | --- |
+| `content` | `page_hero`, `page_main`, `page_aside`, `page_footer` |
+| `landing` | `home_announce`, `home_hero`, `home_belowhero`, `home_featured`, `home_social`, `home_footer` |
+
+The `landing` set deliberately omits the `catalog_*` zones: those drive the real catalog
+grid and would render a duplicate product listing.
+
+### Moodle blocks on storefront pages
+
+Every public content page hosts standard Moodle blocks, alongside the widget system.
+Turn on Moodle's edit mode as a user with `local/moderncommerce:managestorefront` and an
+"Add a block" control appears in each region.
+
+Four regions are available:
+
+| Region | Where it renders |
+| --- | --- |
+| `side-pre` | The theme's own block drawer, from the `standard` page layout. |
+| `mc-above` | Full width, above the page content. |
+| `mc-content` | Inside the page container, after the widgets. |
+| `mc-below` | Full width, below the page content. |
+
+The three `mc-*` regions are declared by `public_page::setup_page()` and rendered by
+`public_page::block_region()`. They are page-declared regions, so **nothing in the theme
+renders them** - any new page entry point must echo them itself (see `support.php`, which
+renders the above/below bands around its own widget call). They must also be declared
+before `$OUTPUT->header()`: `block_manager` rejects new regions once blocks have loaded.
+
+Two details worth knowing:
+
+- Custom pages all share the pagetype `local-moderncommerce-page`, since they are all
+  served by `page.php`. `setup_page()` therefore calls `set_subpage($slug)` for custom
+  pages so each one keeps its own blocks; without it a block added to one custom page
+  would appear on every one of them. Built-in pages have distinct pagetypes already.
+- `add_region()` makes the first region it sees the page default. `setup_page()` captures
+  the theme's default (`side-pre`) beforehand and restores it afterwards, so blocks added
+  from the drawer still land in the drawer.
+
+Blocks that declare `applicable_formats()` without `'all'` (Completion status, Starred
+courses, Badges and other course/dashboard-only blocks) are correctly not offered here.
+
+**Theme portability.** The three `mc-*` regions are declared by the page, not the theme,
+so they render on any theme - verified against Boost, Classic and Moove, including Moove
+which has no `standard` layout of its own. The one theme-dependent piece is the *add*
+control: `core_renderer::addblockbutton()` returns an empty string unless the theme sets
+`$THEME->addblockposition` (Boost and its children do; Classic does not). `block_region()`
+therefore falls back to a plain link to the same `bui_addblock` URL when the core button
+comes back empty, so the regions remain usable everywhere. On themes that do set it, the
+native button is used and no fallback is emitted.
+
+### Creating a page
+
+The **New page** form fills the slug in from the title as you type (until you edit the slug
+yourself), then checks it against the server on a short debounce via
+`local_moderncommerce_check_store_page_slug`, so a clash or a reserved name is reported
+before you save rather than after. The icon field is a typeahead over
+`local_moderncommerce_icon_options()` - search by name, keyword or domain - with a live
+preview of the chosen glyph.
+
+**Start from** offers a blank page of either layout, or a copy of any existing page that
+has widgets. Copying clones that page's widgets (and any slider slides) as a starting
+point and inherits its zone template; the two pages are independent afterwards. Widgets in
+zones the destination template does not expose are skipped rather than copied into a zone
+that could never render - so cloning the catalog onto a landing page drops its
+`catalog_*` grid widgets.
+
+Slug rules: lowercase letters, digits and single hyphens, 2-30 characters, and not one of
+the reserved names (the built-in page keys plus the plugin's own route filenames).
+Underscores are rejected because `public_page::config_name()` maps `-` to `_`, so
+`my-page` and `my_page` would otherwise collide on the same config keys. **The slug and the
+layout template are fixed once the page exists** - widgets reference a page by its bare
+`pagetype` string with no foreign key, so changing either would orphan the page's content.
+
+Deleting a page cascades to its widgets, any slider slides and their uploaded images, and
+its `publicpage_<slug>_*` config overrides.
+
+Note that `seed::reset_widgets()` is scoped to `zones::builtin_pages()`, not
+`zones::pages()`: resetting the seeded storefront must never delete an administrator's
+custom-page widgets.
 
 ## Course Detail Page
 
