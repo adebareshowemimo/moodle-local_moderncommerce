@@ -26,7 +26,9 @@ use local_moderncommerce\subscription\services\subscription_service;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class subscription_api {
-    /** @var array Static cache for subscriptions */
+    /**
+     * @var array Static cache for subscriptions
+     */
     private static $cache = [];
 
     /**

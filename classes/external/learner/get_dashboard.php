@@ -42,13 +42,19 @@ use xmldb_table;
  * Returns the logged-in learner account dashboard dataset for React.
  */
 class get_dashboard extends external_api {
-    /** @var array Product types that can appear in learner access. */
+    /**
+     * @var array Product types that can appear in learner access.
+     */
     private const PRODUCT_TYPES = ['course', 'bundle', 'program', 'subscription', 'plan', 'membership'];
 
-    /** @var array Product types that should remain account-level cards. */
+    /**
+     * @var array Product types that should remain account-level cards.
+     */
     private const ACCOUNT_PRODUCT_TYPES = ['bundle', 'program', 'subscription', 'plan'];
 
-    /** @var array Order statuses that grant access. */
+    /**
+     * @var array Order statuses that grant access.
+     */
     private const PAID_ORDER_STATUSES = ['paid', 'completed'];
 
     /**

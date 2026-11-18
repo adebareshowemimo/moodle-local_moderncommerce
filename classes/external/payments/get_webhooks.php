@@ -63,7 +63,7 @@ class get_webhooks extends external_api {
             'stripe' => [
                 'name' => 'Stripe',
                 'events' => [
-                    'charge.succeeded', 'charge.failed', 'charge.refunded', 'invoice.paid',
+                    'checkout.session.completed', 'charge.succeeded', 'charge.failed', 'charge.refunded', 'invoice.paid',
                     'invoice.payment_failed', 'customer.subscription.deleted', 'customer.subscription.updated',
                 ],
                 'secret' => static function (array $c): bool {

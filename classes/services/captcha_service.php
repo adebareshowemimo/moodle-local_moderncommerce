@@ -28,7 +28,9 @@ namespace local_moderncommerce\services;
  * Centralises reCAPTCHA v2 configuration and verification.
  */
 class captcha_service {
-    /** @var string Plugin component. */
+    /**
+     * @var string Plugin component.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
     /**

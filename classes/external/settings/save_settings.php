@@ -116,6 +116,7 @@ class save_settings extends external_api {
                 VALUE_DEFAULT,
                 0
             ),
+            'guest_checkout_enabled' => new external_value(PARAM_INT, 'Allow guest checkout.', VALUE_DEFAULT, 0),
         ]);
     }
 
@@ -188,7 +189,8 @@ class save_settings extends external_api {
         string $notificationposition = 'top-right',
         int $notificationautodismiss = 4000,
         int $contactinfoenabled = 0,
-        int $defaultprogramcertificatetemplateid = 0
+        int $defaultprogramcertificatetemplateid = 0,
+        int $guestcheckoutenabled = 0
     ): array {
         $params = self::validate_parameters(self::execute_parameters(), [
             'primary_currency' => $primarycurrency,
@@ -221,6 +223,7 @@ class save_settings extends external_api {
             'payment_max_retries' => $paymentmaxretries,
             'notification_position' => $notificationposition,
             'notification_autodismiss' => $notificationautodismiss,
+            'guest_checkout_enabled' => $guestcheckoutenabled,
             'contact_info_enabled' => $contactinfoenabled,
             'default_program_certificate_template_id' => $defaultprogramcertificatetemplateid,
         ]);

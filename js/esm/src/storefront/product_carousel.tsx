@@ -19,6 +19,7 @@
 
 import {CSSProperties, useEffect, useRef, useState} from "react";
 import {refreshNavbarCart} from "../learner_common";
+import {toast} from "../design_system";
 import CourseImageCard, {CourseCardItem} from "./course_card";
 
 declare const M: {
@@ -32,7 +33,7 @@ type CatalogItem = CourseCardItem;
 
 type CatalogResponse = {
     items: CatalogItem[];
-    state: {isloggedin: boolean};
+    state: {isloggedin: boolean; guestcheckout?: boolean};
 };
 
 type CartResponse = {
@@ -114,6 +115,7 @@ export default function ProductCarousel({
     const [busyItem, setBusyItem] = useState(0);
     const [busyWishlistItem, setBusyWishlistItem] = useState(0);
     const [message, setMessage] = useState("");
+    const [guestCheckout, setGuestCheckout] = useState(false);
     const trackRef = useRef<HTMLDivElement>(null);
 
     const filterKey = JSON.stringify(filters);
@@ -133,6 +135,7 @@ export default function ProductCarousel({
                 if (!cancelled) {
                     setItems(result.items ?? []);
                     setLoggedIn(Boolean(result.state?.isloggedin));
+                    setGuestCheckout(Boolean(result.state?.guestcheckout));
                 }
             })
             .catch(() => {
@@ -152,7 +155,7 @@ export default function ProductCarousel({
     }, [methodName, filterKey, filters.coursetype, filters.categoryid, filters.sort, filters.perpage]);
 
     const addToCart = async(item: CatalogItem) => {
-        if (!loggedIn) {
+        if (!loggedIn && !guestCheckout) {
             setMessage(labels.loginrequired);
             return;
         }
@@ -164,9 +167,45 @@ export default function ProductCarousel({
                 : {action: "addcourse", courseid: item.id};
             const result = await callService<CartResponse>(cartMethodName, args, labels.p1_storefront_servicerequestfailed);
             void refreshNavbarCart(result);
-            setMessage(result.message);
+            // Toast, not an inline alert: the cart badge updates far from the
+            // clicked card, so the confirmation has to come to the user. A
+            // rejection ("already in your cart") comes back on the success
+            // channel with success:false, so route on the flag, not the throw.
+            if (result.success === false) {
+                toast.warning(result.message);
+            } else {
+                toast.success(result.message);
+            }
+            // Flip the card to its "In cart" state either way: success:false here
+            // means the item was already in the cart, so both outcomes are "in".
+            setItems((current) => current.map((currentItem) => (
+                currentItem.id === item.id && currentItem.itemtype === item.itemtype
+                    ? {...currentItem, incart: true}
+                    : currentItem
+            )));
         } catch (caught) {
-            setMessage((caught as Error).message);
+            toast.error((caught as Error).message);
+        } finally {
+            setBusyItem(0);
+        }
+    };
+
+    const removeFromCart = async(item: CatalogItem) => {
+        setBusyItem(item.id);
+        try {
+            const args = item.isbundle || item.isprogram
+                ? {action: "removebundle", bundleid: item.id}
+                : {action: "removecourse", courseid: item.id};
+            const result = await callService<CartResponse>(cartMethodName, args, labels.p1_storefront_servicerequestfailed);
+            void refreshNavbarCart(result);
+            toast.success(result.message);
+            setItems((current) => current.map((currentItem) => (
+                currentItem.id === item.id && currentItem.itemtype === item.itemtype
+                    ? {...currentItem, incart: false}
+                    : currentItem
+            )));
+        } catch (caught) {
+            toast.error((caught as Error).message);
         } finally {
             setBusyItem(0);
         }
@@ -313,6 +352,7 @@ export default function ProductCarousel({
                         wishlistBusy={busyWishlistItem === item.productid}
                         wishlistSaved={item.inwishlist}
                         onToggleWishlist={wishlistMethodName && loggedIn ? toggleWishlist : undefined}
+                        onRemove={removeFromCart}
                         key={`${item.itemtype}-${item.id}`}
                     />
                 ))}

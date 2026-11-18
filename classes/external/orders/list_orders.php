@@ -39,7 +39,9 @@ use moodle_url;
  * List orders for the admin orders screen.
  */
 class list_orders extends external_api {
-    /** @var string[] Selectable order statuses. */
+    /**
+     * @var string[] Selectable order statuses.
+     */
     private const STATUSES = ['pending', 'processing', 'paid', 'completed', 'failed', 'cancelled', 'refunded'];
 
     /**

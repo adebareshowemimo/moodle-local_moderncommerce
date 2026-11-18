@@ -26,6 +26,10 @@ defined('MOODLE_INTERNAL') || die();
 
 $tasks = [
     [
+        'classname' => 'local_moderncommerce\\task\\recover_guest_checkouts',
+        'blocking' => 0, 'minute' => '*/5', 'hour' => '*', 'day' => '*', 'month' => '*', 'dayofweek' => '*',
+    ],
+    [
         'classname' => 'local_moderncommerce\task\cleanup_cart',
         'blocking' => 0,
         'minute' => '0',

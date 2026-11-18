@@ -38,7 +38,9 @@ use local_moderncommerce\services\pricing_service;
  * List invoices with customer, totals, and status.
  */
 class list_invoices extends external_api {
-    /** @var string[] Selectable statuses. */
+    /**
+     * @var string[] Selectable statuses.
+     */
     private const STATUSES = ['draft', 'sent', 'paid', 'overdue', 'cancelled', 'void'];
 
     /**

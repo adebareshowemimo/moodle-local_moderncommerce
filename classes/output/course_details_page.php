@@ -35,10 +35,14 @@ use context_course;
  * Course details page content renderable class.
  */
 class course_details_page implements renderable, templatable {
-    /** @var object Course record */
+    /**
+     * @var object Course record
+     */
     protected $course;
 
-    /** @var int Course ID */
+    /**
+     * @var int Course ID
+     */
     protected $courseid;
 
     /**

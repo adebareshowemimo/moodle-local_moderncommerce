@@ -35,7 +35,9 @@ use core_external\external_value;
  * List coupon applicability targets for the React coupon editor.
  */
 class list_targets extends external_api {
-    /** @var string[] Supported target types. */
+    /**
+     * @var string[] Supported target types.
+     */
     private const TARGET_TYPES = ['product', 'course', 'productcategory', 'coursecategory', 'producttype', 'sku'];
 
     /**

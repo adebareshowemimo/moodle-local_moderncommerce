@@ -26,13 +26,19 @@ use local_moderncommerce\subscription\api\plan_api;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class upgrade_service {
-    /** Days in a monthly billing cycle. */
+    /**
+     * Days in a monthly billing cycle.
+     */
     const MONTHLY_DAYS = 30;
 
-    /** Days in a yearly billing cycle. */
+    /**
+     * Days in a yearly billing cycle.
+     */
     const YEARLY_DAYS = 365;
 
-    /** Default cooldown between plan changes */
+    /**
+     * Default cooldown between plan changes
+     */
     const DEFAULT_COOLDOWN_DAYS = 30;
 
     /**

@@ -79,12 +79,15 @@ class update_cart extends external_api {
             'couponcode' => $couponcode,
         ]);
 
-        require_login();
-        $context = context_system::instance();
-        self::validate_context($context);
-        require_capability('local/moderncommerce:purchase', $context);
-
-        $userid = (int)$USER->id;
+        $action = strtolower((string)$params['action']);
+        $userid = \local_moderncommerce\services\guest_checkout_service::cart_userid();
+        if ($userid > 0) {
+            $context = context_system::instance();
+            self::validate_context($context);
+            require_capability('local/moderncommerce:purchase', $context);
+        } else if (in_array($action, ['applycoupon', 'removecoupon'], true)) {
+            throw new \moodle_exception('guestcheckoutsignin', 'local_moderncommerce');
+        }
         $action = strtolower($params['action']);
 
         switch ($action) {
@@ -104,6 +107,24 @@ class update_cart extends external_api {
                 cart_api::add_bundle_to_cart($userid, (int)$params['bundleid'], 1);
                 $data = checkout_helper::cart_data($userid, true);
                 $data['message'] = get_string('bundleaddedtocart', 'local_moderncommerce');
+                return $data;
+
+            case 'removecourse':
+                if ((int)$params['courseid'] <= 0) {
+                    throw new invalid_parameter_exception('A valid course ID is required.');
+                }
+                cart_api::remove_from_cart($userid, (int)$params['courseid']);
+                $data = checkout_helper::cart_data($userid, true);
+                $data['message'] = get_string('removedcart', 'local_moderncommerce');
+                return $data;
+
+            case 'removebundle':
+                if ((int)$params['bundleid'] <= 0) {
+                    throw new invalid_parameter_exception('A valid bundle ID is required.');
+                }
+                cart_api::remove_bundle_from_cart($userid, (int)$params['bundleid']);
+                $data = checkout_helper::cart_data($userid, true);
+                $data['message'] = get_string('removedcart', 'local_moderncommerce');
                 return $data;
 
             case 'remove':

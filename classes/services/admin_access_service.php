@@ -27,7 +27,9 @@ use moodle_url;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class admin_access_service {
-    /** @var string Default documentation URL for admin-capable users with no operational landing page. */
+    /**
+     * @var string Default documentation URL for admin-capable users with no operational landing page.
+     */
     private const DOCUMENTATION_URL = '/local/moderncommerce/admin/help/index.php';
 
     /**

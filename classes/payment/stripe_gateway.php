@@ -30,10 +30,48 @@ use local_moderncommerce\logging\paylog_service;
 class stripe_gateway implements gateway_interface, gateway_return_interface {
     use subscription_mandate_trait;
 
-    /** @var string Stripe API base URL */
+    /**
+     * Create a hosted card session for an immutable anonymous purchase snapshot.
+     */
+    public function create_guest_session(object $record, array $snapshot, string $token): array {
+        $returnurl = new \moodle_url('/local/moderncommerce/guest_checkout.php', ['token' => $token]);
+        $cancelurl = new \moodle_url('/local/moderncommerce/guest_checkout.php', ['cancelled' => 1]);
+        return $this->make_request('POST', '/checkout/sessions', [
+            '_idempotency_key' => 'moderncommerce-guest-' . $record->id,
+            'payment_method_types[]' => 'card', 'mode' => 'payment',
+            'success_url' => $returnurl->out(false), 'cancel_url' => $cancelurl->out(false),
+            'expires_at' => $record->timecreated + HOURSECS,
+            'customer_email' => $record->email, 'client_reference_id' => 'guest:' . $record->id,
+            'metadata[guest_checkout_id]' => $record->id,
+            'payment_intent_data[metadata][guest_checkout_id]' => $record->id,
+            'line_items[0][price_data][currency]' => strtolower($snapshot['totals']['currency']),
+            'line_items[0][price_data][unit_amount]' => \local_moderncommerce\services\guest_checkout_service::minor_amount(
+                (float)$snapshot['totals']['total'],
+                $snapshot['totals']['currency']
+            ),
+            'line_items[0][price_data][product_data][name]' => get_string('guestcheckoutpayment', 'local_moderncommerce'),
+            'line_items[0][quantity]' => 1,
+        ]);
+    }
+
+    /**
+     * Fetch authoritative session state using the configured secret API key.
+     */
+    public function retrieve_guest_session(string $sessionid): array {
+        if (!preg_match('/^cs_[a-zA-Z0-9_]+$/D', $sessionid)) {
+            throw new \invalid_parameter_exception('Invalid Stripe Checkout Session ID.');
+        }
+        return $this->make_request('GET', '/checkout/sessions/' . rawurlencode($sessionid));
+    }
+
+    /**
+     * @var string Stripe API base URL
+     */
     const API_URL = 'https://api.stripe.com/v1';
 
-    /** @var string Gateway name */
+    /**
+     * @var string Gateway name
+     */
     const GATEWAY_NAME = 'stripe';
 
     /**
@@ -155,6 +193,28 @@ class stripe_gateway implements gateway_interface, gateway_return_interface {
      */
     public function handle_webhook($data) {
         $eventtype = $data['type'] ?? '';
+        $object = $data['data']['object'] ?? [];
+        if (!empty($object['metadata']['guest_checkout_id'])) {
+            if (in_array($eventtype, ['checkout.session.completed', 'checkout.session.async_payment_succeeded'], true)) {
+                return \local_moderncommerce\services\guest_checkout_service::confirm_session(
+                    $this->retrieve_guest_session($object['id'])
+                );
+            }
+            // Guest charges arrive before the Moodle account/order exists.
+            // Do not pass their metadata through the authenticated order resolver.
+            if (str_starts_with($eventtype, 'charge.')) {
+                if ($eventtype === 'charge.refunded') {
+                    $orderid = \local_moderncommerce\services\guest_checkout_service::record_refund($object);
+                    if ($orderid) {
+                        $data['data']['object']['metadata']['order_id'] = $orderid;
+                    } else {
+                        return true;
+                    }
+                } else {
+                    return true;
+                }
+            }
+        }
 
         switch ($eventtype) {
             case 'checkout.session.completed':
@@ -731,6 +791,10 @@ class stripe_gateway implements gateway_interface, gateway_return_interface {
         ];
 
         if ($method === 'POST') {
+            if (isset($data['_idempotency_key'])) {
+                $curl->setHeader('Idempotency-Key: ' . $data['_idempotency_key']);
+                unset($data['_idempotency_key']);
+            }
             $response = $curl->post($url, http_build_query($data), $options);
         } else {
             $response = $curl->get($url, [], $options);

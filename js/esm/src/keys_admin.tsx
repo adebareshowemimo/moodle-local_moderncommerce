@@ -102,10 +102,17 @@ type TargetOption = {
     label: string;
 };
 
+// A key may name several products or several bundles; only the "any" sentinels,
+// which name nothing, are limited to a single selection.
+const isMultiTarget = (targettype: string): boolean =>
+    targettype === "courseproduct" || targettype === "product";
+
 type GenerateForm = {
-    targettype: "course" | "product";
+    targettype: "product" | "courseproduct" | "anycourseproduct" | "anyproduct";
     targetid: number;
     targetname: string;
+    // Courses accumulate so one key can unlock several; bundles stay single-select.
+    selected: TargetOption[];
     query: string;
     quantity: string;
     keytype: "single" | "multi";
@@ -117,12 +124,13 @@ type KeysAdminProps = {
     listMethodName: string;
     generateMethodName: string;
     setStatusMethodName: string;
-    searchCoursesMethodName: string;
     listBundlesMethodName: string;
+    listProductsMethodName: string;
     initialTargetType: string;
     initialTargetId: number;
     initialTargetName: string;
     initialProductKind: string;
+    anyTargetType: string;
     showTableGenerateAction?: boolean;
     statusOptions: SelectOption[];
     perPageOptions: number[];
@@ -176,12 +184,13 @@ export default function KeysAdmin({
     listMethodName,
     generateMethodName,
     setStatusMethodName,
-    searchCoursesMethodName,
     listBundlesMethodName,
+    listProductsMethodName,
     initialTargetType,
     initialTargetId,
     initialTargetName,
     initialProductKind,
+    anyTargetType,
     showTableGenerateAction = false,
     statusOptions,
     perPageOptions,
@@ -189,16 +198,18 @@ export default function KeysAdmin({
 }: KeysAdminProps) {
     useModernCommerceClassSync();
     const productKind = initialProductKind === "course" || initialProductKind === "bundle" ? initialProductKind : "";
-    const fixedGenerateTargetType = productKind === "bundle" || initialTargetType === "product"
-        ? "product"
-        : (productKind === "course" || initialTargetType === "course" ? "course" : "");
-    const showTargetTypePicker = fixedGenerateTargetType === "";
-    const presetType: "course" | "product" = fixedGenerateTargetType === "product" ? "product" : "course";
+    // Every key targets a product; productKind decides WHICH products this page issues
+    // keys for. initialTargetType is only a list filter and must not drive the drawer.
+    const fixedGenerateTargetType = productKind === "bundle" ? "product" : "course";
+    // A page pinned to one target type still offers its own "any" variant, so the picker
+    // stays visible with two options; only a deep-link to one specific target hides it.
+    const showTargetTypePicker = initialTargetId <= 0;
+    const presetType: GenerateForm["targettype"] = fixedGenerateTargetType === "product" ? "product" : "courseproduct";
 
     const [filters, setFilters] = useState<Filters>({
         search: "",
         status: "",
-        targettype: initialTargetType === "course" || initialTargetType === "product" ? initialTargetType : "",
+        targettype: initialTargetType === "product" ? "product" : "",
         targetid: initialTargetId > 0 ? initialTargetId : 0,
         page: 0,
         perpage: 10,
@@ -215,6 +226,7 @@ export default function KeysAdmin({
     const [genOpen, setGenOpen] = useState(initialTargetId > 0);
     const [genForm, setGenForm] = useState<GenerateForm>({
         targettype: presetType,
+        selected: [],
         targetid: initialTargetId > 0 ? initialTargetId : 0,
         targetname: initialTargetName,
         query: "",
@@ -292,11 +304,13 @@ export default function KeysAdmin({
 
         let cancelled = false;
         const timer = window.setTimeout(() => {
-            if (genForm.targettype === "course") {
-                void callMoodleService<{items: Array<{id: number; fullname: string}>}>(searchCoursesMethodName, {query, limit: 20})
+            if (genForm.targettype === "courseproduct") {
+                // Course-type catalogue products, as distinct from raw Moodle courses.
+                void callMoodleService<{items: Array<{id: number; name: string}>}>(listProductsMethodName,
+                    {search: query, status: "active", producttype: "course", page: 0, perpage: 20})
                     .then((result) => {
                         if (!cancelled) {
-                            setGenOptions(result.items.map((item) => ({id: item.id, label: item.fullname})));
+                            setGenOptions(result.items.map((item) => ({id: item.id, label: item.name})));
                         }
                     })
                     .catch(() => {
@@ -324,7 +338,7 @@ export default function KeysAdmin({
             cancelled = true;
             window.clearTimeout(timer);
         };
-    }, [genForm.query, genForm.targettype, genOpen, searchCoursesMethodName, listBundlesMethodName]);
+    }, [genForm.query, genForm.targettype, genOpen, listBundlesMethodName, listProductsMethodName]);
 
     const total = data?.total ?? 0;
     const stats = data?.stats;
@@ -346,14 +360,49 @@ export default function KeysAdmin({
         setGenGenerated([]);
     };
 
-    const setTargetType = (targettype: "course" | "product") => {
-        setGenForm((current) => ({...current, targettype, targetid: 0, targetname: "", query: ""}));
+    const setTargetType = (targettype: GenerateForm["targettype"]) => {
+        setGenForm((current) => ({
+            ...current, targettype, targetid: 0, targetname: "", selected: [], query: "",
+        }));
         setGenOptions([]);
     };
 
+    // Courses accumulate into a list; a bundle key still targets exactly one product.
+    const addTarget = (option: TargetOption) => {
+        setGenForm((current) => {
+            if (!isMultiTarget(current.targettype)) {
+                return {...current, targetid: option.id, targetname: option.label, query: ""};
+            }
+            if (current.selected.some((item) => item.id === option.id)) {
+                return {...current, query: ""};
+            }
+            const selected = [...current.selected, option];
+            return {...current, selected, targetid: selected[0].id, targetname: selected[0].label, query: ""};
+        });
+        setGenOptions([]);
+    };
+
+    const removeTarget = (id: number) => {
+        setGenForm((current) => {
+            const selected = current.selected.filter((item) => item.id !== id);
+            return {
+                ...current,
+                selected,
+                targetid: selected.length > 0 ? selected[0].id : 0,
+                targetname: selected.length > 0 ? selected[0].label : "",
+            };
+        });
+    };
+
+    // Each page offers one "any" option, scoped to what that page issues keys for.
+    const isAnyProduct = anyTargetType === "anyproduct";
+    const anyLabel = isAnyProduct ? labels.anybundleorprogram : labels.anycourseproduct;
+    const anyDescription = isAnyProduct ? labels.anybundleorprogram_desc : labels.anycourseproduct_desc;
+    const isAnySelected = genForm.targettype === anyTargetType;
+
     const targetPickerLabel = showTargetTypePicker
         ? labels.selecttarget
-        : (genForm.targettype === "course" ? labels.course : labels.bundleorprogram);
+        : (genForm.targettype === "courseproduct" ? labels.product : labels.bundleorprogram);
 
     const copyText = (id: string, text: string) => {
         void navigator.clipboard?.writeText(text).then(() => {
@@ -423,7 +472,10 @@ export default function KeysAdmin({
 
         const t = (key: string) => labels[key] ?? key;
         const found = runRules(genForm, {
-            targetid: requiredId(labels.selecttarget ?? t("error:required")),
+            // An "any" key names no target, so there is nothing to require.
+            targetid: isAnySelected
+                ? []
+                : requiredId(labels.selecttarget ?? t("error:required")),
             quantity: [
                 integer(t("error:invalidinteger")), min(1, t("error:minvalue")), max(500, t("error:maxvalue")),
             ],
@@ -446,8 +498,12 @@ export default function KeysAdmin({
 
         try {
             const result = await callMoodleService<GenerateResponse>(generateMethodName, {
-                targettype: genForm.targettype,
+                // A course-type product is still a 'product' target server-side.
+                targettype: genForm.targettype === "courseproduct" ? "product" : genForm.targettype,
                 targetid: genForm.targetid,
+                targetids: isMultiTarget(genForm.targettype)
+                    ? genForm.selected.map((item) => item.id).join(",")
+                    : "",
                 quantity: Number(genForm.quantity) || 1,
                 keytype: genForm.keytype,
                 maxuses: Number(genForm.maxuses) || 1,
@@ -516,14 +572,34 @@ export default function KeysAdmin({
                                     <span>{labels.targettype}</span>
                                     <select
                                         className={mcClasses("mc-select")}
-                                        onChange={(event) => setTargetType(event.target.value === "product" ? "product" : "course")}
+                                        onChange={(event) => {
+                                            const value = event.target.value;
+                                            setTargetType(
+                                                value === anyTargetType
+                                                    ? (anyTargetType as GenerateForm["targettype"])
+                                                    : (value === "product" ? "product" : "courseproduct")
+                                            );
+                                        }}
                                         value={genForm.targettype}
                                     >
-                                        <option value="course">{labels.course}</option>
-                                        <option value="product">{labels.bundleorprogram}</option>
+                                        {/* A pinned page lists only its own concrete type. */}
+                                        {fixedGenerateTargetType !== "product" && (
+                                            <option value="courseproduct">{labels.product}</option>
+                                        )}
+                                        {fixedGenerateTargetType !== "course" && (
+                                            <option value="product">{labels.bundleorprogram}</option>
+                                        )}
+                                        <option value={anyTargetType}>{anyLabel}</option>
                                     </select>
                                 </label>
                             )}
+                            {isAnySelected ? (
+                                <div className={mcClasses("mc-product-form__wide")}>
+                                    <p className={mcClasses("mc-cell-muted mb-0")}>
+                                        {anyDescription}
+                                    </p>
+                                </div>
+                            ) : (
                             <div className={mcClasses("mc-course-picker mc-product-form__wide")}>
                                 <label htmlFor="mc-key-target-input">
                                     <span>
@@ -547,23 +623,24 @@ export default function KeysAdmin({
                                             }
                                         }}
                                         onChange={(event) => updateGen({query: event.target.value, targetid: 0, targetname: ""})}
-                                        placeholder={genForm.targettype === "course" ? labels.searchcoursesplaceholder : labels.searchbundles}
+                                        placeholder={genForm.targettype === "courseproduct"
+                                            ? labels.searchproducts
+                                            : labels.searchbundles}
                                         type="search"
-                                        value={genForm.targetid > 0 ? genForm.targetname : genForm.query}
+                                        value={isMultiTarget(genForm.targettype)
+                                            ? genForm.query
+                                            : (genForm.targetid > 0 ? genForm.targetname : genForm.query)}
                                     />
                                     <FieldError id="mc-key-target-error" message={genFieldErrors.targetid} />
                                 </label>
-                                {genOptions.length > 0 && genForm.targetid <= 0 && (
+                                {genOptions.length > 0 && (isMultiTarget(genForm.targettype) || genForm.targetid <= 0) && (
                                     <div className={mcClasses("mc-course-picker__results")} role="listbox">
                                         {genOptions.map((option) => (
                                             <button
                                                 className={mcClasses("mc-button mc-course-picker__option")}
                                                 data-mc-button="ghost"
                                                 key={option.id}
-                                                onClick={() => {
-                                                    updateGen({targetid: option.id, targetname: option.label, query: option.label});
-                                                    setGenOptions([]);
-                                                }}
+                                                onClick={() => addTarget(option)}
                                                 role="option"
                                                 type="button"
                                             >
@@ -572,7 +649,26 @@ export default function KeysAdmin({
                                         ))}
                                     </div>
                                 )}
+                                {isMultiTarget(genForm.targettype) && genForm.selected.length > 0 && (
+                                    <div className="d-flex flex-wrap gap-1 mt-2">
+                                        {genForm.selected.map((item) => (
+                                            <span className={mcClasses("mc-badge mc-badge--neutral")} key={item.id}>
+                                                {item.label}
+                                                <button
+                                                    aria-label={`${labels.remove ?? "Remove"}: ${item.label}`}
+                                                    className={mcClasses("mc-button mc-button--icon ms-1")}
+                                                    data-mc-button="ghost"
+                                                    onClick={() => removeTarget(item.id)}
+                                                    type="button"
+                                                >
+                                                    <i aria-hidden="true" className="bi bi-x" />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
+                            )}
                             <label htmlFor="mc-key-quantity">
                                 <span>
                                     {labels.quantity}

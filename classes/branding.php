@@ -34,7 +34,9 @@ namespace local_moderncommerce;
  * info) are fixed and not part of the brand palette.
  */
 class branding {
-    /** @var array<int, string> Selectors that should receive runtime brand tokens. */
+    /**
+     * @var array<int, string> Selectors that should receive runtime brand tokens.
+     */
     private const RUNTIME_SCOPES = [
         ':root:root',
         '.path-local-moderncommerce.path-local-moderncommerce',

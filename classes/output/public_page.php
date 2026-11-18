@@ -34,16 +34,24 @@ use moodle_url;
  * Renders shared public ecommerce pages.
  */
 class public_page {
-    /** @var string Plugin component name. */
+    /**
+     * @var string Plugin component name.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
-    /** @var string Block region above the page content. */
+    /**
+     * @var string Block region above the page content.
+     */
     public const BLOCK_REGION_ABOVE = 'mc-above';
 
-    /** @var string Block region inside the page content card, below the widgets. */
+    /**
+     * @var string Block region inside the page content card, below the widgets.
+     */
     public const BLOCK_REGION_CONTENT = 'mc-content';
 
-    /** @var string Block region below the page content. */
+    /**
+     * @var string Block region below the page content.
+     */
     public const BLOCK_REGION_BELOW = 'mc-below';
 
     /**

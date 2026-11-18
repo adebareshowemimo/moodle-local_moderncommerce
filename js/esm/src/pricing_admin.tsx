@@ -23,7 +23,7 @@ import {McTableActionMenu, McTableCard, McTableFooter, McTableFrame, McTablePagi
 import {confirmDialog} from "./modal";
 import {FieldError} from "./form";
 import {
-    afterField, focusFirstError, gteField, integer, lteField, maxLength, min, normaliseServerErrors, number,
+    afterField, focusFirstError, gteField, integer, lteField, max, maxLength, min, normaliseServerErrors, number,
     pattern, required, runRules,
 } from "./validation";
 import type {FieldErrorMap, WithFieldErrors} from "./validation";
@@ -92,6 +92,17 @@ type Product = {
     soldcount: number;
     timecreated: number;
     timemodified: number;
+    tags: string[];
+    skilllevel: string;
+    language: string;
+    durationminutes: number;
+    metafeatured: boolean;
+    bestseller: boolean;
+    trending: boolean;
+    autoduration: boolean;
+    supportsautoduration: boolean;
+    autodurationminutes: number;
+    autodurationavailable: boolean;
 };
 
 type PriceRow = {
@@ -215,6 +226,18 @@ type ProductForm = {
     stock: string;
     reservedstock: string;
     allowbackorder: boolean;
+    tags: string[];
+    skilllevel: string;
+    language: string;
+    durationhours: string;
+    durationminutes: string;
+    metafeatured: boolean;
+    bestseller: boolean;
+    trending: boolean;
+    autoduration: boolean;
+    supportsautoduration: boolean;
+    autodurationminutes: number;
+    autodurationavailable: boolean;
 };
 
 type PriceForm = {
@@ -251,6 +274,8 @@ type PricingAdminProps = {
     labels: Labels;
     productTypes: SelectOption[];
     statusOptions: SelectOption[];
+    skillLevels: SelectOption[];
+    languages: SelectOption[];
     pricingStatuses: SelectOption[];
     priceTypes: SelectOption[];
     perPageOptions: number[];
@@ -416,6 +441,23 @@ const getVisibleRange = (total: number, page: number, perpage: number): {from: n
     };
 };
 
+// Only course products and bundles/programs have a record that can hold catalog
+// metadata; other product types simply do not show those fields.
+const metaSupportedFor = (producttype: string): boolean =>
+    ["course", "bundle", "program"].includes(producttype);
+
+// Render a minute count the way the rest of the plugin does, for example "6h 30m".
+const formatDuration = (minutes: number): string => {
+    const total = Math.max(0, minutes);
+    const hours = Math.floor(total / 60);
+    const mins = total % 60;
+
+    if (hours > 0 && mins > 0) {
+        return `${hours}h ${mins}m`;
+    }
+    return hours > 0 ? `${hours}h` : `${mins}m`;
+};
+
 const emptyForm = (categoryid = 0): ProductForm => ({
     id: 0,
     producttype: "course",
@@ -441,6 +483,18 @@ const emptyForm = (categoryid = 0): ProductForm => ({
     stock: "0",
     reservedstock: "0",
     allowbackorder: false,
+    tags: [],
+    skilllevel: "",
+    language: "",
+    durationhours: "0",
+    durationminutes: "0",
+    metafeatured: false,
+    bestseller: false,
+    trending: false,
+    autoduration: false,
+    supportsautoduration: false,
+    autodurationminutes: 0,
+    autodurationavailable: false,
 });
 
 const productToForm = (product: Product): ProductForm => ({
@@ -468,6 +522,20 @@ const productToForm = (product: Product): ProductForm => ({
     stock: String(product.stock),
     reservedstock: String(product.reservedstock),
     allowbackorder: product.allowbackorder,
+    // Copy, never alias: the chip editor mutates this array and would otherwise
+    // rewrite the list row in place.
+    tags: [...(product.tags ?? [])],
+    skilllevel: product.skilllevel ?? "",
+    language: product.language ?? "",
+    durationhours: String(Math.floor((product.durationminutes ?? 0) / 60)),
+    durationminutes: String((product.durationminutes ?? 0) % 60),
+    metafeatured: product.metafeatured ?? false,
+    bestseller: product.bestseller ?? false,
+    trending: product.trending ?? false,
+    autoduration: product.autoduration ?? false,
+    supportsautoduration: product.supportsautoduration ?? false,
+    autodurationminutes: product.autodurationminutes ?? 0,
+    autodurationavailable: product.autodurationavailable ?? false,
 });
 
 // Build the save_product web service payload from a product form. The base
@@ -476,7 +544,12 @@ const productToForm = (product: Product): ProductForm => ({
 //
 // SKU and slug are only sent when their form fields are shown; otherwise they are
 // omitted so the server generates (or preserves) them internally.
-const buildProductPayload = (form: ProductForm, showSku: boolean, showSlug: boolean) => {
+const buildProductPayload = (
+    form: ProductForm,
+    showSku: boolean,
+    showSlug: boolean,
+    tags: string[] = form.tags
+) => {
     const payload: Record<string, unknown> = {
         id: form.id,
         producttype: form.producttype,
@@ -495,6 +568,14 @@ const buildProductPayload = (form: ProductForm, showSku: boolean, showSlug: bool
         stock: toInt(form.stock),
         reservedstock: toInt(form.reservedstock),
         allowbackorder: form.allowbackorder,
+        tags,
+        skilllevel: form.skilllevel,
+        language: form.language,
+        durationminutes: toInt(form.durationhours) * 60 + toInt(form.durationminutes),
+        metafeatured: form.metafeatured,
+        bestseller: form.bestseller,
+        trending: form.trending,
+        autoduration: form.autoduration,
     };
     if (showSku) {
         payload.sku = form.sku.trim();
@@ -546,6 +627,8 @@ export default function PricingAdmin({
     labels,
     productTypes,
     statusOptions,
+    skillLevels,
+    languages,
     pricingStatuses,
     priceTypes,
     perPageOptions,
@@ -563,6 +646,7 @@ export default function PricingAdmin({
     const [reloadToken, setReloadToken] = useState(0);
     const [form, setForm] = useState<ProductForm | null>(null);
     const [courseSearch, setCourseSearch] = useState("");
+    const [tagInput, setTagInput] = useState("");
     const [courseOptions, setCourseOptions] = useState<CourseOption[]>([]);
     const [courseLoading, setCourseLoading] = useState(false);
     const [courseError, setCourseError] = useState("");
@@ -770,11 +854,59 @@ export default function PricingAdmin({
         setForm((current) => current ? {...current, ...changes} : current);
     };
 
+    // Merge a candidate tag into a list, ignoring blanks and case-insensitive
+    // duplicates. The server dedupes the same way (the productid+tag index is
+    // unique under a case-insensitive collation), so this keeps the chips shown
+    // in the drawer identical to what will actually be stored.
+    const mergeTag = (tags: string[], candidate: string): string[] => {
+        const tag = candidate.trim();
+        if (tag === "") {
+            return tags;
+        }
+        const exists = tags.some((current) => current.toLowerCase() === tag.toLowerCase());
+        return exists ? tags : [...tags, tag];
+    };
+
+    // A stored value that predates the current option list (some records use levels
+    // this plugin never offered) must still appear, or selecting nothing would
+    // quietly rewrite it on the next save.
+    const withCurrentValue = (options: SelectOption[], value: string): SelectOption[] => {
+        if (value === "" || options.some((option) => option.value === value)) {
+            return options;
+        }
+        return [{value, label: value}, ...options];
+    };
+
+    const addTag = () => {
+        if (!form) {
+            return;
+        }
+        updateForm({tags: mergeTag(form.tags, tagInput)});
+        setTagInput("");
+    };
+
+    const removeTag = (tag: string) => {
+        if (!form) {
+            return;
+        }
+        updateForm({tags: form.tags.filter((current) => current !== tag)});
+    };
+
+    // A course derives its duration from its own learning-hours field, a bundle from
+    // those of the courses it contains, so both offer the choice. Types without a
+    // metadata record have nothing to read and must drop the flag when selected.
+    const supportsAutoDurationFor = (producttype: string): boolean =>
+        metaSupportedFor(producttype);
+
     const setProductType = (producttype: string) => {
         setForm((current) => {
             if (!current) {
                 return current;
             }
+
+            // A type that cannot derive its duration must not keep the flag set, or the
+            // hours and minutes would stay hidden with nothing filling them in.
+            const autoduration = supportsAutoDurationFor(producttype) && current.autoduration;
 
             if (producttype !== "course") {
                 setCourseSearch("");
@@ -782,6 +914,7 @@ export default function PricingAdmin({
                 return {
                     ...current,
                     producttype,
+                    autoduration,
                     courseid: 0,
                     coursename: "",
                     courseshortname: "",
@@ -790,7 +923,7 @@ export default function PricingAdmin({
                 };
             }
 
-            return {...current, producttype};
+            return {...current, producttype, autoduration};
         });
     };
 
@@ -818,6 +951,7 @@ export default function PricingAdmin({
     const openNewForm = () => {
         setForm(emptyForm(filters.categoryid));
         setCourseSearch("");
+        setTagInput("");
         setCourseOptions([]);
         setCourseError("");
         setFormError("");
@@ -830,6 +964,7 @@ export default function PricingAdmin({
     const openEditForm = (product: Product) => {
         setForm(productToForm(product));
         setCourseSearch(product.primarycoursename ? `${product.primarycoursename} (${product.primarycourseshortname})` : "");
+        setTagInput("");
         setCourseOptions([]);
         setCourseError("");
         setFormError("");
@@ -842,6 +977,7 @@ export default function PricingAdmin({
     const closeForm = () => {
         setForm(null);
         setCourseSearch("");
+        setTagInput("");
         setCourseOptions([]);
         setCourseError("");
         setFormError("");
@@ -972,6 +1108,12 @@ export default function PricingAdmin({
                 ? [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))]
                 : [],
             displayorder: integer(t("error:invalidinteger")),
+            durationhours: metaSupportedFor(form.producttype) && !form.autoduration
+                ? [integer(t("error:invalidinteger")), min(0, t("error:minvalue"))]
+                : [],
+            durationminutes: metaSupportedFor(form.producttype) && !form.autoduration
+                ? [integer(t("error:invalidinteger")), min(0, t("error:minvalue")), max(59, t("error:maxvalue"))]
+                : [],
         });
         // A course product without a course would be unbuyable.
         if (form.producttype === "course" && Number(form.courseid) <= 0) {
@@ -981,7 +1123,8 @@ export default function PricingAdmin({
         setFieldErrors(found);
         if (Object.keys(found).length > 0) {
             setFormError("");
-            focusFirstError(found, ["name", "courseid", "sku", "slug", "regularprice", "compareamount", "stock"]);
+            focusFirstError(found, ["name", "courseid", "sku", "slug", "regularprice", "compareamount", "stock",
+                "durationhours", "durationminutes"]);
             return;
         }
 
@@ -989,9 +1132,13 @@ export default function PricingAdmin({
         setFormError("");
 
         try {
+            // A tag typed but never committed with Enter/Add would otherwise be
+            // discarded on save. Merge it locally rather than relying on the state
+            // update having landed by now.
+            const effectivetags = mergeTag(form.tags, tagInput);
             const result = await callMoodleService<SaveResponse>(
                 saveMethodName,
-                buildProductPayload(form, showSku, showSlug)
+                buildProductPayload(form, showSku, showSlug, effectivetags)
             );
 
             if (!result.success) {
@@ -1453,6 +1600,8 @@ export default function PricingAdmin({
             return null;
         }
 
+        const metaSupported = metaSupportedFor(form.producttype);
+        const supportsAutoDuration = supportsAutoDurationFor(form.producttype);
         const baseAmount = toFloat(form.regularprice);
         const compareAmount = toFloat(form.compareamount);
         const previewFree = form.priceenabled && baseAmount <= 0;
@@ -1827,6 +1976,180 @@ export default function PricingAdmin({
                                             </label>
                                         </div>
                                     )}
+                                </div>
+                            </div>
+
+                            {metaSupported && (
+                                <div className={mcClasses("mc-form-section")}>
+                                    <div className={mcClasses("mc-form-section__header")}>
+                                        <h4 className={mcClasses("mc-form-section__title")}>
+                                            {labels.courseinformation}
+                                        </h4>
+                                    </div>
+                                    <div className={mcClasses("mc-form-section__body")}>
+                                        <div className={mcClasses("mc-product-form__grid")}>
+                                            <label>
+                                                <span>{labels.skilllevel}</span>
+                                                <select
+                                                    className={mcClasses("mc-select")}
+                                                    onChange={(event) => updateForm({skilllevel: event.target.value})}
+                                                    value={form.skilllevel}
+                                                >
+                                                    <option value="">{labels.none}</option>
+                                                    {withCurrentValue(skillLevels, form.skilllevel).map((option) => (
+                                                        <option key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                            <label>
+                                                <span>{labels.language}</span>
+                                                <select
+                                                    className={mcClasses("mc-select")}
+                                                    onChange={(event) => updateForm({language: event.target.value})}
+                                                    value={form.language}
+                                                >
+                                                    <option value="">{labels.none}</option>
+                                                    {withCurrentValue(languages, form.language).map((option) => (
+                                                        <option key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                        </div>
+                                        {supportsAutoDuration && (
+                                            <div className={mcClasses("mc-product-form__checks mt-3")}>
+                                                {renderSwitch(
+                                                    form.autoduration,
+                                                    (value) => updateForm({autoduration: value}),
+                                                    `${labels.duration}: ${
+                                                        form.autoduration ? labels.autodetect : labels.manualentry
+                                                    }`
+                                                )}
+                                            </div>
+                                        )}
+                                        {form.autoduration ? (
+                                            <div className={mcClasses("mc-alert mc-alert--neutral mt-3")} role="status">
+                                                <i className="bi bi-clock mc-alert__icon" aria-hidden="true" />
+                                                <div className={mcClasses("mc-alert__body")}>
+                                                    {form.autodurationavailable
+                                                        ? `${labels.totalduration}: ${formatDuration(form.autodurationminutes)}`
+                                                        : labels.nolearninghoursvalue}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className={mcClasses("mc-product-form__grid mt-3")}>
+                                                <label>
+                                                    <span>{labels.hours}</span>
+                                                    <input
+                                                        className={mcClasses("mc-form-control")}
+                                                        min="0"
+                                                        name="durationhours"
+                                                        onChange={(event) => updateForm({durationhours: event.target.value})}
+                                                        type="number"
+                                                        value={form.durationhours}
+                                                    />
+                                                    <FieldError
+                                                        id="mc-product-durationhours-error"
+                                                        message={fieldErrors.durationhours}
+                                                    />
+                                                </label>
+                                                <label>
+                                                    <span>{labels.minutes}</span>
+                                                    <input
+                                                        className={mcClasses("mc-form-control")}
+                                                        max="59"
+                                                        min="0"
+                                                        name="durationminutes"
+                                                        onChange={(event) => updateForm({durationminutes: event.target.value})}
+                                                        type="number"
+                                                        value={form.durationminutes}
+                                                    />
+                                                    <FieldError
+                                                        id="mc-product-durationminutes-error"
+                                                        message={fieldErrors.durationminutes}
+                                                    />
+                                                </label>
+                                            </div>
+                                        )}
+                                        <div className={mcClasses("mc-product-form__badges mt-3")}>
+                                            <span className={mcClasses("mc-product-form__badges-label")}>
+                                                {labels.badges}
+                                            </span>
+                                            <div className={mcClasses("mc-product-form__checks")}>
+                                                {renderSwitch(
+                                                    form.metafeatured,
+                                                    (value) => updateForm({metafeatured: value}),
+                                                    labels.featured
+                                                )}
+                                                {renderSwitch(
+                                                    form.bestseller,
+                                                    (value) => updateForm({bestseller: value}),
+                                                    labels.bestseller
+                                                )}
+                                                {renderSwitch(
+                                                    form.trending,
+                                                    (value) => updateForm({trending: value}),
+                                                    labels.trending
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className={mcClasses("mc-form-section")}>
+                                <div className={mcClasses("mc-form-section__header")}>
+                                    <h4 className={mcClasses("mc-form-section__title")}>{labels.tags}</h4>
+                                </div>
+                                <div className={mcClasses("mc-form-section__body")}>
+                                    <div className={mcClasses("mc-product-form__wide")}>
+                                        {form.tags.length > 0 && (
+                                            <div className="d-flex flex-wrap gap-1 mb-2">
+                                                {form.tags.map((tag) => (
+                                                    <span className={mcClasses("mc-badge mc-badge--neutral")} key={tag}>
+                                                        {tag}
+                                                        <button
+                                                            aria-label={`${labels.remove}: ${tag}`}
+                                                            className={mcClasses("mc-button mc-btn-ghost p-0 ms-1 mc-tag-remove")}
+                                                            onClick={() => removeTag(tag)}
+                                                            type="button"
+                                                        >
+                                                            &times;
+                                                        </button>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="d-flex gap-2">
+                                            <input
+                                                className={mcClasses("mc-form-control")}
+                                                maxLength={100}
+                                                onChange={(event) => setTagInput(event.target.value)}
+                                                // Tag box inside the save form: Enter must add a tag,
+                                                // not submit (and close) the product drawer.
+                                                onKeyDown={(event) => {
+                                                    if (event.key === "Enter") {
+                                                        event.preventDefault();
+                                                        event.stopPropagation();
+                                                        addTag();
+                                                    }
+                                                }}
+                                                placeholder={labels.addtag}
+                                                type="text"
+                                                value={tagInput}
+                                            />
+                                            <button
+                                                className={mcClasses("mc-button mc-btn-soft text-nowrap")}
+                                                onClick={addTag}
+                                                type="button"
+                                            >
+                                                {labels.addtag}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </form>

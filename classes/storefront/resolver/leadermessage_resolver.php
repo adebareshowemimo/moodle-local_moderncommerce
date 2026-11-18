@@ -38,7 +38,9 @@ use moodle_url;
  * site that only wants a heading, portrait and paragraphs gets exactly that.
  */
 class leadermessage_resolver implements widget_resolver {
-    /** @var string[] Supported design treatments. */
+    /**
+     * @var string[] Supported design treatments.
+     */
     private const STYLES = ['elevated', 'overlay', 'quote', 'flat'];
 
     /**

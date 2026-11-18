@@ -37,7 +37,9 @@ use local_moderncommerce\localisation;
  * Update the status of an order.
  */
 class update_status extends external_api {
-    /** @var string[] Allowed target statuses. */
+    /**
+     * @var string[] Allowed target statuses.
+     */
     private const STATUSES = ['pending', 'processing', 'paid', 'completed', 'failed', 'cancelled', 'refunded'];
 
     /**

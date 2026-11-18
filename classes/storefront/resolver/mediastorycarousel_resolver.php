@@ -34,7 +34,9 @@ use moodle_url;
  * Builds the payload for a media-and-copy carousel.
  */
 class mediastorycarousel_resolver implements widget_resolver {
-    /** @var array<string, array{0: string, 1: string}> Supported navigation icon pairs. */
+    /**
+     * @var array<string, array{0: string, 1: string}> Supported navigation icon pairs.
+     */
     private const NAV_ICON_PAIRS = [
         'chevron-right' => ['chevron-left', 'chevron-right'],
         'arrow-right' => ['arrow-left', 'arrow-right'],
@@ -46,7 +48,9 @@ class mediastorycarousel_resolver implements widget_resolver {
         'arrow-right-short' => ['arrow-left-short', 'arrow-right-short'],
     ];
 
-    /** @var array<string, string> Legacy navigation styles from the first single-setting implementation. */
+    /**
+     * @var array<string, string> Legacy navigation styles from the first single-setting implementation.
+     */
     private const LEGACY_NAV_STYLES = [
         'chevron' => 'chevron-right',
         'arrow' => 'arrow-right',

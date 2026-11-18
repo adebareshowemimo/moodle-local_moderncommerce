@@ -31,17 +31,29 @@ namespace local_moderncommerce\storefront;
  * here means new zones are declared in one place for both PHP and the bundle.
  */
 class zones {
-    /** @var string The Modern Commerce catalog / storefront home page. */
+    /**
+     * @var string The Modern Commerce catalog / storefront home page.
+     */
     const PAGE_CATALOG = 'catalog';
-    /** @var string Public About / Trust page. */
+    /**
+     * @var string Public About / Trust page.
+     */
     const PAGE_ABOUT = 'about';
-    /** @var string Public Support page. */
+    /**
+     * @var string Public Support page.
+     */
     const PAGE_SUPPORT = 'support';
-    /** @var string Public Terms page. */
+    /**
+     * @var string Public Terms page.
+     */
     const PAGE_TERMS = 'terms';
-    /** @var string Public Privacy page. */
+    /**
+     * @var string Public Privacy page.
+     */
     const PAGE_PRIVACY = 'privacy';
-    /** @var string Public Refund / Cancellation Policy page. */
+    /**
+     * @var string Public Refund / Cancellation Policy page.
+     */
     const PAGE_REFUND = 'refund-policy';
     /**
      * @var string Site-wide scope. Widgets placed here render on EVERY storefront page
@@ -51,39 +63,69 @@ class zones {
     const PAGE_GLOBAL = 'global';
 
     // Catalog page zones (top to bottom).
-    /** @var string Sitewide announcement / countdown band. */
+    /**
+     * @var string Sitewide announcement / countdown band.
+     */
     const HOME_ANNOUNCE = 'home_announce';
-    /** @var string Hero slider band, above the catalog search hero. */
+    /**
+     * @var string Hero slider band, above the catalog search hero.
+     */
     const HOME_HERO = 'home_hero';
-    /** @var string Trust badge strip below the hero. */
+    /**
+     * @var string Trust badge strip below the hero.
+     */
     const HOME_BELOWHERO = 'home_belowhero';
-    /** @var string Featured / recommended band before the catalog grid. */
+    /**
+     * @var string Featured / recommended band before the catalog grid.
+     */
     const HOME_FEATURED = 'home_featured';
-    /** @var string The core catalog grid + filters surface. */
+    /**
+     * @var string The core catalog grid + filters surface.
+     */
     const CATALOG_MAIN = 'catalog_main';
-    /** @var string Promo slot inside the catalog filter sidebar. */
+    /**
+     * @var string Promo slot inside the catalog filter sidebar.
+     */
     const CATALOG_SIDEBAR = 'catalog_sidebar';
-    /** @var string Interstitial slot inside the catalog grid. */
+    /**
+     * @var string Interstitial slot inside the catalog grid.
+     */
     const CATALOG_INGRID = 'catalog_ingrid';
-    /** @var string Testimonials / instructors band after the grid. */
+    /**
+     * @var string Testimonials / instructors band after the grid.
+     */
     const HOME_SOCIAL = 'home_social';
-    /** @var string Newsletter / lead capture band at the foot of the page. */
+    /**
+     * @var string Newsletter / lead capture band at the foot of the page.
+     */
     const HOME_FOOTER = 'home_footer';
 
     // Public content page zones (top to bottom).
-    /** @var string Page hero / opening offer. */
+    /**
+     * @var string Page hero / opening offer.
+     */
     const PAGE_HERO = 'page_hero';
-    /** @var string Primary page content. */
+    /**
+     * @var string Primary page content.
+     */
     const PAGE_MAIN = 'page_main';
-    /** @var string Supporting side content. */
+    /**
+     * @var string Supporting side content.
+     */
     const PAGE_ASIDE = 'page_aside';
-    /** @var string Final page CTA / footer content. */
+    /**
+     * @var string Final page CTA / footer content.
+     */
     const PAGE_FOOTER = 'page_footer';
 
     // Global (site-wide) zones - injected at the top and bottom of every page's render.
-    /** @var string Site-wide band rendered above every page's own zones. */
+    /**
+     * @var string Site-wide band rendered above every page's own zones.
+     */
     const GLOBAL_TOP = 'global_top';
-    /** @var string Site-wide band rendered below every page's own zones (e.g. a footer). */
+    /**
+     * @var string Site-wide band rendered below every page's own zones (e.g. a footer).
+     */
     const GLOBAL_BOTTOM = 'global_bottom';
 
     /**

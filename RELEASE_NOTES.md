@@ -1,5 +1,117 @@
 # ModernCommerce release notes
 
+## ModernCommerce 2.5.0
+
+Moodle build: `2026111801`. Requires Moodle 5.2 and PHP 8.3 or later.
+
+- Adds optional Stripe guest checkout with private carts, payment verification,
+  account creation after payment, course enrolment, and purchase recovery.
+  Guest checkout is disabled by default. Existing account holders sign in to claim purchases.
+- Matches the guest checkout layout to the cart, including a details sidebar and responsive order summary.
+- Includes the key-redemption reliability and company-licensing integrations described below.
+- Improves course and bundle metadata, learning-duration detection, catalog cards,
+  product editing, and learner navigation.
+- Removes an orphaned legacy key-expiry task during upgrade.
+- Updates the PayPal SDK's HTTP dependency to resolve reported security advisories.
+- Completes guest-purchase privacy metadata and improves release source validation.
+
+Configure Stripe API keys and a webhook signing secret before enabling guest checkout.
+The separately installed company-licensing add-on remains optional.
+
+## ModernCommerce 2.4.1
+
+ModernCommerce 2.4.1 adds a capability-aware return link to the fixed admin
+sidebar footer. Administrators and managers who can view Moodle's Site
+administration tree can return there without restoring the global Moodle
+navbar. The compact sidebar retains an icon-only return control, and users
+without `moodle/site:configview` do not see the link.
+
+## ModernCommerce 2.4.0
+
+ModernCommerce 2.4.0 adds optional B2B company licensing through the separately
+installed `local_moderncompany` add-on. It includes exact-domain approval,
+additive pooled seats and course coverage, manager and learner workspaces,
+company licence checkout, lifecycle reconciliation, and multi-source-safe
+entitlement grant and revocation APIs. Modern Commerce remains fully usable when
+the add-on is absent; company routes and navigation are gated at runtime.
+
+The add-on requires Moodle 5.2 and ModernCommerce 2.3.1 or later.
+
+## ModernCommerce 2.3.1
+
+ModernCommerce 2.3.1 is a reliability and security update for product and
+bundle enrollment keys.
+
+### Correct bundle usage accounting
+
+A bundle redemption now creates exactly one key-usage record, regardless of
+how many courses the bundle contains. The key's `usedcount`, global usage
+limit, and per-user usage limit therefore measure redemptions consistently.
+The upgrade collapses legacy per-course duplicate usage rows and retains the
+highest trustworthy usage count.
+
+### Atomic and concurrency-safe redemption
+
+Key validation, course enrollment, entitlement creation, usage logging, and
+counter advancement now run in one database transaction protected by a
+per-key lock. Concurrent requests cannot both consume the final available use,
+and a failure while enrolling a multi-course bundle rolls back the complete
+redemption instead of leaving partial access or inconsistent counters.
+
+### Complete key restriction enforcement
+
+Enrollment keys now enforce their configured start date, expiry date, global
+usage limit, per-user usage limit, required email address or `@domain`
+restriction, enrollment duration, and role. Invalid configured roles are
+rejected safely.
+
+### Product and bundle provenance
+
+Redemptions now retain the selected product ID in the usage record and carry
+the appropriate product ID into each course entitlement. This preserves the
+commercial origin of access for course products, bundles, and programs while
+keeping per-course entitlement records available for fulfillment and audit.
+
+### Legacy compatibility and upgrade repair
+
+Existing direct-course key targets remain redeemable. During upgrade, direct
+course targets are migrated to course products when exactly one matching
+product exists; ambiguous or unmatched targets are preserved and handled by
+the compatibility path. Existing usage counters are repaired upward when
+legacy rows prove that a redemption occurred.
+
+### Stronger generated keys
+
+Generated enrollment keys now use 128 bits of cryptographically secure random
+entropy and check for a collision before insertion. Codes remain uppercase and
+retain the familiar `KEY-` prefix.
+
+### Release automation
+
+Release packaging now excludes video-authoring projects and their nested
+JavaScript dependencies. This prevents Windows path-length and executable-copy
+failures while keeping all Moodle runtime files and production Composer
+dependencies in the ZIP.
+
+### Validation
+
+- Product and bundle key suite: 2 tests, 20 assertions.
+- Complete ModernCommerce suite: 83 tests, 907 assertions.
+- Moodle PHP coding-standard scan: passed for all plugin PHP source files.
+- PHP syntax validation: passed for all plugin PHP source files.
+- GitHub fast-check command: passed, including whitespace, string, Composer,
+  security-audit, autoload, coding-standard, and syntax checks.
+- Release packaging and ZIP structure validation: passed.
+
+### Compatibility
+
+- Moodle component: `local_moderncommerce`
+- Release: `2.3.1`
+- Moodle build number: `2026081900`
+- Requires Moodle 5.2 or later.
+- Tested against Moodle 5.2.
+- Maturity: Stable.
+
 ## ModernCommerce 2.3.0
 
 ModernCommerce 2.3.0 is a major feature release focused on multi-page

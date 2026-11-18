@@ -223,7 +223,7 @@ const navItems = (labels: Labels, layout?: LearnerLayoutContext, cartCountOverri
         {
             key: "cart",
             labelText: label(labels, "cart"),
-            icon: "bi-bag",
+            icon: "bi-cart",
             href: learnerAppUrl("cart"),
             badge: cartCount > 0 ? cartCount : undefined,
         },

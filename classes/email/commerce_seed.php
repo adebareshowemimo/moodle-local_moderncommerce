@@ -35,10 +35,14 @@ namespace local_moderncommerce\email;
  * Bundled Modern Commerce notification email templates.
  */
 class commerce_seed {
-    /** @var string Commerce component. */
+    /**
+     * @var string Commerce component.
+     */
     private const MC = 'local_moderncommerce';
 
-    /** @var string Subscription component. */
+    /**
+     * @var string Subscription component.
+     */
     private const MS = 'local_moderncommerce';
 
     /**

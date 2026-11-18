@@ -31,7 +31,9 @@ use local_moderncommerce\storefront\style_controls;
  * Builds the logo band payload for a partner logos widget.
  */
 class partners_resolver implements widget_resolver {
-    /** @var string[] Recognised layout modes. */
+    /**
+     * @var string[] Recognised layout modes.
+     */
     private const STYLES = ['grid', 'carousel', 'marquee'];
 
     /**

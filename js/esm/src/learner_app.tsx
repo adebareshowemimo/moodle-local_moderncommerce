@@ -55,6 +55,7 @@ type Services = {
     checkoutPlaceOrder: string;
     redeemResolve: string;
     redeemAny: string;
+    redeemSearchItems: string;
     profileGet: string;
     profileSave: string;
     profileSavePicture: string;
@@ -406,6 +407,7 @@ export default function LearnerApp({
                 key={route.key}
                 resolveMethodName={services.redeemResolve}
                 redeemMethodName={services.redeemAny}
+                searchItemsMethodName={services.redeemSearchItems}
                 orderId={intParam(route.query, "orderid")}
                 catalogUrl={urls.catalog}
                 coursesUrl={urls.courses}

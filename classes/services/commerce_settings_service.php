@@ -24,13 +24,19 @@ namespace local_moderncommerce\services;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class commerce_settings_service {
-    /** @var string Plugin component name. */
+    /**
+     * @var string Plugin component name.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
-    /** @var string Default single active currency. */
+    /**
+     * @var string Default single active currency.
+     */
     private const DEFAULT_CURRENCY = 'USD';
 
-    /** @var string[] Allowed checkout field visibility values. */
+    /**
+     * @var string[] Allowed checkout field visibility values.
+     */
     private const FIELD_VISIBILITY = ['hidden', 'optional', 'required'];
 
     /**
@@ -47,37 +53,55 @@ class commerce_settings_service {
         'zipcode_field' => 'hidden',
     ];
 
-    /** @var string[] Core primary-navigation node keys that may be hidden. */
+    /**
+     * @var string[] Core primary-navigation node keys that may be hidden.
+     */
     private const NAV_ITEMS = ['home', 'myhome', 'mycourses', 'siteadminnode'];
 
-    /** @var string[] Old placeholder values that must not be shown in Boost navigation. */
+    /**
+     * @var string[] Old placeholder values that must not be shown in Boost navigation.
+     */
     private const LEGACY_NAV_LABEL_PLACEHOLDERS = [
         'Admin Navigation Label Default',
         'Learner Navigation Label Default',
     ];
 
-    /** @var string[] Allowed cart positions in Moodle's top-right user navigation. */
+    /**
+     * @var string[] Allowed cart positions in Moodle's top-right user navigation.
+     */
     public const NAVBAR_CART_POSITIONS = ['first', 'last'];
 
-    /** @var string Default cart position in Moodle's top-right user navigation. */
+    /**
+     * @var string Default cart position in Moodle's top-right user navigation.
+     */
     public const NAVBAR_CART_POSITION_DEFAULT = 'first';
 
-    /** @var string[] Allowed sidebar positions on the public course detail page. */
+    /**
+     * @var string[] Allowed sidebar positions on the public course detail page.
+     */
     public const COURSE_DETAIL_SIDEBAR_POSITIONS = ['right', 'left'];
 
-    /** @var string Default sidebar position on the public course detail page. */
+    /**
+     * @var string Default sidebar position on the public course detail page.
+     */
     public const COURSE_DETAIL_SIDEBAR_POSITION_DEFAULT = 'right';
 
-    /** @var string[] Allowed floating-toast notification positions. */
+    /**
+     * @var string[] Allowed floating-toast notification positions.
+     */
     public const NOTIFICATION_POSITIONS = [
         'top-left', 'top-center', 'top-right',
         'bottom-left', 'bottom-center', 'bottom-right',
     ];
 
-    /** @var string Default notification position. */
+    /**
+     * @var string Default notification position.
+     */
     public const NOTIFICATION_POSITION_DEFAULT = 'top-right';
 
-    /** @var int Default notification auto-dismiss delay (ms). */
+    /**
+     * @var int Default notification auto-dismiss delay (ms).
+     */
     public const NOTIFICATION_AUTODISMISS_DEFAULT = 4000;
 
     /**
@@ -290,6 +314,7 @@ class commerce_settings_service {
             'enabletax' => $taxmode === 'exclusive' ? 1 : 0,
             'defaulttaxrate' => (float)(get_config(self::COMPONENT, 'default_tax_rate') ?: 0),
             // Checkout / contact fields.
+            'guest_checkout_enabled' => self::config_bool('guest_checkout_enabled', false) ? 1 : 0,
             'contact_info_enabled' => self::config_bool('contact_info_enabled', false) ? 1 : 0,
             'phone_field' => $checkout['phone_field'],
             'address_field' => $checkout['address_field'],
@@ -589,6 +614,7 @@ class commerce_settings_service {
                 'tax_mode' => $taxmode,
                 'enable_tax' => $taxmode === 'exclusive' ? 1 : 0,
                 'default_tax_rate' => $defaulttaxrate,
+                'guest_checkout_enabled' => !empty($data['guest_checkout_enabled']) ? 1 : 0,
                 'contact_info_enabled' => !empty($data['contact_info_enabled']) ? 1 : 0,
                 'phone_field' => $checkout['phone_field'],
                 'address_field' => $checkout['address_field'],

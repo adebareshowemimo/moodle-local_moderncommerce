@@ -54,6 +54,18 @@ class redeem_any_key extends external_api {
             // separators such as hyphens, which ALPHANUMEXT would silently strip.
             'keycode' => new external_value(PARAM_TEXT, 'Key code.'),
             'orderid' => new external_value(PARAM_INT, 'Originating order ID.', VALUE_DEFAULT, 0),
+            'itemtype' => new external_value(
+                PARAM_ALPHA,
+                'Chosen catalogue item type (course or product), for keys that let the learner choose.',
+                VALUE_DEFAULT,
+                ''
+            ),
+            'itemid' => new external_value(
+                PARAM_INT,
+                'Chosen catalogue item ID, for keys that let the learner choose.',
+                VALUE_DEFAULT,
+                0
+            ),
         ]);
     }
 
@@ -64,12 +76,19 @@ class redeem_any_key extends external_api {
      * @param int $orderid Order ID.
      * @return array
      */
-    public static function execute(string $keycode, int $orderid = 0): array {
+    public static function execute(
+        string $keycode,
+        int $orderid = 0,
+        string $itemtype = '',
+        int $itemid = 0
+    ): array {
         global $USER, $DB;
 
         $params = self::validate_parameters(self::execute_parameters(), [
             'keycode' => $keycode,
             'orderid' => $orderid,
+            'itemtype' => $itemtype,
+            'itemid' => $itemid,
         ]);
 
         require_login();
@@ -100,7 +119,13 @@ class redeem_any_key extends external_api {
             : null;
 
         try {
-            $result = key_redemption_service::redeem((string) $resolved['key']->keycode, $userid, $orderid);
+            $result = key_redemption_service::redeem(
+                (string) $resolved['key']->keycode,
+                $userid,
+                $orderid,
+                (string) $params['itemtype'],
+                (int) $params['itemid']
+            );
         } catch (\moodle_exception $e) {
             return self::failure(key_resolver_service::TYPE_ENROLLMENT, $e->getMessage());
         }

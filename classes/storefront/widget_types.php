@@ -28,82 +28,134 @@ namespace local_moderncommerce\storefront;
  * Presentation helpers for widget types (labels, dedicated editor routing).
  */
 class widget_types {
-    /** @var string Slider widget type that uses the slide editor. */
+    /**
+     * @var string Slider widget type that uses the slide editor.
+     */
     const SLIDER = 'slider';
 
-    /** @var string Featured products carousel/grid. */
+    /**
+     * @var string Featured products carousel/grid.
+     */
     const FEATURED = 'featured';
 
-    /** @var string Related products carousel/grid (shares the featured editor). */
+    /**
+     * @var string Related products carousel/grid (shares the featured editor).
+     */
     const RELATED = 'related';
 
-    /** @var string Trust badges strip. */
+    /**
+     * @var string Trust badges strip.
+     */
     const TRUSTBADGES = 'trustbadges';
 
-    /** @var string Partner / client logo band. */
+    /**
+     * @var string Partner / client logo band.
+     */
     const PARTNERS = 'partners';
 
-    /** @var string Countdown bar. */
+    /**
+     * @var string Countdown bar.
+     */
     const COUNTDOWN = 'countdown';
 
-    /** @var string Testimonials grid. */
+    /**
+     * @var string Testimonials grid.
+     */
     const TESTIMONIALS = 'testimonials';
 
-    /** @var string Category tiles. */
+    /**
+     * @var string Category tiles.
+     */
     const CATEGORIES = 'categories';
 
-    /** @var string Instructor spotlight grid. */
+    /**
+     * @var string Instructor spotlight grid.
+     */
     const INSTRUCTORS = 'instructors';
 
-    /** @var string Newsletter / lead capture. */
+    /**
+     * @var string Newsletter / lead capture.
+     */
     const NEWSLETTER = 'newsletter';
 
-    /** @var string Split video hero (copy + click-to-play video panel + stat card). */
+    /**
+     * @var string Split video hero (copy + click-to-play video panel + stat card).
+     */
     const VIDEOHERO = 'videohero';
 
-    /** @var string Side-by-side media and copy carousel. */
+    /**
+     * @var string Side-by-side media and copy carousel.
+     */
     const MEDIASTORYCAROUSEL = 'mediastorycarousel';
 
-    /** @var string Site-wide modern breadcrumb/page-title banner. */
+    /**
+     * @var string Site-wide modern breadcrumb/page-title banner.
+     */
     const BREADCRUMB = 'breadcrumb';
 
-    /** @var string Editable content section for public pages. */
+    /**
+     * @var string Editable content section for public pages.
+     */
     const CONTENT = 'content';
 
-    /** @var string Centered learning promise statement. */
+    /**
+     * @var string Centered learning promise statement.
+     */
     const LEARNINGPROMISE = 'learningpromise';
 
-    /** @var string Portrait + signed message from a named leader (ED/CEO, VC, Director). */
+    /**
+     * @var string Portrait + signed message from a named leader (ED/CEO, VC, Director).
+     */
     const LEADERMESSAGE = 'leadermessage';
 
-    /** @var string Responsive grid of icon feature/benefit cards (up to 12, 3 or 4 per row). */
+    /**
+     * @var string Responsive grid of icon feature/benefit cards (up to 12, 3 or 4 per row).
+     */
     const FEATUREGRID = 'featuregrid';
 
-    /** @var string Subscription plan pricing table (plans, prices, feature lists). */
+    /**
+     * @var string Subscription plan pricing table (plans, prices, feature lists).
+     */
     const SUBSCRIPTIONPLANS = 'subscriptionplans';
 
-    /** @var string Structured policy sections for terms/privacy/refunds. */
+    /**
+     * @var string Structured policy sections for terms/privacy/refunds.
+     */
     const POLICY = 'policy';
 
-    /** @var string FAQ accordion/list for public pages. */
+    /**
+     * @var string FAQ accordion/list for public pages.
+     */
     const FAQ = 'faq';
 
-    /** @var string Call-to-action band. */
+    /**
+     * @var string Call-to-action band.
+     */
     const CTA = 'cta';
 
-    /** @var string Commerce support form. */
+    /**
+     * @var string Commerce support form.
+     */
     const SUPPORTFORM = 'supportform';
 
-    /** @var string Contact/help cards. */
+    /**
+     * @var string Contact/help cards.
+     */
     const CONTACTCARDS = 'contactcards';
 
-    /** @var string Full-width About-page belief statement band. */
+    /**
+     * @var string Full-width About-page belief statement band.
+     */
     const BELIEF = 'belief';
 
-    /** @var string Site-wide multi-column storefront footer (logo/contact, link columns, apps, social). */
+    /**
+     * @var string Site-wide multi-column storefront footer (logo/contact, link columns, apps, social).
+     */
     const FOOTER = 'footer';
 
-    /** @var string The core catalog grid (single, system-managed; not admin-addable). */
+    /**
+     * @var string The core catalog grid (single, system-managed; not admin-addable).
+     */
     const CATALOG = 'catalog';
 
     /**

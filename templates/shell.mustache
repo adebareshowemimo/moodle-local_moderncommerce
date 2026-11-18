@@ -22,6 +22,8 @@
     * hasnavigation - bool (use data-driven nav; else hardcoded fallback below)
     * nav.*active   - Legacy active flags used by the hardcoded fallback nav
     * plugins.*     - Optional plugin availability flags for the fallback nav
+    * canaccessmoodleadmin - Whether the user may view Moodle site administration
+    * moodleadminurl - Moodle site-administration URL
     * config.wwwroot - Moodle wwwroot
     * version       - Optional plugin version string (footer)
 
@@ -243,6 +245,18 @@
         </nav>
 
         <div class="local-moderncommerce-admin-sidebar__footer">
+            {{#canaccessmoodleadmin}}
+            <a href="{{moodleadminurl}}"
+               class="local-moderncommerce-admin-sidebar__back-link"
+               title="{{#str}}backtomoodleadministration, local_moderncommerce{{/str}}">
+                <span class="local-moderncommerce-admin-sidebar__back-icon" aria-hidden="true">
+                    <i class="bi bi-arrow-left"></i>
+                </span>
+                <span class="local-moderncommerce-admin-sidebar__back-label">
+                    {{#str}}backtomoodleadministration, local_moderncommerce{{/str}}
+                </span>
+            </a>
+            {{/canaccessmoodleadmin}}
             <span class="local-moderncommerce-admin-sidebar__version">{{#version}}v{{version}}{{/version}}</span>
         </div>
     </aside>

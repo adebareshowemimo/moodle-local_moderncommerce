@@ -19,6 +19,7 @@ export type CourseCardItem = {
     id: number;
     productid: number;
     inwishlist: boolean;
+    incart: boolean;
     itemtype: string;
     title: string;
     thumbnail: string;
@@ -73,6 +74,7 @@ export default function CourseImageCard({
     wishlistBusy = false,
     wishlistSaved = false,
     onToggleWishlist,
+    onRemove,
 }: {
     item: CourseCardItem;
     labels: Labels;
@@ -82,6 +84,7 @@ export default function CourseImageCard({
     wishlistBusy?: boolean;
     wishlistSaved?: boolean;
     onToggleWishlist?: (item: CourseCardItem, saved: boolean) => void;
+    onRemove?: (item: CourseCardItem) => void;
 }) {
     const wishlistTitle = wishlistSaved
         ? (labels.removefromwishlist || "Remove from wishlist")
@@ -166,6 +169,25 @@ export default function CourseImageCard({
                         <i className="bi bi-play-circle" aria-hidden="true" />
                         {labels.owned}
                     </a>
+                ) : item.incart ? (
+                    /* In the cart: the button becomes its own inverse, so a
+                       mis-click is undone in place. Hover/focus swaps the label
+                       and icon to the remove affordance via CSS. */
+                    <McButton
+                        type="button"
+                        className="mc-course-card-btn mc-course-card-btn--incart"
+                        loading={busy}
+                        loadingLabel={labels.loading || "Removing..."}
+                        onClick={() => onRemove?.(item)}
+                        title={labels.removefromcart || "Remove from cart"}
+                        aria-label={labels.removefromcart || "Remove from cart"}
+                    >
+                        <span className="mc-incart__icons">
+                            <i className="bi bi-cart-check mc-incart__icon" aria-hidden="true" />
+                            <i className="bi bi-dash-lg mc-incart__icon--hover" aria-hidden="true" />
+                        </span>
+                        {labels.incart || "In cart"}
+                    </McButton>
                 ) : (
                     <McButton
                         type="button"

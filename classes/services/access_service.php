@@ -32,10 +32,14 @@ use xmldb_table;
  * Shared access resolver for purchase, subscription, and enrolment state.
  */
 class access_service {
-    /** @var array Subscription states that grant access. */
+    /**
+     * @var array Subscription states that grant access.
+     */
     private const ACTIVE_SUBSCRIPTION_STATES = ['active', 'trial', 'grace'];
 
-    /** @var array Product types that should land in the learner account area. */
+    /**
+     * @var array Product types that should land in the learner account area.
+     */
     private const DASHBOARD_PRODUCT_TYPES = ['bundle', 'program', 'subscription', 'plan'];
 
     /**

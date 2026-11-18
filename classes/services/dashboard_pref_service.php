@@ -35,31 +35,49 @@ namespace local_moderncommerce\services;
  * Resolution is always personal -> site default -> (caller's built-in catalog default).
  */
 class dashboard_pref_service {
-    /** @var string Per-user preference table. */
+    /**
+     * @var string Per-user preference table.
+     */
     public const TABLE = 'local_moderncommerce_dashpref';
 
-    /** @var string Component for site-default config storage. */
+    /**
+     * @var string Component for site-default config storage.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
-    /** @var string Save scope: this admin only. */
+    /**
+     * @var string Save scope: this admin only.
+     */
     public const SCOPE_PERSONAL = 'personal';
 
-    /** @var string Save scope: shared site default for every admin. */
+    /**
+     * @var string Save scope: shared site default for every admin.
+     */
     public const SCOPE_SITE = 'sitedefault';
 
-    /** @var string Site-default config key holding the chart layout JSON. */
+    /**
+     * @var string Site-default config key holding the chart layout JSON.
+     */
     public const CFG_CHARTS = 'dashboard_charts_layout';
 
-    /** @var string Site-default config key holding the KPI panel layout JSON. */
+    /**
+     * @var string Site-default config key holding the KPI panel layout JSON.
+     */
     public const CFG_PANELS = 'dashboard_panel_layout';
 
-    /** @var string Site-default config key holding the default date range. */
+    /**
+     * @var string Site-default config key holding the default date range.
+     */
     public const CFG_RANGE = 'dashboard_default_range';
 
-    /** @var string[] Allowed insight date ranges. */
+    /**
+     * @var string[] Allowed insight date ranges.
+     */
     public const RANGES = ['7d', '30d', '90d', '12m', 'ytd'];
 
-    /** @var string Fallback range when nothing is stored. */
+    /**
+     * @var string Fallback range when nothing is stored.
+     */
     public const DEFAULT_RANGE = '30d';
 
     /**

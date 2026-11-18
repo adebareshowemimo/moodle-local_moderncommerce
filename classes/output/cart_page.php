@@ -41,16 +41,24 @@ use local_moderncommerce\services\pricing_service;
  * Cart page renderable class.
  */
 class cart_page implements renderable, templatable {
-    /** @var int User ID */
+    /**
+     * @var int User ID
+     */
     protected $userid;
 
-    /** @var array Course cart items */
+    /**
+     * @var array Course cart items
+     */
     protected $cartitems;
 
-    /** @var array Bundle cart items */
+    /**
+     * @var array Bundle cart items
+     */
     protected $bundleitems;
 
-    /** @var string Session key */
+    /**
+     * @var string Session key
+     */
     protected $sesskey;
 
     /**

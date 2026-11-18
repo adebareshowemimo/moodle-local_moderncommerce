@@ -26,10 +26,14 @@ use context_system;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class category_service {
-    /** @var string Categories table. */
+    /**
+     * @var string Categories table.
+     */
     private const TABLE = 'local_moderncommerce_product_categories';
 
-    /** @var string Product-to-category map table. */
+    /**
+     * @var string Product-to-category map table.
+     */
     private const MAP_TABLE = 'local_moderncommerce_product_category_map';
 
     /**

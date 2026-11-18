@@ -32,10 +32,14 @@ namespace local_moderncommerce\services;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class certificate_template_service {
-    /** Modern Commerce component name. */
+    /**
+     * Modern Commerce component name.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
-    /** Configuration key for the global program certificate template. */
+    /**
+     * Configuration key for the global program certificate template.
+     */
     private const CONFIG_DEFAULT_TEMPLATE = 'default_program_certificate_template_id';
 
     /**

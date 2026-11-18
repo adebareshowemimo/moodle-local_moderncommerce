@@ -44,6 +44,9 @@ if ($directbundleid > 0) {
 
 $checkouturl = new moodle_url('/local/moderncommerce/checkout.php', $urlparams);
 
+if ((!isloggedin() || isguestuser()) && \local_moderncommerce\services\guest_checkout_service::enabled()) {
+    redirect(new moodle_url('/local/moderncommerce/guest_checkout.php', $urlparams));
+}
 if (!isloggedin() || isguestuser()) {
     $context = context_system::instance();
     $PAGE->set_context($context);

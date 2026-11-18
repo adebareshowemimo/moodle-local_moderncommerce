@@ -35,7 +35,9 @@ use core_external\external_warnings;
  * Change an invoice status or delete it.
  */
 class set_invoice_status extends external_api {
-    /** @var string[] Allowed status actions. */
+    /**
+     * @var string[] Allowed status actions.
+     */
     private const STATUSES = ['draft', 'sent', 'paid', 'overdue', 'cancelled', 'void'];
 
     /**

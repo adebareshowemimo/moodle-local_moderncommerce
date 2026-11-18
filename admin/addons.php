@@ -79,6 +79,20 @@ function local_moderncommerce_addons_catalog_url(string $slug): string {
 function local_moderncommerce_addons_definitions(): array {
     return [
         [
+            'key' => 'companylicensing',
+            'name' => get_string('addon_companylicensing', 'local_moderncommerce'),
+            'description' => get_string('addon_companylicensing_desc', 'local_moderncommerce'),
+            'icon' => 'bi-buildings',
+            'tier' => 'premium',
+            'requirement' => 'optional',
+            'component' => 'local_moderncompany',
+            'components' => ['local_moderncompany'],
+            'geturl' => local_moderncommerce_addons_catalog_url('company-licensing'),
+            'openurls' => [
+                'local_moderncompany' => '/local/moderncommerce/admin/companies.php',
+            ],
+        ],
+        [
             'key' => 'enrolmentnotifier',
             'name' => get_string('addon_enrolmentnotifier', 'local_moderncommerce'),
             'description' => get_string('addon_enrolmentnotifier_desc', 'local_moderncommerce'),

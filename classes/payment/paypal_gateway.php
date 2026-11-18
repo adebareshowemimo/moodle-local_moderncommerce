@@ -45,13 +45,19 @@ use local_moderncommerce\services\commerce_settings_service;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class paypal_gateway implements gateway_interface, gateway_return_interface {
-    /** @var string Gateway name */
+    /**
+     * @var string Gateway name
+     */
     const GATEWAY_NAME = 'paypal';
 
-    /** @var object PayPal SDK client */
+    /**
+     * @var object PayPal SDK client
+     */
     private $client = null;
 
-    /** @var OrdersController PayPal orders controller */
+    /**
+     * @var OrdersController PayPal orders controller
+     */
     private $orderscontroller = null;
 
     /**

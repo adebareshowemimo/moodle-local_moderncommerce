@@ -44,13 +44,19 @@ namespace local_moderncommerce\services;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class key_resolver_service {
-    /** @var string An enrollment key granting course access. */
+    /**
+     * @var string An enrollment key granting course access.
+     */
     public const TYPE_ENROLLMENT = 'enrollment';
 
-    /** @var string A pre-paid subscription key activating a plan. */
+    /**
+     * @var string A pre-paid subscription key activating a plan.
+     */
     public const TYPE_SUBSCRIPTION = 'subscription';
 
-    /** @var string The code matches no known key. */
+    /**
+     * @var string The code matches no known key.
+     */
     public const TYPE_UNKNOWN = 'unknown';
 
     /**

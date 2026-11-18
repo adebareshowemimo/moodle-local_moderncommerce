@@ -31,13 +31,19 @@ namespace local_moderncommerce\services;
  * default -> the built-in catalog defaults below, so every admin gets their own arrangement.
  */
 class dashboard_layout_service {
-    /** @var string Component for config storage. */
+    /**
+     * @var string Component for config storage.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
-    /** @var string Config key holding the site-default JSON layout. */
+    /**
+     * @var string Config key holding the site-default JSON layout.
+     */
     public const CONFIG_KEY = dashboard_pref_service::CFG_CHARTS;
 
-    /** @var int[] Allowed 12-grid spans (full, half, third, quarter). */
+    /**
+     * @var int[] Allowed 12-grid spans (full, half, third, quarter).
+     */
     public const SIZES = [12, 6, 4, 3];
 
     /**

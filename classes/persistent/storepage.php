@@ -36,7 +36,9 @@ use local_moderncommerce\storefront\storepage_service;
  * merged with these rows at read time.
  */
 class storepage extends persistent {
-    /** @var string Table name. */
+    /**
+     * @var string Table name.
+     */
     const TABLE = 'local_moderncommerce_storepage';
 
     /**

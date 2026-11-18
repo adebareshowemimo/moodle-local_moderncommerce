@@ -24,13 +24,19 @@ namespace local_moderncommerce\subscription\services;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class access_service {
-    /** Course access type. */
+    /**
+     * Course access type.
+     */
     const ACCESS_COURSE = 'course';
 
-    /** Category access type. */
+    /**
+     * Category access type.
+     */
     const ACCESS_CATEGORY = 'category';
 
-    /** Bundle access type. */
+    /**
+     * Bundle access type.
+     */
     const ACCESS_BUNDLE = 'bundle';
 
     /**

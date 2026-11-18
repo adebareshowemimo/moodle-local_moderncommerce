@@ -301,6 +301,19 @@
     gap: 0.625rem;
 }
 
+/* Badge toggles: a small caption above the switch row so the three badges read as
+   one labelled group rather than three unrelated switches. */
+.mc-product-form__badges {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.mc-product-form__badges-label {
+    color: var(--mc-text);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
 // Program pass-policy course selector: one readable, keyboard-friendly row per course.
 .mc-product-form__checks.mc-mustpass-list {
     align-items: stretch;

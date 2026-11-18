@@ -71,6 +71,11 @@ $quantity = max(1, optional_param('quantity', 1, PARAM_INT));
 $categoryid = max(0, optional_param('categoryid', 0, PARAM_INT));
 
 if (in_array($action, ['add', 'addtocart'], true) && confirm_sesskey()) {
+    if ((!isloggedin() || isguestuser()) && \local_moderncommerce\services\guest_checkout_service::enabled()) {
+        redirect(new moodle_url('/local/moderncommerce/guest_checkout.php', array_filter([
+            'courseid' => $courseid, 'bundleid' => $bundleid,
+        ])));
+    }
     if (!isloggedin() || isguestuser()) {
         redirect(new moodle_url('/login/index.php', ['wantsurl' => $PAGE->url->out(false)]));
     }

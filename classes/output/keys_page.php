@@ -32,7 +32,7 @@ class keys_page {
      * Render the keys admin shell.
      *
      * @param object $output Page output renderer (or pre-header bootstrap renderer).
-     * @param string $targettype Preset target type filter ('', 'course', 'product').
+     * @param string $targettype Preset target type filter ('' or 'product').
      * @param int $targetid Preset target ID filter (0 = none).
      * @param string $targetname Preset target display name.
      * @param string $activenav Sidebar nav key to highlight ('keys', 'bundlekeys').
@@ -74,12 +74,17 @@ class keys_page {
                 'listMethodName' => 'local_moderncommerce_admin_list_keys',
                 'generateMethodName' => 'local_moderncommerce_admin_generate_keys',
                 'setStatusMethodName' => 'local_moderncommerce_admin_set_key_status',
-                'searchCoursesMethodName' => 'local_moderncommerce_search_courses',
                 'listBundlesMethodName' => 'local_moderncommerce_admin_list_bundles',
-                'initialTargetType' => in_array($targettype, ['course', 'product'], true) ? $targettype : '',
+                'listProductsMethodName' => 'local_moderncommerce_list_products',
+                'initialTargetType' => $targettype === 'product' ? 'product' : '',
                 'initialTargetId' => $targetid,
                 'initialTargetName' => $targetname,
                 'initialProductKind' => in_array($productkind, ['course', 'bundle'], true) ? $productkind : '',
+                // Each page offers the "any" sentinel for its own domain only: the course
+                // screen never issues bundle keys, and the bundle screen never issues course keys.
+                'anyTargetType' => $productkind === 'bundle'
+                    ? \local_moderncommerce\services\key_redemption_service::TARGET_ANY_PRODUCT
+                    : \local_moderncommerce\services\key_redemption_service::TARGET_ANY_COURSE,
                 'showTableGenerateAction' => $generateintableheader,
                 'statusOptions' => $statusoptions,
                 'perPageOptions' => [10, 20, 50, 100],
@@ -132,7 +137,7 @@ class keys_page {
             'searchplaceholder' => get_string('searchkeys', 'local_moderncommerce'),
             'status' => get_string('status', 'local_moderncommerce'),
             'allstatuses' => get_string('allstatuses', 'local_moderncommerce'),
-            'targettype' => get_string('targettype', 'local_moderncommerce'),
+            'targettype' => get_string('appliesto', 'local_moderncommerce'),
             'alltargets' => get_string('alltargets', 'local_moderncommerce'),
             'course' => get_string('course'),
             'bundleorprogram' => get_string('bundleorprogram', 'local_moderncommerce'),
@@ -165,6 +170,13 @@ class keys_page {
             'expiredkeys' => get_string('expiredkeys', 'local_moderncommerce'),
             'keysettings' => get_string('keysettings', 'local_moderncommerce'),
             'selecttarget' => get_string('selecttarget', 'local_moderncommerce'),
+            'product' => get_string('product', 'local_moderncommerce'),
+            'searchproducts' => get_string('searchproductsplaceholder', 'local_moderncommerce'),
+            'anycourseproduct' => get_string('anycourseproduct', 'local_moderncommerce'),
+            'anycourseproduct_desc' => get_string('anycourseproduct_desc', 'local_moderncommerce'),
+            'anybundleorprogram' => get_string('anybundleorprogram', 'local_moderncommerce'),
+            'anybundleorprogram_desc' => get_string('anybundleorprogram_desc', 'local_moderncommerce'),
+            'remove' => get_string('remove'),
             'searchcoursesplaceholder' => get_string('searchcoursesplaceholder', 'local_moderncommerce'),
             'searchbundles' => get_string('searchbundles', 'local_moderncommerce'),
             'quantity' => get_string('quantity', 'local_moderncommerce'),

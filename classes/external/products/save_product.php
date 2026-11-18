@@ -27,9 +27,11 @@ namespace local_moderncommerce\external\products;
 use context_system;
 use core_external\external_api;
 use core_external\external_function_parameters;
+use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
 use local_moderncommerce\services\category_service;
+use local_moderncommerce\services\product_meta_service;
 
 /**
  * Save product basics, price, inventory, and primary category.
@@ -71,6 +73,19 @@ class save_product extends external_api {
             'stock' => new external_value(PARAM_INT, 'Stock quantity.', VALUE_DEFAULT, 0),
             'reservedstock' => new external_value(PARAM_INT, 'Reserved stock quantity.', VALUE_DEFAULT, 0),
             'allowbackorder' => new external_value(PARAM_BOOL, 'Whether backorders are allowed.', VALUE_DEFAULT, false),
+            'tags' => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'Tag.'),
+                'Product tags.',
+                VALUE_DEFAULT,
+                []
+            ),
+            'skilllevel' => new external_value(PARAM_TEXT, 'Catalog skill level.', VALUE_DEFAULT, ''),
+            'language' => new external_value(PARAM_TEXT, 'Catalog language.', VALUE_DEFAULT, ''),
+            'durationminutes' => new external_value(PARAM_INT, 'Learning duration in minutes.', VALUE_DEFAULT, 0),
+            'metafeatured' => new external_value(PARAM_BOOL, 'Featured storefront badge.', VALUE_DEFAULT, false),
+            'bestseller' => new external_value(PARAM_BOOL, 'Bestseller storefront badge.', VALUE_DEFAULT, false),
+            'trending' => new external_value(PARAM_BOOL, 'Trending storefront badge.', VALUE_DEFAULT, false),
+            'autoduration' => new external_value(PARAM_BOOL, 'Derive duration from included courses.', VALUE_DEFAULT, false),
         ]);
     }
 
@@ -117,7 +132,15 @@ class save_product extends external_api {
         bool $stockmanaged = false,
         int $stock = 0,
         int $reservedstock = 0,
-        bool $allowbackorder = false
+        bool $allowbackorder = false,
+        array $tags = [],
+        string $skilllevel = '',
+        string $language = '',
+        int $durationminutes = 0,
+        bool $metafeatured = false,
+        bool $bestseller = false,
+        bool $trending = false,
+        bool $autoduration = false
     ): array {
         global $DB, $USER;
 
@@ -141,6 +164,14 @@ class save_product extends external_api {
             'stock' => $stock,
             'reservedstock' => $reservedstock,
             'allowbackorder' => $allowbackorder,
+            'tags' => $tags,
+            'skilllevel' => $skilllevel,
+            'language' => $language,
+            'durationminutes' => $durationminutes,
+            'metafeatured' => $metafeatured,
+            'bestseller' => $bestseller,
+            'trending' => $trending,
+            'autoduration' => $autoduration,
         ]);
 
         require_login();
@@ -186,6 +217,16 @@ class save_product extends external_api {
         self::save_inventory($productid, $params, $now);
         category_service::set_primary_category($productid, $params['categoryid']);
         self::save_course_link($productid, $params, $now);
+        self::save_tags($productid, $params['tags'], $now);
+
+        // Runs after save_course_link so a brand new course product already has its
+        // course association, which is what decides where this metadata is stored.
+        product_meta_service::save(
+            $productid,
+            $params['producttype'],
+            self::resolve_primary_courseid($productid, $params),
+            $params
+        );
 
         $transaction->allow_commit();
 
@@ -428,6 +469,81 @@ class save_product extends external_api {
             $DB->update_record('local_moderncommerce_product_inventory', $record);
         } else {
             $DB->insert_record('local_moderncommerce_product_inventory', $record);
+        }
+    }
+
+    /**
+     * Find the Moodle course a course product is sold against.
+     *
+     * Prefers the submitted course, which is the authoritative value on save, and
+     * falls back to the stored association when the form did not include one.
+     *
+     * @param int $productid Product ID.
+     * @param array $params Validated parameters.
+     * @return int Course ID, or zero when the product is not a course product.
+     */
+    private static function resolve_primary_courseid(int $productid, array $params): int {
+        global $DB;
+
+        if ($params['producttype'] !== 'course') {
+            return 0;
+        }
+
+        if ((int) $params['courseid'] > 0) {
+            return (int) $params['courseid'];
+        }
+
+        $courseid = $DB->get_field_sql(
+            "SELECT MIN(courseid)
+               FROM {local_moderncommerce_product_courses}
+              WHERE productid = :productid
+                AND relationtype = :relationtype",
+            ['productid' => $productid, 'relationtype' => 'included']
+        );
+
+        return (int) ($courseid ?: 0);
+    }
+
+    /**
+     * Replace the tag set for a product.
+     *
+     * Delete-then-insert so the submitted list is authoritative. Note this table
+     * carries only productid/tag/timecreated - unlike the bundle tag table it has
+     * no timemodified or usermodified column.
+     *
+     * @param int $productid Product ID.
+     * @param array $tags Submitted tags.
+     * @param int $now Timestamp.
+     */
+    private static function save_tags(int $productid, array $tags, int $now): void {
+        global $DB;
+
+        $DB->delete_records('local_moderncommerce_product_tags', ['productid' => $productid]);
+
+        $seen = [];
+        foreach ($tags as $tag) {
+            $tag = trim((string) $tag);
+            if ($tag === '') {
+                continue;
+            }
+            if (\core_text::strlen($tag) > 100) {
+                $tag = \core_text::substr($tag, 0, 100);
+            }
+
+            // Dedupe after truncation, and case-insensitively: the productid+tag index is
+            // unique and the database collation is case-insensitive, so "React" and "react"
+            // would collide on insert.
+            $key = \core_text::strtolower($tag);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+
+            $DB->insert_record('local_moderncommerce_product_tags', (object) [
+                'productid' => $productid,
+                'tag' => $tag,
+                'timecreated' => $now,
+            ]);
         }
     }
 

@@ -29,6 +29,12 @@ use local_moderncommerce\api\cart_api;
 use local_moderncommerce\output\learner_shell;
 use local_moderncommerce\output\validation_labels;
 
+if ((!isloggedin() || isguestuser()) && \local_moderncommerce\services\guest_checkout_service::enabled()) {
+    redirect(new moodle_url('/local/moderncommerce/guest_checkout.php', array_filter([
+        'courseid' => optional_param('courseid', 0, PARAM_INT),
+        'bundleid' => optional_param('bundleid', 0, PARAM_INT),
+    ])));
+}
 require_login();
 
 $context = context_system::instance();

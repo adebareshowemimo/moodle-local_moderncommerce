@@ -1378,6 +1378,10 @@ body.mc-modal-open {
     z-index: 2;
 }
 
+/* Item already in the cart: a settled, confirmed state rather than a call to
+   action, so it steps back from the primary button's weight but stays a link
+   to the cart. */
+
 .mc-add-to-cart-btn {
     width: 2.25rem;
     height: 2.25rem;
@@ -7943,6 +7947,15 @@ button.mc-modern-avatar-edit:focus-visible {
     flex-wrap: wrap;
 }
 
+/* The action row mixes icon-only toggles (a fixed 2.5rem square) with text
+   buttons that default to the 2rem `btn-sm` height. Pin the text buttons to the
+   toggle height so the row reads as one aligned control strip. */
+.mc-modern-section-actions > .mc-button,
+.mc-modern-section-actions > a.mc-button {
+    min-height: 2.5rem;
+    padding-block: 0;
+}
+
 .mc-modern-section-actions .btn,
 .mc-modern-course-footer .btn {
     display: inline-flex;
@@ -8023,6 +8036,55 @@ button.mc-modern-avatar-edit:focus-visible {
     font-size: 0.8125rem;
     font-weight: 700;
     text-decoration: none;
+}
+
+/* Collapsible variant: the tools grid is a secondary shortcut list, so it ships
+   collapsed and the header row doubles as the disclosure control. */
+.mc-modern-feature-hub--panel {
+    @include mixins.panel;
+
+    padding: 0.875rem 1rem;
+}
+
+.mc-modern-feature-hub--panel .mc-modern-section-header {
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.mc-modern-feature-hub--panel.is-open .mc-modern-section-header {
+    margin-bottom: 0.875rem;
+}
+
+.mc-modern-feature-hub__toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+
+.mc-modern-feature-hub__toggle:focus-visible {
+    @include mixins.focus-ring;
+
+    border-radius: var(--mc-radius-sm, 0.375rem);
+}
+
+.mc-modern-feature-hub__chevron {
+    flex: 0 0 auto;
+    color: var(--mc-modern-muted);
+    font-size: 0.875rem;
+    line-height: 1;
+}
+
+.mc-modern-feature-hub__body {
+    margin: 0;
 }
 
 .mc-modern-feature-grid {
@@ -9408,3 +9470,64 @@ body.mc-drawer-open {
 }
 
 /* end mc control primitives */
+
+/* Set the button custom properties too, not just the shorthands: the generic
+   .mc-button rule paints `background: var(--mc-button-bg)` later in the
+   cascade, so a bare background here is overwritten on surfaces that also
+   apply btn-mc-secondary. */
+.mc-course-card-btn--incart {
+    --mc-button-bg: var(--mc-success-bg);
+    --mc-button-border: var(--mc-success-border);
+    --mc-button-color: var(--mc-success-text);
+    --mc-button-hover-bg: var(--mc-success);
+    --mc-button-hover-border: var(--mc-success);
+    --mc-button-hover-color: #fff;
+    --mc-button-active-bg: var(--mc-success);
+    --mc-button-active-border: var(--mc-success);
+    --mc-button-active-color: #fff;
+    border-color: var(--mc-success-border);
+    background: var(--mc-success-bg);
+    color: var(--mc-success-text);
+}
+
+/* Hover/focus turns the confirmation into its inverse: the destructive palette
+   plus a swapped label and icon, so the click target reads as "remove" before
+   it is pressed. The two label/icon pairs are stacked in the same button and
+   toggled by visibility, which keeps the button width stable between states
+   (a text swap alone would make the button jump on hover). */
+.mc-course-card-btn--incart:hover,
+.mc-course-card-btn--incart:focus-visible {
+    --mc-button-bg: var(--mc-danger-bg);
+    --mc-button-border: var(--mc-danger-border);
+    --mc-button-color: var(--mc-danger-text);
+    border-color: var(--mc-danger-border);
+    background: var(--mc-danger-bg);
+    color: var(--mc-danger-text);
+}
+
+/* Only the ICON swaps on hover (tick -> minus); the label stays "In cart", so
+   the button keeps the width of its resting state. The two icons share one grid
+   cell so the swap cannot shift the label either. */
+.mc-course-card-btn--incart .mc-incart__icons {
+    display: grid;
+    place-items: center;
+}
+
+.mc-course-card-btn--incart .mc-incart__icon,
+.mc-course-card-btn--incart .mc-incart__icon--hover {
+    grid-area: 1 / 1;
+}
+
+.mc-course-card-btn--incart .mc-incart__icon--hover {
+    visibility: hidden;
+}
+
+.mc-course-card-btn--incart:hover .mc-incart__icon,
+.mc-course-card-btn--incart:focus-visible .mc-incart__icon {
+    visibility: hidden;
+}
+
+.mc-course-card-btn--incart:hover .mc-incart__icon--hover,
+.mc-course-card-btn--incart:focus-visible .mc-incart__icon--hover {
+    visibility: visible;
+}

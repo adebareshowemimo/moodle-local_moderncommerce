@@ -56,12 +56,14 @@ type Meta = {
 
 type CourseState = {
     isloggedin: boolean;
+    guestcheckout?: boolean;
     hasaccess: boolean;
     isavailable: boolean;
     canpurchase: boolean;
     isinsubscriptionplan: boolean;
     productid: number;
     inwishlist: boolean;
+    incart: boolean;
 };
 
 type Objective = {
@@ -402,6 +404,7 @@ function PurchasePanel({
     busy,
     showCartLink,
     onAddToCart,
+    onRemoveFromCart,
     onLoginRequired,
     wishlistBusy,
     onToggleWishlist,
@@ -411,6 +414,7 @@ function PurchasePanel({
     busy: boolean;
     showCartLink: boolean;
     onAddToCart: () => void;
+    onRemoveFromCart: () => void;
     onLoginRequired: () => void;
     wishlistBusy: boolean;
     onToggleWishlist?: (saved: boolean) => void;
@@ -440,20 +444,42 @@ function PurchasePanel({
 
                 {canBuy && (
                     <>
-                        <button
-                            type="button"
-                            className={mcClasses("mc-button btn-mc-primary mc-course-action")}
-                            disabled={busy}
-                            onClick={state.isloggedin ? onAddToCart : onLoginRequired}
-                        >
-                            <i className="bi bi-cart-plus" aria-hidden="true" />
-                            {labels.addtocart}
-                        </button>
+                        {state.incart ? (
+                            /* In the cart: the button becomes its own inverse, so
+                               a mis-click is undone in place. Hover/focus swaps
+                               label and icon via CSS. */
+                            <button
+                                type="button"
+                                className={mcClasses(
+                                    "mc-button mc-course-action mc-course-card-btn--incart"
+                                )}
+                                disabled={busy}
+                                onClick={onRemoveFromCart}
+                                title={labels.removefromcart || "Remove from cart"}
+                                aria-label={labels.removefromcart || "Remove from cart"}
+                            >
+                                <span className="mc-incart__icons">
+                                    <i className="bi bi-cart-check mc-incart__icon" aria-hidden="true" />
+                                    <i className="bi bi-dash-lg mc-incart__icon--hover" aria-hidden="true" />
+                                </span>
+                                {labels.incart || "In cart"}
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                className={mcClasses("mc-button btn-mc-primary mc-course-action")}
+                                disabled={busy}
+                                onClick={state.isloggedin || state.guestcheckout ? onAddToCart : onLoginRequired}
+                            >
+                                <i className="bi bi-cart-plus" aria-hidden="true" />
+                                {labels.addtocart}
+                            </button>
+                        )}
                         <a
-                            href={state.isloggedin ? urls.checkout : urls.login}
+                            href={state.isloggedin || state.guestcheckout ? urls.checkout : urls.login}
                             className={mcClasses("mc-button mc-btn-soft mc-course-action")}
                         >
-                            <i className="bi bi-bag-check" aria-hidden="true" />
+                            <i className="bi bi-cart" aria-hidden="true" />
                             {labels.buynow}
                         </a>
                     </>
@@ -484,7 +510,7 @@ function PurchasePanel({
                 )}
             </div>
 
-            {!state.isloggedin && (
+            {!state.isloggedin && !state.guestcheckout && (
                 <div className={mcClasses("mc-alert mc-alert--info mc-course-sidebar-alert")} role="status">
                     <i className="bi bi-info-circle mc-alert__icon" aria-hidden="true" />
                     <div className={mcClasses("mc-alert__body")}>
@@ -1056,7 +1082,7 @@ export default function CourseDetails({
     }, [loadReviews]);
 
     const addToCart = async() => {
-        if (!data?.state.isloggedin) {
+        if (!data?.state.isloggedin && !data?.state.guestcheckout) {
             setMessage(labels.loginrequiredmessage);
             return;
         }
@@ -1071,9 +1097,45 @@ export default function CourseDetails({
                 courseid: courseId,
             });
             void refreshNavbarCart(result);
-            setMessage(result.message);
+            // Toast, not an inline alert: the cart badge updates far from the
+            // clicked button, so the confirmation has to come to the user. A
+            // rejection ("already in your cart") comes back on the success
+            // channel with success:false, so route on the flag, not the throw.
+            if (result.success === false) {
+                toast.warning(result.message);
+            } else {
+                toast.success(result.message);
+            }
+            // Flip the button to its "In cart" state.
+            setData((current) => (current
+                ? {...current, state: {...current.state, incart: true}}
+                : current));
         } catch (caught) {
-            setError((caught as Error).message);
+            const message = (caught as Error).message;
+            setError(message);
+            toast.error(message);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const removeFromCart = async() => {
+        setBusy(true);
+        setError("");
+        try {
+            const result = await callMoodleService<CartResponse>(cartMethodName, {
+                action: "removecourse",
+                courseid: courseId,
+            });
+            void refreshNavbarCart(result);
+            toast.success(result.message);
+            setData((current) => (current
+                ? {...current, state: {...current.state, incart: false}}
+                : current));
+        } catch (caught) {
+            const message = (caught as Error).message;
+            setError(message);
+            toast.error(message);
         } finally {
             setBusy(false);
         }
@@ -1231,6 +1293,7 @@ export default function CourseDetails({
                             busy={busy}
                             showCartLink={Boolean(message)}
                             onAddToCart={() => void addToCart()}
+                            onRemoveFromCart={() => void removeFromCart()}
                             onLoginRequired={() => setMessage(labels.loginrequiredmessage)}
                             wishlistBusy={wishlistBusy}
                             onToggleWishlist={

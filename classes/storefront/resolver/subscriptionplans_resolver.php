@@ -45,16 +45,24 @@ use moodle_url;
  * the site currency.
  */
 class subscriptionplans_resolver implements widget_resolver {
-    /** @var int Most plans an instance may render. */
+    /**
+     * @var int Most plans an instance may render.
+     */
     private const MAX_PLANS = 12;
 
-    /** @var int Most features listed on a single plan card. */
+    /**
+     * @var int Most features listed on a single plan card.
+     */
     private const MAX_FEATURES = 20;
 
-    /** @var string[] Supported card treatments. */
+    /**
+     * @var string[] Supported card treatments.
+     */
     private const STYLES = ['elevated', 'bordered', 'minimal'];
 
-    /** @var int[] Supported desktop densities. */
+    /**
+     * @var int[] Supported desktop densities.
+     */
     private const COLUMNS = [2, 3, 4];
 
     /**

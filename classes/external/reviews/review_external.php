@@ -38,7 +38,9 @@ use local_moderncommerce\services\review_service;
  * Webservice methods for core Modern Commerce course reviews.
  */
 class review_external extends external_api {
-    /** @var int Maximum rows returned by paged endpoints. */
+    /**
+     * @var int Maximum rows returned by paged endpoints.
+     */
     private const MAX_PER_PAGE = 100;
 
     /**

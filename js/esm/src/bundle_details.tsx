@@ -49,6 +49,7 @@ type State = {
     isloggedin: boolean;
     productid: number;
     inwishlist: boolean;
+    incart: boolean;
 };
 
 type Course = {
@@ -76,6 +77,8 @@ type Course = {
 type Urls = {
     addtocart: string;
     checkout: string;
+    cart: string;
+    removefromcart: string;
     catalog: string;
     launch: string;
 };
@@ -462,13 +465,34 @@ function PurchasePanel({
 
                 {canBuy && (
                     <>
-                        <a href={urls.addtocart} className={mcClasses("mc-button btn-mc-primary w-100 d-flex justify-content-center mt-3")}>
-                            <i className="bi bi-cart-plus me-1" aria-hidden="true" />
-                            {purchaseLabel(labels)}
-                        </a>
+                        {state.incart ? (
+                            /* In the cart: the link becomes its own inverse, so a
+                               mis-click is undone in place. Hover/focus swaps the
+                               label and icon to the remove affordance via CSS. */
+                            <a
+                                href={urls.removefromcart || urls.cart || "#"}
+                                className={mcClasses(
+                                    "mc-button w-100 d-flex justify-content-center mt-3"
+                                    + " mc-course-card-btn--incart"
+                                )}
+                                title={labels.removefromcart || "Remove from cart"}
+                                aria-label={labels.removefromcart || "Remove from cart"}
+                            >
+                                <span className="mc-incart__icons">
+                                    <i className="bi bi-cart-check me-1 mc-incart__icon" aria-hidden="true" />
+                                    <i className="bi bi-cart-x me-1 mc-incart__icon--hover" aria-hidden="true" />
+                                </span>
+                                {labels.incart || "In cart"}
+                            </a>
+                        ) : (
+                            <a href={urls.addtocart} className={mcClasses("mc-button btn-mc-primary w-100 d-flex justify-content-center mt-3")}>
+                                <i className="bi bi-cart-plus me-1" aria-hidden="true" />
+                                {purchaseLabel(labels)}
+                            </a>
+                        )}
                         {urls.checkout && (
                             <a href={urls.checkout} className={mcClasses("mc-button mc-btn-soft w-100 d-flex justify-content-center mt-2")}>
-                                <i className="bi bi-bag-check me-1" aria-hidden="true" />
+                                <i className="bi bi-cart me-1" aria-hidden="true" />
                                 {label(labels, "buynow")}
                             </a>
                         )}

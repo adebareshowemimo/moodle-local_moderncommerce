@@ -1412,5 +1412,125 @@ function xmldb_local_moderncommerce_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026081700, 'local', 'moderncommerce');
     }
 
+    if ($oldversion < 2026081829) {
+        // Bundle duration auto-detect reads a "learninghours" course custom field. Existing
+        // installs had to create it by hand, so provision it here. Idempotent and non-fatal.
+        \local_moderncommerce\services\course_field_service::ensure_learninghours_field();
+
+        upgrade_plugin_savepoint(true, 2026081829, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026081835) {
+        // Course products can derive their duration from the course's learninghours
+        // custom field, the same way bundles derive theirs from the courses they hold.
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('local_moderncommerce_course_meta');
+        $field = new xmldb_field('auto_duration', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'durationminutes');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026081835, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026081900) {
+        // Normalize legacy course targets where an unambiguous course product exists.
+        // Direct-course rows without a matching product remain supported by the service.
+        $legacytargets = $DB->get_records('local_moderncommerce_enrollkey_targets', ['targettype' => 'course']);
+        foreach ($legacytargets as $target) {
+            $matches = $DB->get_records_sql(
+                "SELECT DISTINCT pc.productid
+                   FROM {local_moderncommerce_product_courses} pc
+                   JOIN {local_moderncommerce_products} p ON p.id = pc.productid
+                  WHERE pc.courseid = :courseid
+                    AND pc.relationtype = 'included'
+                    AND p.producttype = 'course'",
+                ['courseid' => (int) $target->targetid],
+                0,
+                2
+            );
+            if (count($matches) === 1) {
+                $target->targettype = 'product';
+                $target->targetid = (int) reset($matches)->productid;
+                $DB->update_record('local_moderncommerce_enrollkey_targets', $target);
+            }
+        }
+
+        // Older bundle redemption wrote one usage row per granted course. It also
+        // prevented a second redemption by the same user, so duplicate key/user rows
+        // are course-level duplicates and can safely be collapsed to one redemption.
+        $seen = [];
+        $deleteids = [];
+        $usages = $DB->get_records_sql(
+            "SELECT id, enrollkeyid, userid
+               FROM {local_moderncommerce_key_usage}
+           ORDER BY enrollkeyid, userid, id"
+        );
+        foreach ($usages as $usage) {
+            $identity = (int) $usage->enrollkeyid . ':' . (int) $usage->userid;
+            if (isset($seen[$identity])) {
+                $deleteids[] = (int) $usage->id;
+            } else {
+                $seen[$identity] = true;
+            }
+        }
+        foreach (array_chunk($deleteids, 500) as $ids) {
+            $DB->delete_records_list('local_moderncommerce_key_usage', 'id', $ids);
+        }
+
+        // Preserve usage limits even when legacy partial redemption wrote its usage
+        // row before failing to advance the denormalized key counter.
+        $usagecounts = $DB->get_records_sql(
+            "SELECT enrollkeyid, COUNT(1) AS redemptioncount
+               FROM {local_moderncommerce_key_usage}
+           GROUP BY enrollkeyid"
+        );
+        foreach ($usagecounts as $usagecount) {
+            $DB->execute(
+                "UPDATE {local_moderncommerce_enrollkeys}
+                    SET usedcount = :usedcount
+                  WHERE id = :keyid
+                    AND usedcount < :minimumusedcount",
+                [
+                    'usedcount' => (int) $usagecount->redemptioncount,
+                    'keyid' => (int) $usagecount->enrollkeyid,
+                    'minimumusedcount' => (int) $usagecount->redemptioncount,
+                ]
+            );
+        }
+
+        upgrade_plugin_savepoint(true, 2026081900, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026082900) {
+        // Register the generic add-on order interface and company entitlement integration.
+        upgrade_plugin_savepoint(true, 2026082900, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026091300) {
+        // The pre-rename local_coursecommerce plugin registered this task with a query
+        // against a non-existent "validuntil" field. Remove the orphaned task so it
+        // cannot keep running alongside the replacement local_moderncommerce task.
+        $legacyclassnames = [
+            'local_coursecommerce\\task\\expire_keys',
+            '\\local_coursecommerce\\task\\expire_keys',
+        ];
+        $DB->delete_records_list('task_scheduled', 'classname', $legacyclassnames);
+
+        upgrade_plugin_savepoint(true, 2026091300, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026111800) {
+        $dbman = $DB->get_manager();
+        $file = new xmldb_file(__DIR__ . '/install.xml');
+        $file->loadXMLStructure();
+        $table = $file->getStructure()->getTable('local_moderncommerce_guestpay');
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+        upgrade_plugin_savepoint(true, 2026111800, 'local', 'moderncommerce');
+    }
+
     return true;
 }

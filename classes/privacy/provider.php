@@ -151,6 +151,15 @@ class provider implements
                 self::add_users_from_field($userlist, $table, $field);
             }
         }
+        if (self::table_exists('local_moderncommerce_guestpay')) {
+            $userlist->add_from_sql(
+                'userid',
+                'SELECT DISTINCT u.id AS userid FROM {user} u
+                   JOIN {local_moderncommerce_guestpay} g ON LOWER(g.email) = LOWER(u.email)
+                  WHERE u.deleted = 0',
+                []
+            );
+        }
     }
 
     /**
@@ -250,6 +259,16 @@ class provider implements
                 'userid', 'firstname', 'lastname', 'company', 'email', 'phone', 'address1', 'address2', 'city',
                 'state', 'country', 'postcode', 'timecreated', 'timemodified',
             ],
+            'local_moderncommerce_guestpay' => [
+                'tokenhash', 'claimhash', 'iphash', 'sessionhash', 'email', 'payload', 'stripeid', 'paymentdata',
+                'status', 'userid', 'orderid', 'newaccount', 'mailsent', 'attempts', 'lasterror', 'timecreated', 'timemodified',
+            ],
+            'local_moderncommerce_program_progress' => [
+                'programid', 'userid', 'orderid', 'status', 'totalcourses', 'completedcourses', 'passedcourses',
+                'averagegrade', 'progresspercentage', 'currentcourseid', 'certificateissueid',
+                'timecompleted', 'timecreated', 'timemodified',
+            ],
+            'local_moderncommerce_storepage' => ['usermodified', 'timecreated', 'timemodified'],
             'local_moderncommerce_carts' => [
                 'userid', 'sessionid', 'couponcode', 'subtotal', 'discount', 'tax', 'total', 'timecreated',
                 'timemodified',
@@ -433,6 +452,9 @@ class provider implements
     private static function user_fields(): array {
         return [
             'local_moderncommerce_billing_profiles' => ['userid'],
+            'local_moderncommerce_guestpay' => ['userid'],
+            'local_moderncommerce_program_progress' => ['userid'],
+            'local_moderncommerce_storepage' => ['usermodified'],
             'local_moderncommerce_carts' => ['userid'],
             'local_moderncommerce_orders' => ['userid', 'createdby', 'modifiedby'],
             'local_moderncommerce_order_status_history' => ['actoruserid'],
@@ -496,6 +518,13 @@ class provider implements
             }
         }
 
+        $email = self::get_user_email($userid);
+        if (
+            $email !== '' && self::table_exists('local_moderncommerce_guestpay') &&
+                $DB->record_exists('local_moderncommerce_guestpay', ['email' => $email])
+        ) {
+            return true;
+        }
         return !empty(self::get_user_order_ids($userid));
     }
 
@@ -536,6 +565,10 @@ class provider implements
         $entitlementids = self::get_related_entitlement_ids($userid, $orderids);
         $orderrefs = self::get_fields_by_values('local_moderncommerce_orders', 'ordernumber', 'id', $orderids);
 
+        self::add_records($data, 'guest_purchases', 'local_moderncommerce_guestpay', ['email' => $useremail]);
+        self::add_records($data, 'guest_purchases_linked', 'local_moderncommerce_guestpay', ['userid' => $userid]);
+        self::add_records($data, 'program_progress', 'local_moderncommerce_program_progress', ['userid' => $userid]);
+        self::add_records($data, 'storepage_admin_references', 'local_moderncommerce_storepage', ['usermodified' => $userid]);
         self::add_records($data, 'billing_profiles', 'local_moderncommerce_billing_profiles', ['userid' => $userid]);
         self::add_records_by_ids($data, 'carts', 'local_moderncommerce_carts', $cartids);
         self::add_records_by_values($data, 'cart_items', 'local_moderncommerce_cart_items', 'cartid', $cartids);
@@ -796,6 +829,9 @@ class provider implements
         $reviewids = self::get_ids_by_field('local_moderncommerce_reviews', 'userid', $userid);
 
         self::delete_by_values('local_moderncommerce_cart_items', 'cartid', $cartids);
+        self::delete_records('local_moderncommerce_guestpay', ['email' => $useremail]);
+        self::delete_records('local_moderncommerce_guestpay', ['userid' => $userid]);
+        self::delete_records('local_moderncommerce_program_progress', ['userid' => $userid]);
         self::delete_records('local_moderncommerce_carts', ['userid' => $userid]);
         self::delete_records('local_moderncommerce_billing_profiles', ['userid' => $userid]);
         self::delete_records('local_moderncommerce_wishlist', ['userid' => $userid]);
@@ -958,6 +994,7 @@ class provider implements
     private static function anonymise_fields(): array {
         return [
             'local_moderncommerce_products' => ['createdby' => null, 'modifiedby' => null],
+            'local_moderncommerce_storepage' => ['usermodified' => 0],
             'local_moderncommerce_course_meta' => ['usermodified' => null],
             'local_moderncommerce_bundle_meta' => ['usermodified' => null],
             'local_moderncommerce_bundle_outline' => ['usermodified' => null],
@@ -985,6 +1022,8 @@ class provider implements
      */
     private static function delete_all_tables(): array {
         return [
+            'local_moderncommerce_guestpay',
+            'local_moderncommerce_program_progress',
             'local_moderncommerce_cart_items',
             'local_moderncommerce_carts',
             'local_moderncommerce_billing_profiles',

@@ -28,7 +28,9 @@ namespace local_moderncommerce\email;
  * CRUD + lookup helper for the email template table.
  */
 class template_manager {
-    /** @var string Database table that stores the templates. */
+    /**
+     * @var string Database table that stores the templates.
+     */
     private const TABLE = 'local_moderncommerce_emailtpl';
 
     /**

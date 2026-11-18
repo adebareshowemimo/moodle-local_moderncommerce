@@ -22,10 +22,19 @@ composer run mc:perf-report
 
 ## Learner Dashboard Routing
 
-Authenticated requests to Moodle's core `/my` dashboard are redirected to
-`/local/moderncommerce/learner/index.php`. The redirect is registered through
-the `before_http_headers` hook in `db/hooks.php`; guests continue through
-Moodle's normal login flow.
+Moodle's core `/my` dashboard remains available by default. Administrators can
+opt in to replacing it with `/local/moderncommerce/learner/index.php` using
+**Replace Moodle dashboard with learner workspace** under Modern Commerce's
+Navigation settings. The optional redirect is registered through the
+`before_http_headers` hook in `db/hooks.php`; guests continue through Moodle's
+normal login flow.
+
+## Returning to Moodle administration
+
+The Modern Commerce admin sidebar keeps a **Back to Moodle administration**
+link in its fixed footer. The link opens Moodle's Site administration page and
+is shown only to users with `moodle/site:configview`. Users without access to
+Moodle's administration tree do not see the link.
 
 ## Payments
 

@@ -64,10 +64,14 @@ use local_moderncommerce\storefront\resolver\videohero_resolver;
  * Synthesises the admin widget gallery (every widget type, every style) with demo data.
  */
 class gallery_builder {
-    /** @var string Web service the gallery's product widgets fetch demo items from. */
+    /**
+     * @var string Web service the gallery's product widgets fetch demo items from.
+     */
     private const DEMO_CATALOG_METHOD = 'local_moderncommerce_get_demo_catalog';
 
-    /** @var string Pagetype/zone slug the synthetic instances are tagged with. */
+    /**
+     * @var string Pagetype/zone slug the synthetic instances are tagged with.
+     */
     private const SCOPE = 'gallery';
 
     /**

@@ -31,16 +31,24 @@ use xmldb_table;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class gateway_manager {
-    /** @var string Gateway table name. */
+    /**
+     * @var string Gateway table name.
+     */
     private const TABLE_GATEWAYS = 'local_moderncommerce_gateways';
 
-    /** @var string Payment attempts table name. */
+    /**
+     * @var string Payment attempts table name.
+     */
     private const TABLE_ATTEMPTS = 'local_moderncommerce_payment_attempts';
 
-    /** @var string Payment events table name. */
+    /**
+     * @var string Payment events table name.
+     */
     private const TABLE_EVENTS = 'local_moderncommerce_payment_events';
 
-    /** @var string Webhook events table name. */
+    /**
+     * @var string Webhook events table name.
+     */
     private const TABLE_WEBHOOKS = 'local_moderncommerce_webhook_events';
 
     /**

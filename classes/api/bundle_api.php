@@ -30,10 +30,14 @@ namespace local_moderncommerce\api;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class bundle_api {
-    /** @var string Bundle product type. */
+    /**
+     * @var string Bundle product type.
+     */
     private const TYPE_BUNDLE = 'bundle';
 
-    /** @var string Program product type. */
+    /**
+     * @var string Program product type.
+     */
     private const TYPE_PROGRAM = 'program';
 
     /**
@@ -167,6 +171,24 @@ class bundle_api {
         $DB->delete_records('local_moderncommerce_product_inventory', ['productid' => $bundleid]);
         $DB->delete_records('local_moderncommerce_product_category_map', ['productid' => $bundleid]);
         $DB->delete_records('local_moderncommerce_product_tags', ['productid' => $bundleid]);
+
+        // Bundle-owned satellite rows. These are keyed by bundleid rather than productid
+        // and would otherwise survive the product they belong to.
+        foreach (
+            [
+            'local_moderncommerce_bundle_meta',
+            'local_moderncommerce_bundle_outline',
+            'local_moderncommerce_bundle_mustpass',
+            'local_moderncommerce_bundle_prereq',
+            'local_moderncommerce_bundle_tags',
+            ] as $bundletable
+        ) {
+            // These tables are optional on some installs, so check before touching them.
+            if ($DB->get_manager()->table_exists($bundletable)) {
+                $DB->delete_records($bundletable, ['bundleid' => $bundleid]);
+            }
+        }
+
         $DB->delete_records_select(
             'local_moderncommerce_product_relations',
             'parentproductid = :id OR childproductid = :id2',

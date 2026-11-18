@@ -24,22 +24,34 @@ namespace local_moderncommerce\output;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class admin_shell {
-    /** @var string The active navigation key */
+    /**
+     * @var string The active navigation key
+     */
     private string $activenav;
 
-    /** @var string Page title */
+    /**
+     * @var string Page title
+     */
     private string $title;
 
-    /** @var string Page subtitle */
+    /**
+     * @var string Page subtitle
+     */
     private string $subtitle;
 
-    /** @var string Pre-rendered content HTML */
+    /**
+     * @var string Pre-rendered content HTML
+     */
     private string $contenthtml;
 
-    /** @var string Pre-rendered actions HTML */
+    /**
+     * @var string Pre-rendered actions HTML
+     */
     private string $actionshtml;
 
-    /** @var bool Whether to hide the topbar */
+    /**
+     * @var bool Whether to hide the topbar
+     */
     private bool $hidetopbar;
 
     /**
@@ -79,6 +91,13 @@ class admin_shell {
                     'url' => '/local/moderncommerce/admin/customers.php',
                     'icon' => 'bi-people',
                     'capability' => 'local/moderncommerce:viewallorders',
+                ],
+                'companies' => [
+                    'label' => 'nav_companies',
+                    'url' => '/local/moderncommerce/admin/companies.php',
+                    'icon' => 'bi-buildings',
+                    'plugin' => 'local_moderncompany',
+                    'capability' => 'local/moderncompany:managecompanies',
                 ],
                 'invoices' => [
                     'label' => 'nav_invoices',
@@ -906,6 +925,7 @@ class admin_shell {
 
         global $CFG;
         $navigation = $this->get_navigation();
+        $systemcontext = \context_system::instance();
         return [
             'title' => $this->title,
             'subtitle' => $this->subtitle,
@@ -919,6 +939,8 @@ class admin_shell {
             'config' => [
                 'wwwroot' => $CFG->wwwroot,
             ],
+            'canaccessmoodleadmin' => has_capability('moodle/site:configview', $systemcontext),
+            'moodleadminurl' => (new \moodle_url('/admin/search.php'))->out(false),
             'version' => self::get_release_version(),
         ];
     }

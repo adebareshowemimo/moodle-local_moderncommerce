@@ -45,7 +45,9 @@ use local_moderncommerce\api\bundle_api;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class program_progress_service {
-    /** Program progress table name. */
+    /**
+     * Program progress table name.
+     */
     private const TABLE = 'local_moderncommerce_program_progress';
 
     /**

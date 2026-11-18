@@ -5940,6 +5940,35 @@ body.mc-public-catalog-page .mc-catalog-section {
   color: var(--mc-featured-button-text, #fff);
 }
 
+/* The in-cart button is a settled confirmation, not the widget's call to
+   action, so it opts out of the accent painting above. Specificity has to
+   match those rules to win. */
+.mw-widget--featured .mc-course-card-btn--incart.mc-button,
+.mw-widget--featured .mc-course-card-btn--incart,
+.mw-widget--related .mc-course-card-btn--incart.mc-button,
+.mw-widget--related .mc-course-card-btn--incart {
+  --mc-button-bg: var(--mc-success-bg);
+  --mc-button-border: var(--mc-success-border);
+  --mc-button-color: var(--mc-success-text);
+  --mc-button-hover-bg: var(--mc-success);
+  --mc-button-hover-border: var(--mc-success);
+  --mc-button-hover-color: #fff;
+  background: var(--mc-success-bg);
+  border-color: var(--mc-success-border);
+  color: var(--mc-success-text);
+}
+
+.mw-widget--featured .mc-course-card-btn--incart.mc-button:hover,
+.mw-widget--featured .mc-course-card-btn--incart.mc-button:focus,
+.mw-widget--featured .mc-course-card-btn--incart:hover,
+.mw-widget--related .mc-course-card-btn--incart.mc-button:hover,
+.mw-widget--related .mc-course-card-btn--incart.mc-button:focus,
+.mw-widget--related .mc-course-card-btn--incart:hover {
+  background: var(--mc-danger-bg);
+  border-color: var(--mc-danger-border);
+  color: var(--mc-danger-text);
+}
+
 .mc-course-card-category,
 .mc-badge,
 .mw-countdown__label,

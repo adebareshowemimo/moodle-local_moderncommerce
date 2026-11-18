@@ -32,10 +32,14 @@ use xmldb_table;
  * Provides learner-safe manual invoice rows.
  */
 class learner_invoice_service {
-    /** @var string[] Statuses learners are allowed to see. */
+    /**
+     * @var string[] Statuses learners are allowed to see.
+     */
     public const VISIBLE_STATUSES = ['sent', 'overdue', 'paid'];
 
-    /** @var string[] Statuses counted as outstanding. */
+    /**
+     * @var string[] Statuses counted as outstanding.
+     */
     private const OUTSTANDING_STATUSES = ['sent', 'overdue'];
 
     /**

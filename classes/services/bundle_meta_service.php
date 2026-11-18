@@ -25,19 +25,33 @@ namespace local_moderncommerce\services;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class bundle_meta_service {
-    /** @var string */
+    /**
+     * @var string
+     */
     private const TABLE_META = 'local_moderncommerce_bundle_meta';
-    /** @var string */
+    /**
+     * @var string
+     */
     private const TABLE_OUTLINE = 'local_moderncommerce_bundle_outline';
-    /** @var string */
+    /**
+     * @var string
+     */
     private const TABLE_MUSTPASS = 'local_moderncommerce_bundle_mustpass';
-    /** @var string */
+    /**
+     * @var string
+     */
     private const TABLE_PREREQ = 'local_moderncommerce_bundle_prereq';
-    /** @var string */
+    /**
+     * @var string
+     */
     private const TABLE_TAGS = 'local_moderncommerce_bundle_tags';
-    /** @var string */
+    /**
+     * @var string
+     */
     private const TABLE_PRODUCT_COURSES = 'local_moderncommerce_product_courses';
-    /** @var string */
+    /**
+     * @var string
+     */
     private const TABLE_PRODUCT_PRICES = 'local_moderncommerce_product_prices';
     /**
      * Return default meta for a bundle.

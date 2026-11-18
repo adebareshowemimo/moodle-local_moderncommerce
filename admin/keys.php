@@ -39,7 +39,7 @@ $PAGE->set_title(get_string('managekeys', 'local_moderncommerce'));
 
 $shellhtml = keys_page::render(
     $OUTPUT,
-    '',
+    'product',
     0,
     '',
     'keys',

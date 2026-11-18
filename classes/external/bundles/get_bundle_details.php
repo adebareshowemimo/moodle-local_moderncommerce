@@ -30,6 +30,7 @@ use core_external\external_function_parameters;
 use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
+use local_moderncommerce\api\cart_api;
 use local_moderncommerce\api\bundle_api;
 use local_moderncommerce\output\bundle_details_page;
 use local_moderncommerce\services\access_service;
@@ -111,13 +112,17 @@ class get_bundle_details extends external_api {
                 'showfeatured' => !empty($data['showfeatured']),
                 'showbestseller' => !empty($data['showbestseller']),
                 'isloggedin' => $userid > 0,
+                'guestcheckout' => \local_moderncommerce\services\guest_checkout_service::enabled(),
                 'productid' => $id,
                 'inwishlist' => self::is_in_wishlist($id, $userid),
+                'incart' => self::is_in_cart($id, $userid),
             ],
             'courses' => array_map([self::class, 'normalise_course'], $data['courses'] ?? []),
             'urls' => [
                 'addtocart' => (string)($data['addtocarturl'] ?? ''),
                 'checkout' => (string)($data['checkouturl'] ?? ''),
+                'cart' => (new moodle_url('/local/moderncommerce/cart.php'))->out(false),
+                'removefromcart' => (string)($data['removefromcarturl'] ?? ''),
                 'catalog' => (string)($data['catalogurl'] ?? (new moodle_url('/local/moderncommerce/index.php'))->out(false)),
                 'launch' => $accessurl ? $accessurl->out(false) : '',
             ],
@@ -210,10 +215,33 @@ class get_bundle_details extends external_api {
             'isavailable' => new external_value(PARAM_BOOL, 'Whether bundle can be purchased.'),
             'showfeatured' => new external_value(PARAM_BOOL, 'Whether featured badge should be shown.'),
             'showbestseller' => new external_value(PARAM_BOOL, 'Whether bestseller badge should be shown.'),
+            'guestcheckout' => new external_value(PARAM_BOOL, 'Allow guest purchases.', VALUE_DEFAULT, false),
             'isloggedin' => new external_value(PARAM_BOOL, 'Whether the visitor is logged in.'),
             'productid' => new external_value(PARAM_INT, 'Product ID for this bundle.'),
             'inwishlist' => new external_value(PARAM_BOOL, 'Whether the current learner has saved this bundle.'),
+            'incart' => new external_value(PARAM_BOOL, 'Whether the bundle is already in the learner cart.'),
         ]);
+    }
+
+    /**
+     * Check whether the bundle is already in the current learner cart.
+     *
+     * @param int $bundleid Bundle product ID.
+     * @param int $userid Current user ID, or zero for guests.
+     * @return bool
+     */
+    private static function is_in_cart(int $bundleid, int $userid): bool {
+        if ($bundleid <= 0 || $userid <= 0) {
+            return false;
+        }
+
+        foreach (cart_api::get_bundle_cart_items($userid) as $cartitem) {
+            if ((int)($cartitem->bundleid ?? 0) === $bundleid) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -276,6 +304,8 @@ class get_bundle_details extends external_api {
         return new external_single_structure([
             'addtocart' => new external_value(PARAM_RAW, 'Add to cart URL.'),
             'checkout' => new external_value(PARAM_RAW, 'Checkout URL.'),
+            'cart' => new external_value(PARAM_RAW, 'Cart URL.'),
+            'removefromcart' => new external_value(PARAM_RAW, 'Remove-from-cart URL.'),
             'catalog' => new external_value(PARAM_RAW, 'Catalog URL.'),
             'launch' => new external_value(PARAM_RAW, 'Course launch URL when already entitled.'),
         ]);
@@ -303,11 +333,17 @@ class get_bundle_details extends external_api {
                 'isavailable' => false,
                 'showfeatured' => false,
                 'showbestseller' => false,
+                'isloggedin' => false,
+                'productid' => 0,
+                'inwishlist' => false,
+                'incart' => false,
             ],
             'courses' => [],
             'urls' => [
                 'addtocart' => '',
                 'checkout' => '',
+                'cart' => (new moodle_url('/local/moderncommerce/cart.php'))->out(false),
+                'removefromcart' => '',
                 'catalog' => (new moodle_url('/local/moderncommerce/index.php'))->out(false),
                 'launch' => '',
             ],

@@ -2461,6 +2461,37 @@ body.mc-public-catalog-page .mc-catalog-section .mc-course-card-footer {
     position: static;
   }
 }
+/* The in-cart button is a settled confirmation, not the catalogue's primary
+   call to action, so it opts out of the accent painting above. Specificity has
+   to match those rules to win. */
+.mc-catalog-section .mc-course-card-btn--incart.mc-button,
+.mc-catalog-section .mc-course-card-btn--incart,
+.mw-widget--catalog .mc-course-card-btn--incart.mc-button,
+.mw-widget--catalog .mc-course-card-btn--incart,
+body.mc-public-catalog-page .mc-course-card-btn--incart.mc-button,
+body.mc-public-catalog-page .mc-course-card-btn--incart {
+  --mc-button-bg: var(--mc-success-bg);
+  --mc-button-border: var(--mc-success-border);
+  --mc-button-color: var(--mc-success-text);
+  background: var(--mc-success-bg);
+  border-color: var(--mc-success-border);
+  color: var(--mc-success-text);
+}
+
+.mc-catalog-section .mc-course-card-btn--incart.mc-button:hover,
+.mc-catalog-section .mc-course-card-btn--incart:hover,
+.mw-widget--catalog .mc-course-card-btn--incart.mc-button:hover,
+.mw-widget--catalog .mc-course-card-btn--incart:hover,
+body.mc-public-catalog-page .mc-course-card-btn--incart.mc-button:hover,
+body.mc-public-catalog-page .mc-course-card-btn--incart:hover {
+  --mc-button-hover-bg: var(--mc-danger-bg);
+  --mc-button-hover-border: var(--mc-danger-border);
+  --mc-button-hover-color: var(--mc-danger-text)fff;
+  background: var(--mc-danger-bg);
+  border-color: var(--mc-danger-border);
+  color: var(--mc-danger-text);
+}
+
 /*
  * Modern Commerce catalog and product-card bundle.
  *

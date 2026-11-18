@@ -37,25 +37,39 @@ use local_moderncommerce\services\meta_service;
  * Bundle details page renderable class.
  */
 class bundle_details_page implements renderable, templatable {
-    /** @var object Bundle record */
+    /**
+     * @var object Bundle record
+     */
     protected $bundle;
 
-    /** @var array Bundle courses */
+    /**
+     * @var array Bundle courses
+     */
     protected $courses;
 
-    /** @var bool User has purchased bundle */
+    /**
+     * @var bool User has purchased bundle
+     */
     protected $purchased;
 
-    /** @var array Owned course IDs */
+    /**
+     * @var array Owned course IDs
+     */
     protected $ownedcourses = [];
 
-    /** @var float Owned courses value */
+    /**
+     * @var float Owned courses value
+     */
     protected $ownedcoursesvalue = 0;
 
-    /** @var float Adjusted price */
+    /**
+     * @var float Adjusted price
+     */
     protected $adjustedprice = 0;
 
-    /** @var object Bundle meta */
+    /**
+     * @var object Bundle meta
+     */
     protected $bundlemeta;
 
     /**
@@ -291,6 +305,12 @@ class bundle_details_page implements renderable, templatable {
         // Add URLs.
         $data['addtocarturl'] = (new moodle_url('/local/moderncommerce/cart.php', [
             'action' => 'add',
+            'bundleid' => $this->bundle->id,
+            'sesskey' => sesskey(),
+        ]))->out(false);
+
+        $data['removefromcarturl'] = (new moodle_url('/local/moderncommerce/cart.php', [
+            'action' => 'remove',
             'bundleid' => $this->bundle->id,
             'sesskey' => sesskey(),
         ]))->out(false);

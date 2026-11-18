@@ -32,16 +32,24 @@ use moodle_url;
  * Centralises report filtering, columns, tables, metrics, charts, and export rows.
  */
 class report_service {
-    /** @var string[] Report types. */
+    /**
+     * @var string[] Report types.
+     */
     public const TYPES = ['sales', 'courses', 'coupons'];
 
-    /** @var string[] Period buckets. */
+    /**
+     * @var string[] Period buckets.
+     */
     public const PERIODS = ['daily', 'weekly', 'monthly', 'yearly'];
 
-    /** @var int Maximum rows returned for one table page. */
+    /**
+     * @var int Maximum rows returned for one table page.
+     */
     private const MAX_PER_PAGE = 100;
 
-    /** @var int[] Allowed 12-grid spans. */
+    /**
+     * @var int[] Allowed 12-grid spans.
+     */
     private const SIZES = [12, 6, 4, 3];
 
     /**

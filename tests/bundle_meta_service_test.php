@@ -64,20 +64,20 @@ final class bundle_meta_service_test extends advanced_testcase {
         }
 
         $summary = bundle_meta_service::get_learning_hours_summary($bundleid);
-        $this->assertFalse($summary['fieldexists']);
+        $this->assertTrue($summary['fieldexists']);
         $this->assertSame(0, $summary['totalminutes']);
         $this->assertSame(3, $summary['missingcount']);
 
-        /** @var core_customfield_generator $customfieldgenerator */
+        // The core custom-field generator supplies course learning hours.
         $customfieldgenerator = $this->getDataGenerator()->get_plugin_generator('core_customfield');
-        $category = $customfieldgenerator->create_category();
-        $field = $customfieldgenerator->create_field([
-            'categoryid' => $category->get('id'),
-            'name' => 'Learning hours',
-            'shortname' => 'learninghours',
-            'type' => 'number',
-            'configdata' => ['decimalplaces' => 2],
-        ]);
+        $field = null;
+        foreach (\core_course\customfield\course_handler::create()->get_fields() as $candidate) {
+            if ((string) $candidate->get('shortname') === 'learninghours') {
+                $field = $candidate;
+                break;
+            }
+        }
+        $this->assertNotNull($field);
 
         $summary = bundle_meta_service::get_learning_hours_summary($bundleid);
         $this->assertTrue($summary['fieldexists']);

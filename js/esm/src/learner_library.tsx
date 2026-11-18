@@ -17,7 +17,7 @@ import type {Dispatch, ReactNode} from "react";
 import {callMoodleService, formatCount, Labels, refreshNavbarCart} from "./learner_common";
 import {mcClasses, toast, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
-import ModernLearnerLayout, {type LearnerLayoutContext} from "./learner_layout";
+import ModernLearnerLayout, {learnerAppHashUrl, type LearnerLayoutContext} from "./learner_layout";
 import LearnerListRow from "./learner_list_row";
 import {LearnerStatStrip, LearnerStatTile} from "./learner_stat_tiles";
 import {McTablePagination} from "./table_components";
@@ -25,6 +25,7 @@ import {McTablePagination} from "./table_components";
 type CatalogItem = {
     id: number;
     productid: number;
+    incart: boolean;
     itemtype: string;
     title: string;
     thumbnail: string;
@@ -255,6 +256,7 @@ function LibraryItem({
     wishlistSaved,
     onAddToCart,
     onToggleWishlist,
+    onRemoveFromCart,
 }: {
     item: CatalogItem;
     labels: Labels;
@@ -264,6 +266,7 @@ function LibraryItem({
     wishlistSaved: boolean;
     onAddToCart: Dispatch<CatalogItem>;
     onToggleWishlist?: (item: CatalogItem, saved: boolean) => void;
+    onRemoveFromCart: Dispatch<CatalogItem>;
 }) {
     const typeLabel = itemTypeLabel(item, labels);
     const accessUrl = item.accessurl || "#/dashboard";
@@ -276,6 +279,23 @@ function LibraryItem({
             <i className={`bi ${ownedAction.icon}`} aria-hidden="true" />
             {ownedAction.label}
         </a>
+    ) : item.incart ? (
+        /* In the cart: the button becomes its own inverse, so a mis-click is
+           undone in place. Hover/focus swaps label and icon via CSS. */
+        <button
+            type="button"
+            className={mcClasses("mc-button mc-course-card-btn--incart")}
+            disabled={busy}
+            onClick={() => onRemoveFromCart(item)}
+            title={label(labels, "removefromcart", "Remove from cart")}
+            aria-label={label(labels, "removefromcart", "Remove from cart")}
+        >
+            <span className="mc-incart__icons">
+                <i className="bi bi-cart-check mc-incart__icon" aria-hidden="true" />
+                <i className="bi bi-dash-lg mc-incart__icon--hover" aria-hidden="true" />
+            </span>
+            {label(labels, "incart", "In cart")}
+        </button>
     ) : (
         <button
             type="button"
@@ -406,6 +426,22 @@ function LibraryItem({
                             <i className={`bi ${ownedAction.icon}`} aria-hidden="true" />
                             {ownedAction.label}
                         </a>
+                    ) : item.incart ? (
+                        <McButton
+                            type="button"
+                            className={mcClasses("mc-course-card-btn mc-course-card-btn--incart")}
+                            loading={busy}
+                            loadingLabel={label(labels, "loading")}
+                            onClick={() => onRemoveFromCart(item)}
+                            title={label(labels, "removefromcart", "Remove from cart")}
+                            aria-label={label(labels, "removefromcart", "Remove from cart")}
+                        >
+                            <span className="mc-incart__icons">
+                                <i className="bi bi-cart-check mc-incart__icon" aria-hidden="true" />
+                                <i className="bi bi-dash-lg mc-incart__icon--hover" aria-hidden="true" />
+                            </span>
+                            {label(labels, "incart", "In cart")}
+                        </McButton>
                     ) : (
                         <McButton
                             type="button"
@@ -534,6 +570,41 @@ export default function LearnerLibrary({
             const result = await callMoodleService<CartResponse>(cartMethodName, args);
             void refreshNavbarCart(result);
             toast.success(result.message);
+            // Flip the card to its "In cart" state so the button stops offering
+            // an add the service would only reject.
+            setData((current) => (current ? {
+                ...current,
+                items: current.items.map((currentItem) => (
+                    currentItem.id === item.id && currentItem.itemtype === item.itemtype
+                        ? {...currentItem, incart: true}
+                        : currentItem
+                )),
+            } : current));
+        } catch (caught) {
+            setError((caught as Error).message);
+        } finally {
+            setBusyItem(0);
+        }
+    };
+
+    const removeFromCart = async(item: CatalogItem) => {
+        setBusyItem(item.id);
+        setError("");
+        try {
+            const args = item.isbundle || item.isprogram
+                ? {action: "removebundle", bundleid: item.id}
+                : {action: "removecourse", courseid: item.id};
+            const result = await callMoodleService<CartResponse>(cartMethodName, args);
+            void refreshNavbarCart(result);
+            toast.success(result.message);
+            setData((current) => (current ? {
+                ...current,
+                items: current.items.map((currentItem) => (
+                    currentItem.id === item.id && currentItem.itemtype === item.itemtype
+                        ? {...currentItem, incart: false}
+                        : currentItem
+                )),
+            } : current));
         } catch (caught) {
             setError((caught as Error).message);
         } finally {
@@ -810,6 +881,7 @@ export default function LearnerLibrary({
                                 wishlistSaved={item.inwishlist || savedWishlistProductIds.has(item.productid)}
                                 onAddToCart={addToCart}
                                 onToggleWishlist={wishlistUpdateMethodName ? toggleWishlist : undefined}
+                                onRemoveFromCart={removeFromCart}
                             />
                         ))}
                     </div>

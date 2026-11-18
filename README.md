@@ -9,6 +9,7 @@ ModernCommerce was created by Adebare Showemimo and is maintained by [Agunfon In
 - Product catalog for courses, bundles, programs, and subscription plans
 - Configurable prices, sale pricing, inventory, categories, tags, and attributes
 - Cart, checkout, orders, invoices, refunds, coupons, and tax handling
+- Optional Stripe guest checkout with account creation and course enrolment after verified payment
 - Stripe, PayPal, Paystack, and Flutterwave payment gateways
 - Signed payment webhooks, payment-event tracking, and diagnostic logs
 - Automatic Moodle enrolment, access entitlements, and prepaid enrolment keys
@@ -18,6 +19,7 @@ ModernCommerce was created by Adebare Showemimo and is maintained by [Agunfon In
 - Reviews, notifications, abandoned-cart recovery, reports, and audit logs
 - [22 configurable admin-dashboard widgets](https://github.com/adebareshowemimo/moodle-local_moderncommerce/blob/main/docs/dashboard-widgets.md): 4 KPI tiles and 18 analytics or table widgets
 - Optional integrations for Course Reminder and Enrolment Notifier add-ons
+- Optional company licensing with pooled seats, exact-domain membership, and licensed learning catalogs
 
 ## Requirements
 
@@ -27,7 +29,7 @@ ModernCommerce was created by Adebare Showemimo and is maintained by [Agunfon In
 - Moodle cron configured
 - HTTPS for production payment gateways and webhooks
 
-The Moodle component name is `local_moderncommerce`. The current plugin release is `2.3.0`.
+The Moodle component name is `local_moderncommerce`. The current plugin release is `2.5.0` (Moodle build `2026111801`).
 
 ## Installation
 
@@ -60,6 +62,7 @@ Use `--seed` only on demo or staging systems. Never reset or seed sample orders 
 - [Documentation index](docs/README.md)
 - [Dashboard widgets: count, purpose, calculations, and customization](docs/dashboard-widgets.md)
 - [Orders, invoices, refunds, and reports](docs/orders-and-reports.md)
+- [Company licensing and domain enrolment](docs/company-licensing.md)
 - [Storefront widget reference](docs/reference/widgets.md)
 
 ## Development

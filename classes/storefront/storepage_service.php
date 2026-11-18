@@ -43,25 +43,39 @@ use stdClass;
  * purge_cache().
  */
 class storepage_service {
-    /** @var string Plugin component name. */
+    /**
+     * @var string Plugin component name.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
-    /** @var string Cache definition name declared in db/caches.php. */
+    /**
+     * @var string Cache definition name declared in db/caches.php.
+     */
     private const CACHE_AREA = 'storepages';
 
-    /** @var string Single cache key holding the full page list. */
+    /**
+     * @var string Single cache key holding the full page list.
+     */
     private const CACHE_KEY = 'all';
 
-    /** @var string Content page template: hero, main, aside, footer. */
+    /**
+     * @var string Content page template: hero, main, aside, footer.
+     */
     const TEMPLATE_CONTENT = 'content';
 
-    /** @var string Landing page template: the richer home_* band set. */
+    /**
+     * @var string Landing page template: the richer home_* band set.
+     */
     const TEMPLATE_LANDING = 'landing';
 
-    /** @var int Maximum slug length, capped by local_moderncommerce_widget.pagetype char(30). */
+    /**
+     * @var int Maximum slug length, capped by local_moderncommerce_widget.pagetype char(30).
+     */
     const SLUG_MAXLENGTH = 30;
 
-    /** @var int Minimum slug length. */
+    /**
+     * @var int Minimum slug length.
+     */
     const SLUG_MINLENGTH = 2;
 
     /**
@@ -106,7 +120,9 @@ class storepage_service {
         'version',
     ];
 
-    /** @var array<string, stdClass>|null Request-scoped page cache keyed by slug. */
+    /**
+     * @var array<string, stdClass>|null Request-scoped page cache keyed by slug.
+     */
     private static ?array $pages = null;
 
     /**

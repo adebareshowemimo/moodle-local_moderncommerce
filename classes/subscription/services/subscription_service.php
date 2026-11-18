@@ -26,22 +26,34 @@ use local_moderncommerce\subscription\api\plan_api;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class subscription_service {
-    /** Active subscription status. */
+    /**
+     * Active subscription status.
+     */
     const STATUS_ACTIVE = 'active';
 
-    /** Trial subscription status. */
+    /**
+     * Trial subscription status.
+     */
     const STATUS_TRIAL = 'trial';
 
-    /** Grace-period subscription status. */
+    /**
+     * Grace-period subscription status.
+     */
     const STATUS_GRACE = 'grace';
 
-    /** Suspended subscription status. */
+    /**
+     * Suspended subscription status.
+     */
     const STATUS_SUSPENDED = 'suspended';
 
-    /** Cancelled subscription status. */
+    /**
+     * Cancelled subscription status.
+     */
     const STATUS_CANCELLED = 'cancelled';
 
-    /** Expired subscription status. */
+    /**
+     * Expired subscription status.
+     */
     const STATUS_EXPIRED = 'expired';
 
     /**

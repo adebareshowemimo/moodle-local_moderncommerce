@@ -29,7 +29,8 @@ class enrolment_service {
      *
      * @param int $userid User ID.
      * @param int $courseid Course ID.
-     * @param array $options Optional orderid, enrollkeyid, and method.
+     * @param array $options Optional order/product/key lineage, duration, explicit timeend, role, method,
+     *     sourcekey, and metadata. A sourcekey allows optional add-ons to use the shared entitlement ledger.
      * @return \stdClass Result data.
      */
     public static function enrol_user_in_course($userid, $courseid, array $options = []) {
@@ -41,6 +42,15 @@ class enrolment_service {
         $instance = self::get_or_create_instance($plugin, $course);
         $times = self::calculate_enrolment_times($instance);
         $roleid = self::resolve_roleid($plugin, $instance);
+        if (!empty($options['enrolduration'])) {
+            $times->timeend = $times->timestart + (int) $options['enrolduration'];
+        }
+        if (array_key_exists('timeend', $options)) {
+            $times->timeend = max(0, (int) $options['timeend']);
+        }
+        if (!empty($options['roleid'])) {
+            $roleid = (int) $options['roleid'];
+        }
 
         $ue = $DB->get_record('user_enrolments', [
             'enrolid' => $instance->id,
@@ -147,6 +157,56 @@ class enrolment_service {
         $DB->update_record('local_moderncommerce_entitlements', $entitlement);
         self::record_entitlement_event($entitlement, 'revoked', $oldstatus, 'unenrolled');
 
+        return true;
+    }
+
+    /**
+     * Revoke one entitlement using its stable source key.
+     *
+     * The Moodle enrolment is removed only when no other active entitlement
+     * still grants the same course. This preserves purchases, keys,
+     * subscriptions, and overlapping add-on access.
+     *
+     * @param string $sourcekey Stable entitlement source key.
+     * @param string $reason Revocation reason.
+     * @return bool True when a matching active entitlement was revoked.
+     */
+    public static function revoke_entitlement_by_sourcekey(string $sourcekey, string $reason = 'revoked'): bool {
+        global $DB;
+
+        $entitlement = $DB->get_record('local_moderncommerce_entitlements', [
+            'sourcekey' => $sourcekey,
+            'status' => 'active',
+        ]);
+        if (!$entitlement) {
+            return false;
+        }
+
+        if (
+            !self::has_other_active_entitlements(
+                (int) $entitlement->userid,
+                (int) $entitlement->courseid,
+                (int) $entitlement->id
+            )
+        ) {
+            $instance = empty($entitlement->enrolinstanceid)
+                ? null
+                : $DB->get_record('enrol', ['id' => $entitlement->enrolinstanceid]);
+            if ($instance) {
+                $plugin = enrol_get_plugin($instance->enrol);
+                if ($plugin) {
+                    $plugin->unenrol_user($instance, (int) $entitlement->userid);
+                }
+            }
+        }
+
+        $oldstatus = $entitlement->status;
+        $entitlement->status = 'revoked';
+        $entitlement->timerevoked = time();
+        $entitlement->revokereason = clean_param($reason, PARAM_TEXT);
+        $entitlement->timemodified = time();
+        $DB->update_record('local_moderncommerce_entitlements', $entitlement);
+        self::record_entitlement_event($entitlement, 'revoked', $oldstatus, $reason);
         return true;
     }
 
@@ -335,13 +395,23 @@ class enrolment_service {
 
         $orderid = (int)($options['orderid'] ?? 0);
         $enrollkeyid = !empty($options['enrollkeyid']) ? (int)$options['enrollkeyid'] : 0;
-        if ($orderid <= 0 && $enrollkeyid <= 0) {
+        $explicitsourcekey = trim((string) ($options['sourcekey'] ?? ''));
+        if ($orderid <= 0 && $enrollkeyid <= 0 && $explicitsourcekey === '') {
             return;
         }
 
-        $lineage = self::resolve_entitlement_lineage($orderid, $courseid);
+        $lineage = self::resolve_entitlement_lineage(
+            $orderid,
+            $courseid,
+            !empty($options['productid']) ? (int) $options['productid'] : 0
+        );
         $source = $options['method'] ?? ($enrollkeyid ? 'enrollkey' : 'purchase');
-        $sourcekey = self::make_entitlement_sourcekey($userid, $courseid, $orderid, $enrollkeyid, $lineage, $source);
+        $sourcekey = $explicitsourcekey !== ''
+            ? clean_param($explicitsourcekey, PARAM_TEXT)
+            : self::make_entitlement_sourcekey($userid, $courseid, $orderid, $enrollkeyid, $lineage, $source);
+        if ($sourcekey === '' || \core_text::strlen($sourcekey) > 190) {
+            throw new \moodle_exception('invaliddata', 'error', '', 'Invalid entitlement source key.');
+        }
 
         $record = $DB->get_record('local_moderncommerce_entitlements', ['sourcekey' => $sourcekey]);
 
@@ -370,13 +440,13 @@ class enrolment_service {
         $record->timerevoked = null;
         $record->timeexpired = null;
         $record->revokereason = null;
-        $record->metadata = self::encode_metadata([
+        $record->metadata = self::encode_metadata(array_merge([
             'method' => $source,
             'orderid' => $orderid ?: null,
             'orderitemid' => $lineage->orderitemid,
             'productid' => $lineage->productid,
             'enrollkeyid' => $enrollkeyid ?: null,
-        ]);
+        ], is_array($options['metadata'] ?? null) ? $options['metadata'] : []));
         $record->timemodified = time();
 
         if (!empty($record->id)) {
@@ -395,13 +465,14 @@ class enrolment_service {
      *
      * @param int $orderid Order ID.
      * @param int $courseid Course ID.
+     * @param int $productid Explicit product ID for non-order grants.
      * @return \stdClass Lineage data.
      */
-    private static function resolve_entitlement_lineage(int $orderid, int $courseid): \stdClass {
+    private static function resolve_entitlement_lineage(int $orderid, int $courseid, int $productid = 0): \stdClass {
         global $DB;
 
         $lineage = (object)[
-            'productid' => null,
+            'productid' => $productid > 0 ? $productid : null,
             'orderitemid' => null,
         ];
 
@@ -417,7 +488,9 @@ class enrolment_service {
         );
 
         if ($item) {
-            $lineage->productid = !empty($item->productid) ? (int)$item->productid : null;
+            if (!empty($item->productid)) {
+                $lineage->productid = (int) $item->productid;
+            }
             $lineage->orderitemid = (int)$item->id;
         }
 

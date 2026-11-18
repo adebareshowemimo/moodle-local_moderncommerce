@@ -32,6 +32,7 @@ use core_external\external_single_structure;
 use core_external\external_value;
 use core_external\external_warnings;
 use local_moderncommerce\services\pricing_service;
+use local_moderncommerce\services\product_meta_service;
 
 /**
  * List products for the admin pricing/catalog screen.
@@ -226,10 +227,18 @@ class list_products extends external_api {
             return (int) $record->id;
         }, $records);
         [$categorynames, $primarycategoryids] = self::get_product_categories($productids, $context);
+        $tags = self::get_product_tags($productids);
+        $catalogmeta = product_meta_service::get_bulk(array_map(static function ($record): array {
+            return [
+                'id' => (int) $record->id,
+                'producttype' => (string) $record->producttype,
+                'primarycourseid' => (int) ($record->primarycourseid ?? 0),
+            ];
+        }, array_values($records)));
 
         $items = [];
         foreach ($records as $record) {
-            $items[] = self::format_product($record, $categorynames, $primarycategoryids, $context);
+            $items[] = self::format_product($record, $categorynames, $primarycategoryids, $tags, $catalogmeta, $context);
         }
 
         return [
@@ -305,6 +314,20 @@ class list_products extends external_api {
             'soldcount' => new external_value(PARAM_FLOAT, 'Paid/completed quantity sold.'),
             'timecreated' => new external_value(PARAM_INT, 'Created timestamp.'),
             'timemodified' => new external_value(PARAM_INT, 'Modified timestamp.'),
+            'tags' => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'Tag.'),
+                'Product tags.'
+            ),
+            'skilllevel' => new external_value(PARAM_TEXT, 'Catalog skill level.'),
+            'language' => new external_value(PARAM_TEXT, 'Catalog language.'),
+            'durationminutes' => new external_value(PARAM_INT, 'Learning duration in minutes.'),
+            'metafeatured' => new external_value(PARAM_BOOL, 'Featured storefront badge.'),
+            'bestseller' => new external_value(PARAM_BOOL, 'Bestseller storefront badge.'),
+            'trending' => new external_value(PARAM_BOOL, 'Trending storefront badge.'),
+            'autoduration' => new external_value(PARAM_BOOL, 'Whether duration is derived from included courses.'),
+            'supportsautoduration' => new external_value(PARAM_BOOL, 'Whether this product type can derive its duration.'),
+            'autodurationminutes' => new external_value(PARAM_INT, 'Duration derived from learning hours.'),
+            'autodurationavailable' => new external_value(PARAM_BOOL, 'Whether a derived duration could be calculated.'),
         ]);
     }
 
@@ -485,6 +508,40 @@ class list_products extends external_api {
     }
 
     /**
+     * Load tags for a page of products in one query.
+     *
+     * Tags are one row per (product, tag), so they cannot come back from a scalar
+     * subquery in the main product query - this mirrors get_product_categories()
+     * and keeps the cost at one extra query per page regardless of page size.
+     *
+     * @param array $productids Product IDs on the current page.
+     * @return array Tags keyed by product ID.
+     */
+    private static function get_product_tags(array $productids): array {
+        global $DB;
+
+        if (empty($productids)) {
+            return [];
+        }
+
+        [$insql, $inparams] = $DB->get_in_or_equal($productids, SQL_PARAMS_NAMED, 'productid');
+        $records = $DB->get_records_select(
+            'local_moderncommerce_product_tags',
+            "productid {$insql}",
+            $inparams,
+            'productid ASC, tag ASC',
+            'id, productid, tag'
+        );
+
+        $tags = [];
+        foreach ($records as $record) {
+            $tags[(int) $record->productid][] = (string) $record->tag;
+        }
+
+        return $tags;
+    }
+
+    /**
      * Get category names for a set of products.
      *
      * @param array $productids Product IDs.
@@ -545,9 +602,12 @@ class list_products extends external_api {
         \stdClass $record,
         array $categorynames,
         array $primarycategoryids,
+        array $tags,
+        array $catalogmeta,
         context_system $context
     ): array {
         $productid = (int) $record->id;
+        $meta = $catalogmeta[$productid] ?? product_meta_service::empty_meta();
         $hasprice = !empty($record->priceid);
         $rawprice = $hasprice ? (float) $record->regularprice : 0.0;
         $rawcompareamount = $hasprice && $record->compareamount !== null ? (float) $record->compareamount : 0.0;
@@ -597,6 +657,17 @@ class list_products extends external_api {
             'soldcount' => (float) $record->soldcount,
             'timecreated' => (int) $record->timecreated,
             'timemodified' => (int) $record->timemodified,
+            'tags' => $tags[$productid] ?? [],
+            'skilllevel' => $meta['skilllevel'],
+            'language' => $meta['language'],
+            'durationminutes' => $meta['durationminutes'],
+            'metafeatured' => $meta['metafeatured'],
+            'bestseller' => $meta['bestseller'],
+            'trending' => $meta['trending'],
+            'autoduration' => $meta['autoduration'],
+            'supportsautoduration' => $meta['supportsautoduration'],
+            'autodurationminutes' => $meta['autodurationminutes'],
+            'autodurationavailable' => $meta['autodurationavailable'],
         ];
     }
 

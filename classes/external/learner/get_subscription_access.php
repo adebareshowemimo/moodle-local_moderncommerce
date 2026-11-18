@@ -38,7 +38,9 @@ use xmldb_table;
  * Returns the courses and products granted by a learner subscription.
  */
 class get_subscription_access extends external_api {
-    /** @var array Active subscription statuses. */
+    /**
+     * @var array Active subscription statuses.
+     */
     private const ACTIVE_STATUSES = ['active', 'trial', 'grace'];
 
     /**

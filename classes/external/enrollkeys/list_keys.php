@@ -25,6 +25,7 @@
 namespace local_moderncommerce\external\enrollkeys;
 
 use context_system;
+use local_moderncommerce\services\key_redemption_service;
 use core_external\external_api;
 use core_external\external_function_parameters;
 use core_external\external_multiple_structure;
@@ -108,8 +109,7 @@ class list_keys extends external_api {
 
         $sql = "SELECT k.*,
                        u.firstname,
-                       u.lastname,
-                       (SELECT COUNT(1) FROM {local_moderncommerce_key_usage} ku WHERE ku.enrollkeyid = k.id) AS actualused
+                       u.lastname
                   FROM {local_moderncommerce_enrollkeys} k
              LEFT JOIN {user} u ON u.id = k.createdby
                 {$wheresql}
@@ -170,7 +170,7 @@ class list_keys extends external_api {
             'expiry' => new external_value(PARAM_TEXT, 'Formatted expiry.'),
             'created' => new external_value(PARAM_TEXT, 'Formatted created date.'),
             'createdbyname' => new external_value(PARAM_TEXT, 'Creator name.'),
-            'targettype' => new external_value(PARAM_ALPHA, 'Target type.'),
+            'targettype' => new external_value(PARAM_ALPHANUMEXT, 'Target type.'),
             'targetlabel' => new external_value(PARAM_TEXT, 'Target type label.'),
             'targetname' => new external_value(PARAM_TEXT, 'Target display name.'),
         ]);
@@ -224,7 +224,7 @@ class list_keys extends external_api {
                 break;
         }
 
-        $allowedtypes = ['course', 'product'];
+        $allowedtypes = ['product', 'course'];
         if (in_array($params['targettype'], $allowedtypes, true) || $params['targetid'] > 0) {
             $targetwhere = ['t.enrollkeyid = k.id', "t.includemode = 'include'"];
             if (in_array($params['targettype'], $allowedtypes, true)) {
@@ -250,16 +250,16 @@ class list_keys extends external_api {
     /**
      * Build the SQL EXISTS clause that scopes keys by what they enrol into.
      *
-     * Course keys enrol into a single course, either directly (targettype 'course')
-     * or through a course-type product. Bundle keys enrol into a bundle or program
-     * product. The clause references the outer enrollkeys alias "k" and uses no bound
-     * parameters (only fixed enum literals), so it is safe to embed and reuse.
+     * Product keys enrol through a course-type product; bundle keys through a bundle or
+     * program product. The clause references the outer enrollkeys alias "k" and uses no
+     * bound parameters (only fixed enum literals), so it is safe to embed and reuse.
      *
      * @param string $productkind Either 'course' or 'bundle'.
      * @return string SQL boolean expression (defaults to "1 = 1" for unknown kinds).
      */
     private static function productkind_clause(string $productkind): string {
 
+        // An "any" key can be spent on either a course or a bundle, so it belongs in both views.
         if ($productkind === 'course') {
             return "EXISTS (
                         SELECT 1
@@ -267,7 +267,8 @@ class list_keys extends external_api {
                          WHERE tk.enrollkeyid = k.id
                            AND tk.includemode = 'include'
                            AND (
-                               tk.targettype = 'course'
+                               tk.targettype = 'anycourseproduct'
+                               OR tk.targettype = 'course'
                                OR (tk.targettype = 'product' AND EXISTS (
                                    SELECT 1
                                      FROM {local_moderncommerce_products} pk
@@ -282,15 +283,42 @@ class list_keys extends external_api {
                           FROM {local_moderncommerce_enrollkey_targets} tk
                          WHERE tk.enrollkeyid = k.id
                            AND tk.includemode = 'include'
-                           AND tk.targettype = 'product'
-                           AND EXISTS (
-                               SELECT 1
-                                 FROM {local_moderncommerce_products} pk
-                                WHERE pk.id = tk.targetid
-                                  AND pk.producttype IN ('bundle', 'program')))";
+                           AND (
+                               tk.targettype = 'anyproduct'
+                               OR (tk.targettype = 'product' AND EXISTS (
+                                   SELECT 1
+                                     FROM {local_moderncommerce_products} pk
+                                    WHERE pk.id = tk.targetid
+                                      AND pk.producttype IN ('bundle', 'program')))
+                           ))";
         }
 
         return '1 = 1';
+    }
+
+    /**
+     * Human readable label for what a key targets.
+     *
+     * @param string $targettype Target row type.
+     * @param string $producttype Product type of the target, when it is a product.
+     * @return string
+     */
+    private static function target_label(string $targettype, string $producttype): string {
+        if (
+            $targettype === key_redemption_service::TARGET_ANY_COURSE
+                || $targettype === 'course'
+                || ($targettype === 'product' && $producttype === 'course')
+        ) {
+            return get_string('product', 'local_moderncommerce');
+        }
+        if (
+            $targettype === key_redemption_service::TARGET_ANY_PRODUCT
+                || ($targettype === 'product' && in_array($producttype, ['bundle', 'program'], true))
+        ) {
+            return get_string('bundleorprogram', 'local_moderncommerce');
+        }
+
+        return '';
     }
 
     /**
@@ -318,36 +346,52 @@ class list_keys extends external_api {
         );
 
         $targetsbykey = [];
-        $courseids = [];
+        $extracounts = [];
         $productids = [];
+        $courseids = [];
         foreach ($rows as $row) {
             if (isset($targetsbykey[$row->enrollkeyid])) {
+                // Keys may carry several targets; the column names the first and counts the rest.
+                $extracounts[$row->enrollkeyid] = ($extracounts[$row->enrollkeyid] ?? 0) + 1;
                 continue;
             }
             $targetsbykey[$row->enrollkeyid] = $row;
-            if ($row->targettype === 'course') {
-                $courseids[(int) $row->targetid] = true;
-            } else if ($row->targettype === 'product') {
+            if ($row->targettype === 'product') {
                 $productids[(int) $row->targetid] = true;
+            } else if ($row->targettype === 'course') {
+                $courseids[(int) $row->targetid] = true;
             }
         }
 
-        $coursenames = self::fetch_names('course', 'fullname', array_keys($courseids));
         $productnames = self::fetch_names('local_moderncommerce_products', 'name', array_keys($productids));
-
+        $producttypes = self::fetch_names('local_moderncommerce_products', 'producttype', array_keys($productids));
+        $coursenames = self::fetch_names('course', 'fullname', array_keys($courseids));
         $resolved = [];
         foreach ($targetsbykey as $keyid => $row) {
             $type = (string) $row->targettype;
             $targetid = (int) $row->targetid;
-            if ($type === 'course') {
-                $name = $coursenames[$targetid] ?? ($row->targetvalue ?: ('#' . $targetid));
-            } else if ($type === 'product') {
+            if ($type === 'product') {
                 $name = $productnames[$targetid] ?? ($row->targetvalue ?: ('#' . $targetid));
+            } else if ($type === 'course') {
+                $name = $coursenames[$targetid] ?? ($row->targetvalue ?: ('#' . $targetid));
+            } else if ($type === key_redemption_service::TARGET_ANY_COURSE) {
+                $name = get_string('anycourseproduct', 'local_moderncommerce');
+            } else if ($type === key_redemption_service::TARGET_ANY_PRODUCT) {
+                $name = get_string('anybundleorprogram', 'local_moderncommerce');
             } else {
                 $name = (string) ($row->targetvalue ?? '');
             }
+
+            // Surface the remaining targets so a multi-target key is not shown as a single one.
+            if (!empty($extracounts[$keyid])) {
+                $name = get_string('targetplusmore', 'local_moderncommerce', (object) [
+                    'name' => $name,
+                    'count' => (int) $extracounts[$keyid],
+                ]);
+            }
             $resolved[$keyid] = [
                 'type' => $type,
+                'producttype' => $type === 'product' ? (string) ($producttypes[$targetid] ?? '') : '',
                 'name' => format_string($name, true, ['context' => $context]),
             ];
         }
@@ -432,9 +476,7 @@ class list_keys extends external_api {
             'created' => userdate((int) $record->timecreated, get_string('strftimedate', 'langconfig')),
             'createdbyname' => trim((string) ($record->firstname ?? '') . ' ' . (string) ($record->lastname ?? '')),
             'targettype' => $targettype,
-            'targetlabel' => $targettype === 'course'
-                ? get_string('course')
-                : ($targettype === 'product' ? get_string('bundleorprogram', 'local_moderncommerce') : ''),
+            'targetlabel' => self::target_label($targettype, $target['producttype'] ?? ''),
             'targetname' => $target['name'] ?? '',
         ];
     }

@@ -319,6 +319,12 @@ if ($hassiteconfig) {
             ''
         ));
 
+        $settings->add(new admin_setting_configcheckbox(
+            'local_moderncommerce/guest_checkout_enabled',
+            get_string('guestcheckoutenabled', 'local_moderncommerce'),
+            get_string('guestcheckoutenabled_desc', 'local_moderncommerce'),
+            0
+        ));
         // Contact information (checkout) settings.
         $settings->add(new admin_setting_heading(
             'local_moderncommerce/checkoutfieldsheading',
@@ -484,6 +490,14 @@ if ($hassiteconfig) {
         get_string('navigationsettings', 'local_moderncommerce'),
         get_string('navigationsettings_desc', 'local_moderncommerce')
     ));
+
+    $navsettings->add(new admin_setting_configcheckbox(
+        'local_moderncommerce/replacecoredashboard',
+        get_string('replacecoredashboard', 'local_moderncommerce'),
+        get_string('replacecoredashboard_desc', 'local_moderncommerce'),
+        0
+    ));
+
     // Position of the cart icon inside Moodle's top-right user navigation.
     $navsettings->add(new admin_setting_configselect(
         'local_moderncommerce/navbar_cart_position',

@@ -24,6 +24,7 @@
  */
 
 use local_moderncommerce\payment\gateway_manager;
+use local_moderncommerce\output\admin_shell;
 use local_moderncommerce\services\commerce_settings_service;
 
 /**
@@ -31,6 +32,22 @@ use local_moderncommerce\services\commerce_settings_service;
  */
 #[\PHPUnit\Framework\Attributes\CoversNothing]
 final class release_readiness_test extends advanced_testcase {
+    /**
+     * The admin shell exposes a safe return route only to Moodle administrators.
+     */
+    public function test_admin_shell_gates_moodle_administration_link(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $admincontext = admin_shell::create('dashboard')->get_template_context();
+        $this->assertTrue($admincontext['canaccessmoodleadmin']);
+        $this->assertSame((new moodle_url('/admin/search.php'))->out(false), $admincontext['moodleadminurl']);
+
+        $this->setUser($this->getDataGenerator()->create_user());
+        $usercontext = admin_shell::create('dashboard')->get_template_context();
+        $this->assertFalse($usercontext['canaccessmoodleadmin']);
+    }
+
     /**
      * Version metadata is ready for a stable Moodle 5.2 release.
      */

@@ -40,10 +40,14 @@ use local_moderncommerce\subscription\services\subscription_service;
  * Admin webservice methods for the endpoint-only subscription add-on.
  */
 class admin_external extends external_api {
-    /** @var int Maximum rows returned by paged endpoints. */
+    /**
+     * @var int Maximum rows returned by paged endpoints.
+     */
     private const MAX_PER_PAGE = 100;
 
-    /** @var int Maximum subscription keys generated in one request. */
+    /**
+     * @var int Maximum subscription keys generated in one request.
+     */
     private const MAX_KEYS = 1000;
 
     /**

@@ -36,19 +36,29 @@ use local_moderncommerce\services\pricing_service;
  * Redeem bundle key page output class.
  */
 class redeem_bundle_page implements renderable, templatable {
-    /** @var object The order */
+    /**
+     * @var object The order
+     */
     protected $order;
 
-    /** @var array Bundle items from order */
+    /**
+     * @var array Bundle items from order
+     */
     protected $bundleitems;
 
-    /** @var bool Whether all bundles were successfully redeemed */
+    /**
+     * @var bool Whether all bundles were successfully redeemed
+     */
     protected $hassuccess;
 
-    /** @var array Error messages */
+    /**
+     * @var array Error messages
+     */
     protected $errors;
 
-    /** @var array Success messages */
+    /**
+     * @var array Success messages
+     */
     protected $successes;
 
     /**

@@ -37,7 +37,9 @@ namespace local_moderncommerce\output;
  * the validation module, using the same placeholder convention as get_string().
  */
 class validation_labels {
-    /** @var string Component the strings belong to. */
+    /**
+     * @var string Component the strings belong to.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
     /**

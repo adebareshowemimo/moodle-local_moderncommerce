@@ -28,10 +28,14 @@ namespace local_moderncommerce\services;
  * Business logic for course reviews and reactions.
  */
 class review_service {
-    /** @var string Core reviews table. */
+    /**
+     * @var string Core reviews table.
+     */
     public const REVIEWS_TABLE = 'local_moderncommerce_reviews';
 
-    /** @var string Core review reactions table. */
+    /**
+     * @var string Core review reactions table.
+     */
     public const REACTIONS_TABLE = 'local_moderncommerce_review_rxn';
 
     /**

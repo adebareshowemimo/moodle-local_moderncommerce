@@ -141,6 +141,9 @@ $settingsreactconfig = json_encode([
             // Checkout fields.
             'checkoutfields' => get_string('checkoutfields', 'local_moderncommerce'),
             'checkoutfieldsdesc' => get_string('checkoutfields_desc', 'local_moderncommerce'),
+            'guestcheckoutrecovery' => get_string('guestcheckoutrecovery', 'local_moderncommerce'),
+            'guestcheckoutenabled' => get_string('guestcheckoutenabled', 'local_moderncommerce'),
+            'guestcheckoutenabled_desc' => get_string('guestcheckoutenabled_desc', 'local_moderncommerce'),
             'contactinfoenabled' => get_string('contactinfoenabled', 'local_moderncommerce'),
             'phonefield' => get_string('phonefield', 'local_moderncommerce'),
             'addressfield' => get_string('addressfield', 'local_moderncommerce'),

@@ -24,10 +24,14 @@ namespace local_moderncommerce\output;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class course_reminders_page {
-    /** @var string Standalone reminder add-on component. */
+    /**
+     * @var string Standalone reminder add-on component.
+     */
     private const ADDON = 'local_moderncoursereminder';
 
-    /** @var string[] Supported route views. */
+    /**
+     * @var string[] Supported route views.
+     */
     private const VIEWS = [
         'overview',
         'rules',

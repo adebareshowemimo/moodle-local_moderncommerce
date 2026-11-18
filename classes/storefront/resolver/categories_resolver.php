@@ -33,10 +33,14 @@ use moodle_url;
  * Builds the top-level category tile list, linking into the filtered catalog.
  */
 class categories_resolver implements widget_resolver {
-    /** @var array|null Visible product categories keyed by id, loaded once per resolve. */
+    /**
+     * @var array|null Visible product categories keyed by id, loaded once per resolve.
+     */
     private $categories = null;
 
-    /** @var array|null Sellable product counts keyed by category id, loaded once per resolve. */
+    /**
+     * @var array|null Sellable product counts keyed by category id, loaded once per resolve.
+     */
     private $productcounts = null;
 
     /**

@@ -34,6 +34,7 @@ use core_external\external_warnings;
 use local_moderncommerce\api\bundle_api;
 use local_moderncommerce\services\bundle_meta_service;
 use local_moderncommerce\services\pricing_service;
+use local_moderncommerce\services\product_meta_service;
 use local_moderncommerce\services\certificate_template_service;
 
 /**
@@ -305,19 +306,8 @@ class get_bundle_features extends external_api {
      * @return array
      */
     private static function language_options(): array {
-        $langs = get_string_manager()->get_list_of_languages();
-        asort($langs, SORT_LOCALE_STRING);
-        $out = [];
-        $seen = [];
-        foreach ($langs as $name) {
-            $name = trim((string) $name);
-            if ($name === '' || isset($seen[$name])) {
-                continue;
-            }
-            $seen[$name] = true;
-            $out[] = ['value' => $name, 'label' => $name];
-        }
-        return $out;
+        // Shared with the pricing screen so both editors offer the same languages.
+        return product_meta_service::language_options();
     }
 
     /**

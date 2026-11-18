@@ -34,7 +34,9 @@ use local_moderncommerce\localisation;
  * List Modern Commerce audit log entries.
  */
 class list_audit_log extends external_api {
-    /** @var string Source table. */
+    /**
+     * @var string Source table.
+     */
     private const TABLE = 'local_moderncommerce_audit_log';
 
     /**

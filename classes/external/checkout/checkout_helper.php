@@ -40,7 +40,9 @@ use moodle_url;
  * Shared data builder for buyer cart and checkout endpoints.
  */
 class checkout_helper {
-    /** @var string User preference storing the buyer's saved checkout contact info (JSON). */
+    /**
+     * @var string User preference storing the buyer's saved checkout contact info (JSON).
+     */
     private const CONTACT_PREF = 'local_moderncommerce_contact';
 
     /**

@@ -24,13 +24,19 @@ namespace local_moderncommerce\output;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class learner_shell {
-    /** @var string The active navigation key */
+    /**
+     * @var string The active navigation key
+     */
     private string $activenav;
 
-    /** @var string Pre-rendered content HTML */
+    /**
+     * @var string Pre-rendered content HTML
+     */
     private string $contenthtml;
 
-    /** @var array Breadcrumb items */
+    /**
+     * @var array Breadcrumb items
+     */
     private array $breadcrumb;
 
     /**
@@ -85,6 +91,18 @@ class learner_shell {
             'url' => '/local/moderncommerce/learner/index.php#/subscriptions',
             'icon' => 'bi-credit-card',
             'plugin' => 'local_moderncommerce',
+        ],
+        'companylearning' => [
+            'label' => 'companylearning',
+            'url' => '/local/moderncommerce/learner/company.php',
+            'icon' => 'bi-buildings',
+            'plugin' => 'local_moderncompany',
+        ],
+        'companylicenses' => [
+            'label' => 'companylicenses',
+            'url' => '/local/moderncommerce/company_licenses.php',
+            'icon' => 'bi-person-vcard',
+            'plugin' => 'local_moderncompany',
         ],
     ];
 

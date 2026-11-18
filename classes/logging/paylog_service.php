@@ -25,10 +25,14 @@ namespace local_moderncommerce\logging;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class paylog_service {
-    /** @var string Diagnostic payment log table. */
+    /**
+     * @var string Diagnostic payment log table.
+     */
     private const TABLE_PAYMENT_LOG = 'local_moderncommerce_payment_log';
 
-    /** @var array Sensitive payload keys that must not be stored. */
+    /**
+     * @var array Sensitive payload keys that must not be stored.
+     */
     private const SENSITIVE_KEYS = [
         'authorization',
         'authorization_code',

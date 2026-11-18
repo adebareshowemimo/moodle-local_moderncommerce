@@ -40,13 +40,19 @@ use core_external\external_warnings;
  * Contact admin webservice methods.
  */
 class admin extends external_api {
-    /** @var int Maximum rows per page. */
+    /**
+     * @var int Maximum rows per page.
+     */
     private const MAX_PER_PAGE = 100;
 
-    /** @var string[] Valid contact statuses. */
+    /**
+     * @var string[] Valid contact statuses.
+     */
     private const STATUSES = ['new', 'inprogress', 'closed', 'archived'];
 
-    /** @var string[] Email placeholders available in templates/overrides. */
+    /**
+     * @var string[] Email placeholders available in templates/overrides.
+     */
     private const PLACEHOLDERS = ['{fullname}', '{email}', '{subject}', '{phone}', '{message}', '{submitted_at}', '{sitename}'];
 
     /**

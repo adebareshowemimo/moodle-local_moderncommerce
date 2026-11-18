@@ -33,7 +33,9 @@ namespace local_moderncommerce\services;
  * against the control that caused it rather than as a single generic banner.
  */
 class contact_service {
-    /** @var string Component the strings belong to. */
+    /**
+     * @var string Component the strings belong to.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
     /**

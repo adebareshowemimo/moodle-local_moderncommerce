@@ -41,7 +41,9 @@ use xmldb_table;
  * Returns the logged-in learner's orders.
  */
 class list_orders extends external_api {
-    /** @var array Allowed order statuses for filter. */
+    /**
+     * @var array Allowed order statuses for filter.
+     */
     private const ALLOWED_STATUSES = ['', 'paid', 'completed', 'pending', 'processing', 'failed', 'cancelled', 'refunded'];
 
     /**

@@ -33,7 +33,9 @@ use local_moderncommerce\services\review_service;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class catalog_page implements renderable, templatable {
-    /** @var array Catalog configuration from admin settings. */
+    /**
+     * @var array Catalog configuration from admin settings.
+     */
     protected $config;
 
     /**
@@ -394,6 +396,8 @@ class catalog_page implements renderable, templatable {
             'showresults' => get_string('catalog_show_results', 'local_moderncommerce'),
             'results' => get_string('catalog_results', 'local_moderncommerce'),
             'addtocart' => get_string('catalog_add_to_cart', 'local_moderncommerce'),
+            'incart' => get_string('incart', 'local_moderncommerce'),
+            'removefromcart' => get_string('removefromcart', 'local_moderncommerce'),
             'andup' => get_string('catalog_and_up', 'local_moderncommerce'),
             'previous' => get_string('catalog_previous', 'local_moderncommerce'),
             'next' => get_string('catalog_next', 'local_moderncommerce'),

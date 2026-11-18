@@ -34,28 +34,50 @@ use local_moderncommerce\persistent\widget_slide;
  * Idempotently seeds storefront widgets, with an optional full storefront widget reset.
  */
 class seed {
-    /** @var string Main storefront route. */
+    /**
+     * @var string Main storefront route.
+     */
     private const CATALOG_URL = '/local/moderncommerce/index.php';
-    /** @var string About page route. */
+    /**
+     * @var string About page route.
+     */
     private const ABOUT_URL = '/local/moderncommerce/about.php';
-    /** @var string Support page route. */
+    /**
+     * @var string Support page route.
+     */
     private const SUPPORT_URL = '/local/moderncommerce/support.php';
-    /** @var string Terms page route. */
+    /**
+     * @var string Terms page route.
+     */
     private const TERMS_URL = '/local/moderncommerce/terms.php';
-    /** @var string Privacy page route. */
+    /**
+     * @var string Privacy page route.
+     */
     private const PRIVACY_URL = '/local/moderncommerce/privacy.php';
-    /** @var string Refund policy page route. */
+    /**
+     * @var string Refund policy page route.
+     */
     private const REFUND_URL = '/local/moderncommerce/refund-policy.php';
 
-    /** @var string Shared media: collaborative learning. */
+    /**
+     * @var string Shared media: collaborative learning.
+     */
     private const IMG_LEARNERS = 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1800&q=80';
-    /** @var string Shared media: strategy workshop. */
+    /**
+     * @var string Shared media: strategy workshop.
+     */
     private const IMG_WORKSHOP = 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1800&q=80';
-    /** @var string Shared media: online learning. */
+    /**
+     * @var string Shared media: online learning.
+     */
     private const IMG_ONLINE = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1800&q=80';
-    /** @var string Shared media: desk learning. */
+    /**
+     * @var string Shared media: desk learning.
+     */
     private const IMG_DESK = 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1800&q=80';
-    /** @var string Shared media: support desk. */
+    /**
+     * @var string Shared media: support desk.
+     */
     private const IMG_SUPPORT = 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1800&q=80';
 
     /**

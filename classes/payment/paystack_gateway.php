@@ -29,10 +29,14 @@ use local_moderncommerce\logging\paylog_service;
 class paystack_gateway implements gateway_interface, gateway_return_interface {
     use subscription_mandate_trait;
 
-    /** @var string Paystack API base URL */
+    /**
+     * @var string Paystack API base URL
+     */
     const API_URL = 'https://api.paystack.co';
 
-    /** @var string Gateway name */
+    /**
+     * @var string Gateway name
+     */
     const GATEWAY_NAME = 'paystack';
 
     /**

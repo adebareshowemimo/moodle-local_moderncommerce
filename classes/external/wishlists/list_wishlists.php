@@ -38,7 +38,9 @@ use moodle_url;
  * List wishlist demand and recent activity for the admin analytics screen.
  */
 class list_wishlists extends external_api {
-    /** @var string[] Product type filters supported by the wishlist screen. */
+    /**
+     * @var string[] Product type filters supported by the wishlist screen.
+     */
     private const PRODUCT_TYPES = ['course', 'bundle', 'program', 'subscription', 'digital'];
 
     /**

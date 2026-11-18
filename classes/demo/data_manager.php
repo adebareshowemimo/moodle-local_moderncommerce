@@ -28,13 +28,19 @@ namespace local_moderncommerce\demo;
  * Coordinates install defaults, full demo data, audits, and full plugin resets.
  */
 class data_manager {
-    /** @var string Demo Moodle category idnumber prefix. */
+    /**
+     * @var string Demo Moodle category idnumber prefix.
+     */
     private const DEMO_CATEGORY_PREFIX = 'MCDEMO-CAT-';
 
-    /** @var string Demo Moodle course idnumber prefix. */
+    /**
+     * @var string Demo Moodle course idnumber prefix.
+     */
     private const DEMO_COURSE_PREFIX = 'MCDEMO-COURSE-';
 
-    /** @var array Default full demo options. */
+    /**
+     * @var array Default full demo options.
+     */
     private const DEFAULT_DEMO_OPTIONS = [
         'userid' => 0,
         'categories' => 12,
@@ -46,7 +52,9 @@ class data_manager {
         'reviews' => 4,
     ];
 
-    /** @var string[] Modern Commerce tables in child-first reset order. */
+    /**
+     * @var string[] Modern Commerce tables in child-first reset order.
+     */
     private const RESET_TABLES = [
         'local_moderncommerce_notify_log',
         'local_moderncommerce_notify_queue',

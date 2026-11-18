@@ -24,7 +24,9 @@ namespace local_moderncommerce\notifications\local;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class category_registry {
-    /** @var string[] Ordered canonical notification categories (the single source of truth). */
+    /**
+     * @var string[] Ordered canonical notification categories (the single source of truth).
+     */
     const CATEGORIES = ['transactional', 'reminder', 'dunning', 'celebratory', 'marketing', 'operational'];
 
     /**

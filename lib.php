@@ -219,12 +219,16 @@ function local_moderncommerce_render_cart_dropdown_html(int $userid): string {
 function local_moderncommerce_render_navbar_output(renderer_base $output): string {
     global $CFG, $USER;
 
-    if (during_initial_install() || !empty($CFG->upgraderunning) || !isloggedin() || isguestuser()) {
+    $guestcheckout = \local_moderncommerce\services\guest_checkout_service::enabled();
+    if (
+        during_initial_install() || !empty($CFG->upgraderunning) ||
+            ((!isloggedin() || isguestuser()) && !$guestcheckout)
+    ) {
         return '';
     }
 
     try {
-        $userid = (int) $USER->id;
+        $userid = isloggedin() && !isguestuser() ? (int)$USER->id : 0;
         $cartcount = \local_moderncommerce\api\cart_api::get_cart_count($userid);
         $carturl = new moodle_url('/local/moderncommerce/cart.php');
         $cartlabel = get_string('cart', 'local_moderncommerce');
@@ -235,7 +239,7 @@ function local_moderncommerce_render_navbar_output(renderer_base $output): strin
         $cartorder = $cartposition === 'last' ? 1000 : -1000;
 
         $icon = html_writer::tag('i', '', [
-            'class' => 'icon fa-solid fa-bag-shopping mui-cart__trigger-icon',
+            'class' => 'icon fa-solid fa-cart-shopping mui-cart__trigger-icon',
             'aria-hidden' => 'true',
         ]);
 

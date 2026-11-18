@@ -30,10 +30,14 @@ use context_system;
  * Writes Modern Commerce audit records and mirrors them into Moodle's log API.
  */
 class audit_service {
-    /** @var string Audit table name. */
+    /**
+     * @var string Audit table name.
+     */
     private const TABLE = 'local_moderncommerce_audit_log';
 
-    /** @var string[] Keys that must never be written in clear text. */
+    /**
+     * @var string[] Keys that must never be written in clear text.
+     */
     private const SENSITIVE_KEYS = [
         'authorization',
         'bearer',

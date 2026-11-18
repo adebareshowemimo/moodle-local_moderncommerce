@@ -37,10 +37,14 @@ use moodle_url;
  * Accepts a base64 image from the storefront editor and stores it as a public slide image.
  */
 class upload_slide_image extends external_api {
-    /** @var int Maximum decoded image size (5 MB). */
+    /**
+     * @var int Maximum decoded image size (5 MB).
+     */
     private const MAX_BYTES = 5242880;
 
-    /** @var string[] Allowed raster image extensions (SVG excluded to avoid script payloads). */
+    /**
+     * @var string[] Allowed raster image extensions (SVG excluded to avoid script payloads).
+     */
     private const ALLOWED = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
     /**

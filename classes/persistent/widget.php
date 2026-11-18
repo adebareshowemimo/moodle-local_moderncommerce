@@ -31,10 +31,14 @@ use local_moderncommerce\storefront\preset_service;
  * Represents one widget placed into a page zone.
  */
 class widget extends persistent {
-    /** @var string Table name. */
+    /**
+     * @var string Table name.
+     */
     const TABLE = 'local_moderncommerce_widget';
 
-    /** @var object|null|false Cached preset record; false until first lookup. */
+    /**
+     * @var object|null|false Cached preset record; false until first lookup.
+     */
     private $presetrecord = false;
 
     /**

@@ -44,7 +44,9 @@ if (!defined('LOCAL_MODERNCOMMERCE_DEMO_DATA_INCLUDE')) {
 }
 require_once(__DIR__ . '/seed_subscription_features.php');
 
-/** @var string[] Data areas this script can act on, in dependency order. */
+/**
+ * @var string[] Data areas this script can act on, in dependency order.
+ */
 const LOCAL_MODERNCOMMERCE_SUBSCRIPTION_AREAS = ['plans', 'rules', 'subscribers', 'keys'];
 
 /**

@@ -246,7 +246,7 @@ function EmptyDashboard({
 }) {
     return (
         <div className={mcClasses("mc-learner-empty mc-empty mc-empty--centered")}>
-            <span className={mcClasses("mc-empty__icon")}><i className="bi bi-bag-check" aria-hidden="true" /></span>
+            <span className={mcClasses("mc-empty__icon")}><i className="bi bi-cart" aria-hidden="true" /></span>
             <p className={mcClasses("mc-empty__title")}>
                 {label(labels, "dashboardempty")}
             </p>
@@ -342,6 +342,23 @@ function DashboardStatTile({
     );
 }
 
+const TOOLS_PANEL_STORAGE_KEY = "mc-learner-tools-open";
+
+/**
+ * Read the remembered open state of the tools panel.
+ *
+ * The panel starts collapsed, so only an explicit "1" reopens it.
+ *
+ * @return {boolean}
+ */
+function readToolsPanelOpen(): boolean {
+    try {
+        return window.localStorage.getItem(TOOLS_PANEL_STORAGE_KEY) === "1";
+    } catch {
+        return false;
+    }
+}
+
 function ModernCommerceTools({
     data,
     labels,
@@ -349,6 +366,16 @@ function ModernCommerceTools({
     data: DashboardData;
     labels: Labels;
 }) {
+    const [open, setOpen] = useState<boolean>(readToolsPanelOpen);
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem(TOOLS_PANEL_STORAGE_KEY, open ? "1" : "0");
+        } catch {
+            // Storage is unavailable (private mode); the panel just stops remembering.
+        }
+    }, [open]);
+
     const stats = data.stats;
     const productCount = data.access.products.length || activeAccessCount(stats);
 
@@ -411,7 +438,7 @@ function ModernCommerceTools({
             variant: "success" as const,
         },
         {
-            icon: "bi-bag-check",
+            icon: "bi-cart",
             labelText: label(labels, "cartandcheckout"),
             href: cartUrl(),
             value: label(labels, "checkout"),
@@ -434,39 +461,62 @@ function ModernCommerceTools({
     ];
 
     return (
-        <section className={mcClasses("mc-modern-feature-hub")} aria-labelledby="mc-modern-feature-hub-title">
-            <div className={mcClasses("mc-modern-section-header")}>
-                <div>
-                    <h2 id="mc-modern-feature-hub-title">
-                        {label(labels, "moderncommercetools")}
-                    </h2>
+        <section
+            className={mcClasses(`mc-modern-feature-hub mc-modern-feature-hub--panel${open ? " is-open" : ""}`)}
+            aria-labelledby="mc-modern-feature-hub-title"
+        >
+            <div className={mcClasses("mc-modern-section-header mc-modern-feature-hub__head")}>
+                {/* The whole heading block is the toggle so the hit area matches the
+                    panel header a learner sees, not just the chevron. */}
+                <button
+                    type="button"
+                    className={mcClasses("mc-modern-feature-hub__toggle")}
+                    aria-expanded={open}
+                    aria-controls="mc-modern-feature-hub-body"
+                    onClick={() => setOpen((value) => !value)}
+                >
+                    <i
+                        className={`bi ${open ? "bi-chevron-down" : "bi-chevron-right"} mc-modern-feature-hub__chevron`}
+                        aria-hidden="true"
+                    />
                     <span>
-                        {label(
-                            labels,
-                            "moderncommercetoolsdesc",
-                            "Everything learners use to buy, access, redeem, and track learning."
-                        )}
+                        <h2 id="mc-modern-feature-hub-title">
+                            {label(labels, "moderncommercetools")}
+                        </h2>
+                        <span>
+                            {label(
+                                labels,
+                                "moderncommercetoolsdesc",
+                                "Everything learners use to buy, access, redeem, and track learning."
+                            )}
+                        </span>
                     </span>
-                </div>
+                </button>
                 {/* Points at the cart, not #/checkout: checkout is only reachable with a
                     non-empty cart, so linking it directly is a dead end when empty. */}
                 <a className={mcClasses("mc-button mc-btn-soft mc-modern-feature-hub__action")} href={cartUrl()}>
-                    <i className="bi bi-bag-check" aria-hidden="true" />
+                    <i className="bi bi-cart" aria-hidden="true" />
                     {label(labels, "cart")}
                 </a>
             </div>
-            <div className={mcClasses("mc-stat-strip mc-dashboard-stat-strip mc-dashboard-stat-strip--tools")}>
-                {tiles.map((tile) => (
-                    <DashboardStatTile
-                        icon={tile.icon}
-                        labelText={tile.labelText}
-                        href={tile.href}
-                        value={tile.value}
-                        variant={tile.variant}
-                        featured={tile.featured}
-                        key={tile.labelText}
-                    />
-                ))}
+            <div
+                id="mc-modern-feature-hub-body"
+                className={mcClasses("mc-modern-feature-hub__body")}
+                hidden={!open}
+            >
+                <div className={mcClasses("mc-stat-strip mc-dashboard-stat-strip mc-dashboard-stat-strip--tools")}>
+                    {tiles.map((tile) => (
+                        <DashboardStatTile
+                            icon={tile.icon}
+                            labelText={tile.labelText}
+                            href={tile.href}
+                            value={tile.value}
+                            variant={tile.variant}
+                            featured={tile.featured}
+                            key={tile.labelText}
+                        />
+                    ))}
+                </div>
             </div>
         </section>
     );

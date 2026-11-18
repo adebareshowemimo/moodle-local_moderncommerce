@@ -113,6 +113,7 @@ $reactconfig = json_encode([
             'checkoutPlaceOrder' => 'local_moderncommerce_place_order',
             'redeemResolve' => 'local_moderncommerce_resolve_key',
             'redeemAny' => 'local_moderncommerce_redeem_any_key',
+            'redeemSearchItems' => 'local_moderncommerce_search_redeemable_items',
             'profileGet' => 'local_moderncommerce_get_learner_profile',
             'profileSave' => 'local_moderncommerce_save_learner_profile',
             'profileSavePicture' => 'local_moderncommerce_save_learner_profile_picture',

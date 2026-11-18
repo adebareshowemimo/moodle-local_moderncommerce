@@ -33,19 +33,29 @@ use local_moderncommerce\services\pricing_service;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class invoice_service {
-    /** @var pdf The PDF document */
+    /**
+     * @var pdf The PDF document
+     */
     protected $pdf;
 
-    /** @var object The order */
+    /**
+     * @var object The order
+     */
     protected $order;
 
-    /** @var array Order items */
+    /**
+     * @var array Order items
+     */
     protected $items;
 
-    /** @var object User info */
+    /**
+     * @var object User info
+     */
     protected $user;
 
-    /** @var string Document type: 'invoice' or 'receipt' */
+    /**
+     * @var string Document type: 'invoice' or 'receipt'
+     */
     protected $doctype;
 
     /**

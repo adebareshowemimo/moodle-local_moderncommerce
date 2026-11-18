@@ -26,25 +26,39 @@ namespace local_moderncommerce\subscription\services;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class notification_service {
-    /** Activation template key. */
+    /**
+     * Activation template key.
+     */
     const TEMPLATE_ACTIVATION = 'modernsubscription_activation_summary';
 
-    /** Renewal template key. */
+    /**
+     * Renewal template key.
+     */
     const TEMPLATE_RENEWAL = 'modernsubscription_renewal_digest';
 
-    /** Expiring subscription template key. */
+    /**
+     * Expiring subscription template key.
+     */
     const TEMPLATE_EXPIRING = 'modernsubscription_expiring_reminder';
 
-    /** Grace-period template key. */
+    /**
+     * Grace-period template key.
+     */
     const TEMPLATE_GRACE_PERIOD = 'modernsubscription_grace_period';
 
-    /** Expired subscription template key. */
+    /**
+     * Expired subscription template key.
+     */
     const TEMPLATE_EXPIRED = 'modernsubscription_expired';
 
-    /** Cancelled subscription template key. */
+    /**
+     * Cancelled subscription template key.
+     */
     const TEMPLATE_CANCELLED = 'modernsubscription_cancelled';
 
-    /** Failed payment template key. */
+    /**
+     * Failed payment template key.
+     */
     const TEMPLATE_PAYMENT_FAILED = 'modernsubscription_payment_failed';
 
     /**

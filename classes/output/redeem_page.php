@@ -37,22 +37,34 @@ use moodle_url;
  * Redeem key page output class.
  */
 class redeem_page implements renderable, templatable {
-    /** @var int|null The order ID if applicable */
+    /**
+     * @var int|null The order ID if applicable
+     */
     protected $orderid;
 
-    /** @var bool Whether the redemption was successful */
+    /**
+     * @var bool Whether the redemption was successful
+     */
     protected $success;
 
-    /** @var string|null The success message */
+    /**
+     * @var string|null The success message
+     */
     protected $successmessage;
 
-    /** @var object|null The redeemed course */
+    /**
+     * @var object|null The redeemed course
+     */
     protected $redeemedcourse;
 
-    /** @var bool Whether there was an error */
+    /**
+     * @var bool Whether there was an error
+     */
     protected $haserror;
 
-    /** @var string|null The error message */
+    /**
+     * @var string|null The error message
+     */
     protected $errormessage;
 
     /**

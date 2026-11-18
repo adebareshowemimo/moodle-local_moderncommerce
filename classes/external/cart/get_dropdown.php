@@ -53,18 +53,20 @@ class get_dropdown extends external_api {
         global $CFG, $PAGE, $USER;
 
         self::validate_parameters(self::execute_parameters(), []);
-        require_login();
+        $userid = \local_moderncommerce\services\guest_checkout_service::cart_userid();
         $context = context_system::instance();
-        self::validate_context($context);
-        require_capability('local/moderncommerce:purchase', $context);
+        if ($userid > 0) {
+            self::validate_context($context);
+            require_capability('local/moderncommerce:purchase', $context);
+        }
         $PAGE->set_context($context);
 
         require_once($CFG->dirroot . '/local/moderncommerce/lib.php');
 
         return [
             'success' => true,
-            'html' => local_moderncommerce_render_cart_dropdown_html((int)$USER->id),
-            'count' => cart_api::get_cart_count((int)$USER->id),
+            'html' => local_moderncommerce_render_cart_dropdown_html($userid),
+            'count' => cart_api::get_cart_count($userid),
         ];
     }
 

@@ -24,10 +24,14 @@ namespace local_moderncommerce\email;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class renderer {
-    /** @var string Plugin component. */
+    /**
+     * @var string Plugin component.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
-    /** @var string Config key that stores the raw shell HTML. */
+    /**
+     * @var string Config key that stores the raw shell HTML.
+     */
     private const SHELL_CONFIG = 'email_shell_html';
 
     /**

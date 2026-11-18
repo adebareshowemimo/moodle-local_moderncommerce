@@ -28,10 +28,14 @@ namespace local_moderncommerce\subscription\services;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class payment_retry_service {
-    /** Default max retry attempts before suspension. */
+    /**
+     * Default max retry attempts before suspension.
+     */
     const DEFAULT_MAX_RETRIES = 3;
 
-    /** Default days between retry attempts. */
+    /**
+     * Default days between retry attempts.
+     */
     const DEFAULT_RETRY_INTERVAL_DAYS = 3;
 
     /**

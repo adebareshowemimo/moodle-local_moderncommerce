@@ -122,7 +122,7 @@ $functions = [
         'type'          => 'read',
         'ajax'          => true,
         'capabilities'  => 'local/moderncommerce:purchase',
-        'loginrequired' => true,
+        'loginrequired' => false,
     ],
     'local_moderncommerce_get_cart_dropdown' => [
         'classname'     => 'local_moderncommerce\external\cart\get_dropdown',
@@ -131,7 +131,7 @@ $functions = [
         'type'          => 'read',
         'ajax'          => true,
         'capabilities'  => 'local/moderncommerce:purchase',
-        'loginrequired' => true,
+        'loginrequired' => false,
     ],
     'local_moderncommerce_update_cart' => [
         'classname'     => 'local_moderncommerce\external\cart\update_cart',
@@ -140,7 +140,7 @@ $functions = [
         'type'          => 'write',
         'ajax'          => true,
         'capabilities'  => 'local/moderncommerce:purchase',
-        'loginrequired' => true,
+        'loginrequired' => false,
     ],
     'local_moderncommerce_start_checkout' => [
         'classname'     => 'local_moderncommerce\external\checkout\start_checkout',
@@ -998,6 +998,15 @@ $functions = [
         // No capability restriction: see local_moderncommerce_resolve_key.
         'loginrequired' => true,
     ],
+    'local_moderncommerce_search_redeemable_items' => [
+        'classname'     => 'local_moderncommerce\external\redeem\search_redeemable_items',
+        'methodname'    => 'execute',
+        'description'   => 'Search the courses and bundles an "any" enrolment key can unlock.',
+        'type'          => 'read',
+        'ajax'          => true,
+        'capabilities'  => 'local/moderncommerce:redeemkey',
+        'loginrequired' => true,
+    ],
     'local_moderncommerce_admin_list_emails' => [
         'classname'     => 'local_moderncommerce\external\emails\list_emails',
         'methodname'    => 'execute',
@@ -1623,6 +1632,7 @@ $services = [
             'local_moderncommerce_redeem_key',
             'local_moderncommerce_resolve_key',
             'local_moderncommerce_redeem_any_key',
+            'local_moderncommerce_search_redeemable_items',
             'local_moderncommerce_admin_list_emails',
             'local_moderncommerce_admin_get_email',
             'local_moderncommerce_admin_save_email',

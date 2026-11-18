@@ -35,7 +35,9 @@ use moodle_url;
  * Builds a page-aware breadcrumb banner payload.
  */
 class breadcrumb_resolver implements widget_resolver {
-    /** @var string Fallback image for the media-backed styles. */
+    /**
+     * @var string Fallback image for the media-backed styles.
+     */
     private const DEFAULT_IMAGE =
         'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1800&q=80';
 

@@ -53,12 +53,14 @@ class get_cart extends external_api {
 
         self::validate_parameters(self::execute_parameters(), []);
 
-        require_login();
-        $context = context_system::instance();
-        self::validate_context($context);
-        require_capability('local/moderncommerce:purchase', $context);
+        $userid = \local_moderncommerce\services\guest_checkout_service::cart_userid();
+        if ($userid > 0) {
+            $context = context_system::instance();
+            self::validate_context($context);
+            require_capability('local/moderncommerce:purchase', $context);
+        }
 
-        return checkout_helper::cart_data((int)$USER->id);
+        return checkout_helper::cart_data($userid);
     }
 
     /**

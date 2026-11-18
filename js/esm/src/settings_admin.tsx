@@ -59,6 +59,7 @@ type Values = {
     receipt_prefix: string;
     tax_mode: string;
     default_tax_rate: number;
+    guest_checkout_enabled: number;
     contact_info_enabled: number;
     phone_field: string;
     address_field: string;
@@ -115,6 +116,7 @@ type Form = {
     receipt_prefix: string;
     tax_mode: string;
     default_tax_rate: string;
+    guest_checkout_enabled: boolean;
     contact_info_enabled: boolean;
     phone_field: string;
     address_field: string;
@@ -162,7 +164,7 @@ const TABS: TabConfig[] = [
     {id: "currency", labelKey: "tabCurrency", icon: "bi-currency-exchange"},
     {id: "tax", labelKey: "tabTax", icon: "bi-receipt"},
     {id: "documents", labelKey: "tabDocuments", icon: "bi-file-earmark-text"},
-    {id: "checkout", labelKey: "tabCheckout", icon: "bi-bag-check"},
+    {id: "checkout", labelKey: "tabCheckout", icon: "bi-cart"},
     {id: "navigation", labelKey: "tabNavigation", icon: "bi-compass"},
     {id: "notifications", labelKey: "tabNotifications", icon: "bi-bell"},
     {id: "reviews", labelKey: "tabReviews", icon: "bi-star"},
@@ -183,6 +185,7 @@ const FIELD_TAB: Record<string, string> = {
     thousand_separator: "currency", decimal_separator: "currency",
     tax_mode: "tax", default_tax_rate: "tax",
     invoice_prefix: "documents", receipt_prefix: "documents",
+    guest_checkout_enabled: "checkout",
     contact_info_enabled: "checkout",
     phone_field: "checkout", address_field: "checkout", city_field: "checkout",
     state_field: "checkout", country_field: "checkout", zipcode_field: "checkout",
@@ -235,6 +238,7 @@ const valuesToForm = (v: Values): Form => ({
     receipt_prefix: v.receipt_prefix,
     tax_mode: v.tax_mode,
     default_tax_rate: String(v.default_tax_rate),
+    guest_checkout_enabled: Boolean(v.guest_checkout_enabled),
     contact_info_enabled: Boolean(v.contact_info_enabled),
     phone_field: v.phone_field,
     address_field: v.address_field,
@@ -270,6 +274,7 @@ const formToArgs = (form: Form) => ({
     receipt_prefix: form.receipt_prefix,
     tax_mode: form.tax_mode,
     default_tax_rate: Number(form.default_tax_rate) || 0,
+    guest_checkout_enabled: form.guest_checkout_enabled ? 1 : 0,
     contact_info_enabled: form.contact_info_enabled ? 1 : 0,
     phone_field: form.phone_field,
     address_field: form.address_field,
@@ -617,6 +622,14 @@ export default function SettingsAdmin({
             case "checkout":
                 return (
                     <div className={mcClasses("mc-product-form__section")}>
+                        <h4>{labels.guestcheckoutenabled}</h4>
+                        <p className={mcClasses("mc-cell-muted small")}>{labels.guestcheckoutenabled_desc}</p>
+                        <div className={mcClasses("mc-settings-switchrow mc-settings-switchrow--guest")}>
+                            {switchField("guest_checkout_enabled", labels.guestcheckoutenabled)}
+                            <a href={`${M.cfg.wwwroot}/local/moderncommerce/admin/guest_checkouts.php`}>
+                                {labels.guestcheckoutrecovery}
+                            </a>
+                        </div>
                         <h4>{labels.checkoutfields}</h4>
                         <p className={mcClasses("mc-cell-muted small")}>{labels.checkoutfieldsdesc}</p>
                         <div className={mcClasses("mc-settings-switchrow")}>

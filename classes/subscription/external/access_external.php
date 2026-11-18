@@ -40,7 +40,9 @@ use local_moderncommerce\subscription\api\plan_api;
  * Plan access webservice methods.
  */
 class access_external extends external_api {
-    /** @var string[] Supported access types. */
+    /**
+     * @var string[] Supported access types.
+     */
     private const TYPES = ['course', 'category', 'bundle'];
 
     /**

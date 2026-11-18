@@ -27,7 +27,9 @@ namespace local_moderncommerce\notifications\local;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class suppression {
-    /** @var string Table. */
+    /**
+     * @var string Table.
+     */
     private const TABLE = 'local_moderncommerce_notify_suppression';
 
     /**

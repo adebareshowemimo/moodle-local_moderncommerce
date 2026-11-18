@@ -27,10 +27,14 @@ use local_moderncommerce\logging\paylog_service;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class flutterwave_gateway implements gateway_interface, gateway_return_interface {
-    /** @var string Flutterwave API base URL */
+    /**
+     * @var string Flutterwave API base URL
+     */
     const API_URL = 'https://api.flutterwave.com/v3';
 
-    /** @var string Gateway name */
+    /**
+     * @var string Gateway name
+     */
     const GATEWAY_NAME = 'flutterwave';
 
     /**

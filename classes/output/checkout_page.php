@@ -41,28 +41,44 @@ use local_moderncommerce\payment\gateway_manager;
  * Checkout page renderable class.
  */
 class checkout_page implements renderable, templatable {
-    /** @var int User ID */
+    /**
+     * @var int User ID
+     */
     protected $userid;
 
-    /** @var object User object */
+    /**
+     * @var object User object
+     */
     protected $user;
 
-    /** @var array Course cart items */
+    /**
+     * @var array Course cart items
+     */
     protected $cartitems;
 
-    /** @var array Bundle cart items */
+    /**
+     * @var array Bundle cart items
+     */
     protected $bundleitems;
 
-    /** @var string|null Applied coupon code */
+    /**
+     * @var string|null Applied coupon code
+     */
     protected $couponcode;
 
-    /** @var array Calculations */
+    /**
+     * @var array Calculations
+     */
     protected $calculations;
 
-    /** @var string Session key */
+    /**
+     * @var string Session key
+     */
     protected $sesskey;
 
-    /** @var object|null Existing pending order for continue payment */
+    /**
+     * @var object|null Existing pending order for continue payment
+     */
     protected $existingorder;
 
     /**

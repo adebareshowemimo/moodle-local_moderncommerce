@@ -43,19 +43,29 @@ use moodle_url;
  * ID from the client, so a learner can only ever act on their own.
  */
 class change_subscription extends external_api {
-    /** @var string Switch to a different plan. */
+    /**
+     * @var string Switch to a different plan.
+     */
     private const ACTION_CHANGE_PLAN = 'changeplan';
 
-    /** @var string Stop auto-renewal, keeping access until the period ends. */
+    /**
+     * @var string Stop auto-renewal, keeping access until the period ends.
+     */
     private const ACTION_CANCEL = 'cancel';
 
-    /** @var string Undo a scheduled cancellation. */
+    /**
+     * @var string Undo a scheduled cancellation.
+     */
     private const ACTION_RESUME = 'resume';
 
-    /** @var string Renew the current plan. */
+    /**
+     * @var string Renew the current plan.
+     */
     private const ACTION_RENEW = 'renew';
 
-    /** @var string Drop a scheduled plan change. */
+    /**
+     * @var string Drop a scheduled plan change.
+     */
     private const ACTION_CANCELCHANGE = 'cancelchange';
 
     /**

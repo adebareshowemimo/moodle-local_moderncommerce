@@ -30,7 +30,9 @@ namespace local_moderncommerce\email;
  * Builds and installs the bundled default templates.
  */
 class demo_seed {
-    /** @var string Database table. */
+    /**
+     * @var string Database table.
+     */
     private const TABLE = 'local_moderncommerce_emailtpl';
 
     /**

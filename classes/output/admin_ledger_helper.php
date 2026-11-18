@@ -26,10 +26,14 @@ use local_moderncommerce\localisation;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class admin_ledger_helper {
-    /** @var int Default records per page. */
+    /**
+     * @var int Default records per page.
+     */
     private const DEFAULT_PER_PAGE = 10;
 
-    /** @var int Maximum records per page. */
+    /**
+     * @var int Maximum records per page.
+     */
     private const MAX_PER_PAGE = 100;
 
     /**

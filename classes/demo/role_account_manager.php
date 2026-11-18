@@ -27,10 +27,14 @@ use local_moderncommerce\services\role_preset_service;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class role_account_manager {
-    /** @var string Stable demo password for all role-preview accounts. */
+    /**
+     * @var string Stable demo password for all role-preview accounts.
+     */
     public const PASSWORD = 'ModernCommerceDemo#2026!';
 
-    /** @var string ID number prefix used to prove accounts are owned by the demo seeder. */
+    /**
+     * @var string ID number prefix used to prove accounts are owned by the demo seeder.
+     */
     private const IDNUMBER_PREFIX = 'MC-DEMO-ROLE-';
 
     /**

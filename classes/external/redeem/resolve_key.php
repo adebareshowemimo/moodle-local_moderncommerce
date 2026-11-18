@@ -116,7 +116,10 @@ class resolve_key extends external_api {
                     'alreadyenrolled' => $course['alreadyenrolled'],
                     'url' => $course['url'],
                 ];
-            }, $preview['courses'])
+            }, $preview['courses']),
+            '',
+            !empty($preview['requireschoice']),
+            (string) ($preview['choicetype'] ?? '')
         );
     }
 
@@ -206,6 +209,8 @@ class resolve_key extends external_api {
      * @param string $message Message when not valid.
      * @param array $courses Granted courses (enrollment keys only).
      * @param string $planname Granted plan name (subscription keys only).
+     * @param bool $requireschoice Whether the learner must choose a catalogue item.
+     * @param string $choicetype Which catalogue to offer ('course' or 'product').
      * @return array
      */
     private static function response(
@@ -213,7 +218,9 @@ class resolve_key extends external_api {
         bool $valid,
         string $message,
         array $courses = [],
-        string $planname = ''
+        string $planname = '',
+        bool $requireschoice = false,
+        string $choicetype = ''
     ): array {
         return [
             'type' => $type,
@@ -221,6 +228,8 @@ class resolve_key extends external_api {
             'message' => $message,
             'courses' => $courses,
             'planname' => $planname,
+            'requireschoice' => $requireschoice,
+            'choicetype' => $choicetype,
             'warnings' => [],
         ];
     }
@@ -237,6 +246,18 @@ class resolve_key extends external_api {
             'message' => new external_value(PARAM_TEXT, 'Validation message when not valid.'),
             'courses' => new external_multiple_structure(validate_key::course_structure()),
             'planname' => new external_value(PARAM_TEXT, 'Plan the key activates, for subscription keys.'),
+            'requireschoice' => new external_value(
+                PARAM_BOOL,
+                'Whether the learner must choose which catalogue item to unlock.',
+                VALUE_DEFAULT,
+                false
+            ),
+            'choicetype' => new external_value(
+                PARAM_ALPHA,
+                'Which catalogue the learner chooses from: course or product.',
+                VALUE_DEFAULT,
+                ''
+            ),
             'warnings' => new external_warnings(),
         ]);
     }

@@ -59,21 +59,21 @@
     <library>
         <location>vendor/symfony/deprecation-contracts</location>
         <name>Symfony Deprecation Contracts</name>
-        <version>3.7.0</version>
+        <version>3.8.1</version>
         <license>MIT</license>
         <licenseversion></licenseversion>
     </library>
     <library>
         <location>vendor/symfony/http-foundation</location>
         <name>Symfony HTTP Foundation</name>
-        <version>7.4.13</version>
+        <version>7.4.23</version>
         <license>MIT</license>
         <licenseversion></licenseversion>
     </library>
     <library>
         <location>vendor/symfony/polyfill-mbstring</location>
         <name>Symfony Polyfill Mbstring</name>
-        <version>1.38.2</version>
+        <version>1.43.3</version>
         <license>MIT</license>
         <licenseversion></licenseversion>
     </library>

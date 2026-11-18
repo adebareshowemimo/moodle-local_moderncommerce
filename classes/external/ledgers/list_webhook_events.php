@@ -34,7 +34,9 @@ use local_moderncommerce\localisation;
  * List Modern Commerce webhook events as a generic ledger.
  */
 class list_webhook_events extends external_api {
-    /** @var string Source table. */
+    /**
+     * @var string Source table.
+     */
     private const TABLE = 'local_moderncommerce_webhook_events';
 
     /**

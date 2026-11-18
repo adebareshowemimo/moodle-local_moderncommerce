@@ -1,0 +1,169 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle. If not, see <http://www.gnu.org/licenses/>.
+
+    @template local_moderncommerce/guest_checkout
+
+    Guest buyer layout: native Moodle form in the left sidebar, cart and summary
+    in the main area. formhtml, errorhtml and statusactions are trusted Moodle output.
+
+    @copyright 2026 Adebare Showemimo
+    @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+}}
+<div class="mc-modern-learner-dashboard mc-modern-learner-page mc-guest-checkout">
+    <header class="mc-modern-learner-hero" aria-labelledby="mc-guest-checkout-title">
+        <h1 id="mc-guest-checkout-title">{{#str}}guestcheckout, local_moderncommerce{{/str}}</h1>
+        <p>{{#str}}checkoutdesc, local_moderncommerce{{/str}}</p>
+    </header>
+
+    <div class="mc-modern-learner-shell">
+        <aside class="mc-modern-learner-sidebar mc-guest-checkout__details" aria-labelledby="mc-guest-details-title">
+            <h2 id="mc-guest-details-title">{{#str}}guestcheckoutdetailsheading, local_moderncommerce{{/str}}</h2>
+            <p class="mc-guest-checkout__help">{{#str}}guestcheckoutdetailshelp, local_moderncommerce{{/str}}</p>
+            {{#hasitems}}
+                {{{formhtml}}}
+            {{/hasitems}}
+            {{#ispaymentstatus}}
+                <p>{{#str}}guestcheckoutnextsteps, local_moderncommerce{{/str}}</p>
+            {{/ispaymentstatus}}
+            <div class="mc-guest-checkout__login">
+                <span>{{#str}}guestcheckoutexistingaccount, local_moderncommerce{{/str}}</span>
+                <a href="{{loginurl}}">{{#str}}login{{/str}}</a>
+            </div>
+        </aside>
+
+        <div class="mc-modern-learner-main">
+            <div class="mc-modern-page-actions">
+                <a href="{{catalogurl}}" class="mc-button btn-mc-secondary">
+                    <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                    {{#str}}continueshopping, local_moderncommerce{{/str}}
+                </a>
+            </div>
+
+            {{#errorhtml}}<div role="status">{{{errorhtml}}}</div>{{/errorhtml}}
+
+            {{#ispaymentstatus}}
+                <section class="mc-card mc-guest-checkout__status">
+                    <h2 class="mc-page-title">{{statustitle}}</h2>
+                    {{#claimmessage}}<p>{{claimmessage}}</p>{{/claimmessage}}
+                    <div class="mc-guest-checkout__status-actions">
+                        {{{statusactions}}}
+                        <a href="{{refreshurl}}" class="mc-button mc-btn-soft">{{#str}}refresh{{/str}}</a>
+                    </div>
+                </section>
+            {{/ispaymentstatus}}
+
+            {{^ispaymentstatus}}
+                {{#directitem}}
+                    <div class="mc-cart-items mb-4">
+                        <div class="mc-cart-item">
+                            <div class="mc-cart-item__body">
+                                <div class="mc-cart-item__title">{{name}}</div>
+                                <div class="mc-cart-item__meta">{{price}}</div>
+                            </div>
+                            <form method="post" action="{{actionurl}}">
+                                <input type="hidden" name="sesskey" value="{{sesskey}}">
+                                <input type="hidden" name="action" value="add">
+                                <button type="submit" class="mc-button mc-btn-soft">{{#str}}addtocart, local_moderncommerce{{/str}}</button>
+                            </form>
+                        </div>
+                    </div>
+                {{/directitem}}
+
+                {{#hasitems}}
+                    <div class="mc-cart-layout">
+                        <section aria-labelledby="mc-guest-cart-title">
+                            <div class="mc-guest-checkout__cart-heading">
+                                <h2 class="mc-page-title mb-0" id="mc-guest-cart-title">
+                                    {{#str}}shoppingcart, local_moderncommerce{{/str}}
+                                    <span class="mc-badge mc-badge--neutral ms-1">{{itemcount}}</span>
+                                </h2>
+                                <form method="post" action="{{actionurl}}">
+                                    <input type="hidden" name="sesskey" value="{{sesskey}}">
+                                    <input type="hidden" name="action" value="clear">
+                                    <button type="submit" class="mc-button mc-btn-soft">{{#str}}clearcart, local_moderncommerce{{/str}}</button>
+                                </form>
+                            </div>
+                            <div class="mc-cart-items">
+                                {{#items}}
+                                    <div class="mc-cart-item">
+                                        {{#hasimage}}
+                                            <img src="{{imageurl}}" alt="" class="mc-cart-item__thumb" width="64" height="48" loading="lazy">
+                                        {{/hasimage}}
+                                        {{^hasimage}}<div class="mc-cart-item__thumb" aria-hidden="true"></div>{{/hasimage}}
+                                        <div class="mc-cart-item__body">
+                                            <a href="{{detailsurl}}" class="mc-cart-item__title">{{name}}</a>
+                                            <div class="mc-cart-item__meta">
+                                                <span class="mc-badge mc-badge--neutral">{{typelabel}}</span>
+                                                {{#shortname}}<span>{{shortname}}</span>{{/shortname}}
+                                                <span>×{{quantitylabel}}</span>
+                                            </div>
+                                        </div>
+                                        <div class="mc-cart-item__price">{{linetotal}}</div>
+                                        <form method="post" action="{{actionurl}}" class="mc-guest-checkout__remove">
+                                            <input type="hidden" name="sesskey" value="{{sesskey}}">
+                                            <input type="hidden" name="action" value="remove">
+                                            <input type="hidden" name="itemid" value="{{id}}">
+                                            <button type="submit" class="mc-cart-item__remove" aria-label="{{removelabel}}" title="{{removelabel}}">
+                                                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                {{/items}}
+                            </div>
+                        </section>
+
+                        <section class="mc-order-summary" aria-labelledby="mc-guest-summary-title">
+                            <h2 class="mc-order-summary__header mb-0" id="mc-guest-summary-title">{{#str}}ordersummary, local_moderncommerce{{/str}}</h2>
+                            <div class="mc-order-summary__body">
+                                <div class="mc-order-row">
+                                    <span>{{#str}}subtotal, local_moderncommerce{{/str}}</span>
+                                    <span class="mc-order-row__value">{{totals.subtotal}}</span>
+                                </div>
+                                {{#hastax}}
+                                    <div class="mc-order-row">
+                                        <span>{{#str}}tax, local_moderncommerce{{/str}}</span>
+                                        <span class="mc-order-row__value">{{totals.tax}}</span>
+                                    </div>
+                                {{/hastax}}
+                                <div class="mc-order-row mc-order-row--total">
+                                    <span>{{#str}}carttotal, local_moderncommerce{{/str}}</span>
+                                    <span class="mc-order-row__value">{{totals.total}}</span>
+                                </div>
+                                <button type="submit" form="mc-guest-details-form" name="submitbutton" value="1"
+                                        class="mc-button btn-mc-primary w-100 d-flex justify-content-center mt-3">
+                                    <i class="bi bi-lock me-1" aria-hidden="true"></i>
+                                    {{#str}}guestcheckoutpay, local_moderncommerce{{/str}}
+                                </button>
+                                <div class="mc-trust-note mt-3">
+                                    <i class="bi bi-shield-check" aria-hidden="true"></i>
+                                    {{#str}}securepayment, local_moderncommerce{{/str}}
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                {{/hasitems}}
+                {{^hasitems}}
+                    <div class="mc-empty mc-empty--centered">
+                        <span class="mc-empty__icon"><i class="bi bi-cart" aria-hidden="true"></i></span>
+                        <p class="mc-empty__title">{{#str}}emptycart, local_moderncommerce{{/str}}</p>
+                        <p class="mc-empty__desc">{{#str}}emptycartmessage, local_moderncommerce{{/str}}</p>
+                        <a href="{{catalogurl}}" class="mc-button btn-mc-primary">{{#str}}browsecatalog, local_moderncommerce{{/str}}</a>
+                    </div>
+                {{/hasitems}}
+            {{/ispaymentstatus}}
+        </div>
+    </div>
+</div>

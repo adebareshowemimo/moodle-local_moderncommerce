@@ -28,13 +28,19 @@ use local_moderncommerce\email\renderer;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class queue_manager {
-    /** @var string Queue table. */
+    /**
+     * @var string Queue table.
+     */
     private const QUEUE = 'local_moderncommerce_notify_queue';
 
-    /** @var string Log table. */
+    /**
+     * @var string Log table.
+     */
     private const LOG = 'local_moderncommerce_notify_log';
 
-    /** @var int Return processing rows older than this (seconds) to pending. */
+    /**
+     * @var int Return processing rows older than this (seconds) to pending.
+     */
     private const STALE_AFTER = 1800;
 
     /**

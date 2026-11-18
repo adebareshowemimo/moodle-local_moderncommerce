@@ -32,9 +32,8 @@ use local_moderncommerce\storefront\widget_types;
 
 /**
  * Guards the contracts shared by the PHP widget layer and both React editors.
- *
- * @coversNothing
  */
+#[\PHPUnit\Framework\Attributes\CoversNothing]
 final class widget_contract_test extends advanced_testcase {
     /**
      * Every supported widget must have one schema and one gallery section.

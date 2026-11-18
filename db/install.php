@@ -29,5 +29,8 @@ function xmldb_local_moderncommerce_install() {
 
     \local_moderncommerce\demo\data_manager::seed_install_defaults();
 
+    // Bundle duration auto-detect reads a "learninghours" course custom field; ship it ready to use.
+    \local_moderncommerce\services\course_field_service::ensure_learninghours_field();
+
     return true;
 }

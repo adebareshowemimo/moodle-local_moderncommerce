@@ -27,46 +27,86 @@ namespace local_moderncommerce\notifications;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class notification {
-    /** @var string Transactional category (receipts, confirmations). */
+    /**
+     * @var string Transactional category (receipts, confirmations).
+     */
     const CAT_TRANSACTIONAL = 'transactional';
-    /** @var string Reminder category (due-soon, pending nudges). */
+    /**
+     * @var string Reminder category (due-soon, pending nudges).
+     */
     const CAT_REMINDER = 'reminder';
-    /** @var string Dunning category (payment failures, retries). */
+    /**
+     * @var string Dunning category (payment failures, retries).
+     */
     const CAT_DUNNING = 'dunning';
-    /** @var string Celebratory category (milestones, completions). */
+    /**
+     * @var string Celebratory category (milestones, completions).
+     */
     const CAT_CELEBRATORY = 'celebratory';
-    /** @var string Marketing category (suppressible promotional sends). */
+    /**
+     * @var string Marketing category (suppressible promotional sends).
+     */
     const CAT_MARKETING = 'marketing';
-    /** @var string Operational category (admin/store-ops alerts). */
+    /**
+     * @var string Operational category (admin/store-ops alerts).
+     */
     const CAT_OPERATIONAL = 'operational';
 
-    /** @var string Producer component. */
+    /**
+     * @var string Producer component.
+     */
     public $component;
-    /** @var string Canonical event key. */
+    /**
+     * @var string Canonical event key.
+     */
     public $eventkey;
-    /** @var string Category. */
+    /**
+     * @var string Category.
+     */
     public $category = self::CAT_TRANSACTIONAL;
-    /** @var string|null Email-template key to render from. */
+    /**
+     * @var string|null Email-template key to render from.
+     */
     public $templatekey = null;
-    /** @var array Entity placeholder data. */
+    /**
+     * @var array Entity placeholder data.
+     */
     public $placeholders = [];
-    /** @var int[] Recipient user ids. */
+    /**
+     * @var int[] Recipient user ids.
+     */
     public $touserids = [];
-    /** @var bool Send to store-ops admins. */
+    /**
+     * @var bool Send to store-ops admins.
+     */
     public $toadmins = false;
-    /** @var string|null Raw subject (when no template). */
+    /**
+     * @var string|null Raw subject (when no template).
+     */
     public $subject = null;
-    /** @var string|null Raw body/summary (when no template). */
+    /**
+     * @var string|null Raw body/summary (when no template).
+     */
     public $summary = null;
-    /** @var string|null Deep-link URL. */
+    /**
+     * @var string|null Deep-link URL.
+     */
     public $contexturl = null;
-    /** @var int Related object id. */
+    /**
+     * @var int Related object id.
+     */
     public $relatedid = 0;
-    /** @var array|null Explicit channel override. */
+    /**
+     * @var array|null Explicit channel override.
+     */
     public $channels = null;
-    /** @var string|null Explicit priority override. */
+    /**
+     * @var string|null Explicit priority override.
+     */
     public $priority = null;
-    /** @var string|null Dedupe discriminator (e.g. '7d'); defaults to a daily bucket. */
+    /**
+     * @var string|null Dedupe discriminator (e.g. '7d'); defaults to a daily bucket.
+     */
     public $deduptag = null;
 
     /**

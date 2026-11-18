@@ -22,6 +22,7 @@ type CatalogItem = {
     id: number;
     productid: number;
     inwishlist: boolean;
+    incart: boolean;
     itemtype: string;
     title: string;
     thumbnail: string;
@@ -84,6 +85,7 @@ type CatalogResponse = {
     };
     state: {
         isloggedin: boolean;
+        guestcheckout?: boolean;
     };
     urls: {
         catalog: string;
@@ -787,12 +789,12 @@ function LoginNotice({
         <div className={mcClasses("mc-alert mc-alert--info")} role="status">
             <i className="bi bi-info-circle mc-alert__icon" aria-hidden="true" />
             <div className={mcClasses("mc-alert__body d-flex flex-wrap align-items-center gap-2")}>
-                <span className="me-auto">{labels.loginrequiredmessage}</span>
+                <span className="me-auto">{data.state.guestcheckout ? labels.guestcheckoutintro : labels.loginrequiredmessage}</span>
                 <a className={mcClasses("mc-button mc-btn-soft")} href={data.urls.login}>
                     {labels.login}
                 </a>
-                <a className={mcClasses("mc-button btn-mc-primary")} href={data.urls.register}>
-                    {labels.startsignup}
+                <a className={mcClasses("mc-button btn-mc-primary")} href={data.state.guestcheckout ? data.urls.cart : data.urls.register}>
+                    {data.state.guestcheckout ? labels.cart : labels.startsignup}
                 </a>
             </div>
         </div>
@@ -819,6 +821,7 @@ function CatalogCard({
     wishlistBusy,
     wishlistSaved,
     onToggleWishlist,
+    onRemoveFromCart,
 }: {
     item: CatalogItem;
     labels: Labels;
@@ -827,6 +830,7 @@ function CatalogCard({
     wishlistBusy: boolean;
     wishlistSaved: boolean;
     onToggleWishlist?: (item: CatalogItem, saved: boolean) => void;
+    onRemoveFromCart: Dispatch<CatalogItem>;
 }) {
     const typeLabel = itemTypeLabel(item, labels);
     const accessUrl = item.accessurl || "#";
@@ -924,6 +928,25 @@ function CatalogCard({
                         <i className={`bi ${ownedAction.icon}`} aria-hidden="true" />
                         {ownedAction.label}
                     </a>
+                ) : item.incart ? (
+                    /* In the cart: the button becomes its own inverse, so a
+                       mis-click is undone in place. Hover/focus swaps the label
+                       and icon to the remove affordance via CSS. */
+                    <McButton
+                        type="button"
+                        className={mcClasses("mc-course-card-btn mc-course-card-btn--incart")}
+                        loading={busy}
+                        loadingLabel={label(labels, "loading")}
+                        onClick={() => onRemoveFromCart(item)}
+                        title={label(labels, "removefromcart", "Remove from cart")}
+                        aria-label={label(labels, "removefromcart", "Remove from cart")}
+                    >
+                        <span className="mc-incart__icons">
+                            <i className="bi bi-cart-check mc-incart__icon" aria-hidden="true" />
+                            <i className="bi bi-dash-lg mc-incart__icon--hover" aria-hidden="true" />
+                        </span>
+                        {label(labels, "incart", "In cart")}
+                    </McButton>
                 ) : (
                     <McButton
                         type="button"
@@ -952,6 +975,7 @@ function CatalogContent({
     busyWishlistItem,
     savedWishlistProductIds,
     onToggleWishlist,
+    onRemoveFromCart,
 }: {
     loading: boolean;
     data: CatalogResponse | null;
@@ -963,6 +987,7 @@ function CatalogContent({
     busyWishlistItem: number;
     savedWishlistProductIds: Set<number>;
     onToggleWishlist?: (item: CatalogItem, saved: boolean) => void;
+    onRemoveFromCart: Dispatch<CatalogItem>;
 }) {
     if (loading && !data) {
         return (
@@ -1008,6 +1033,7 @@ function CatalogContent({
                         wishlistBusy={busyWishlistItem === item.productid}
                         wishlistSaved={item.inwishlist || savedWishlistProductIds.has(item.productid)}
                         onToggleWishlist={onToggleWishlist}
+                        onRemoveFromCart={onRemoveFromCart}
                         key={`${item.itemtype}-${item.id}`}
                     />
                 ))}
@@ -1188,7 +1214,7 @@ export default function Catalog({
             return;
         }
 
-        if (!data?.state.isloggedin) {
+        if (!data?.state.isloggedin && !data?.state.guestcheckout) {
             setMessage(labels.loginrequiredmessage);
             return;
         }
@@ -1203,9 +1229,56 @@ export default function Catalog({
                 : {action: "addcourse", courseid: item.id};
             const result = await callMoodleService<CartResponse>(cartMethodName, args);
             void refreshNavbarCart(result);
-            setMessage(result.message);
+            // Toast, not an inline alert: the cart badge updates far from the
+            // clicked card, so the confirmation has to come to the user. A
+            // rejection ("already in your cart") comes back on the success
+            // channel with success:false, so route on the flag, not the throw.
+            if (result.success === false) {
+                toast.warning(result.message);
+            } else {
+                toast.success(result.message);
+            }
+            // Flip the card to its "In cart" state either way: success:false here
+            // means the item was already in the cart, so both outcomes are "in".
+            setData((current) => (current ? {
+                ...current,
+                items: current.items.map((currentItem) => (
+                    currentItem.id === item.id && currentItem.itemtype === item.itemtype
+                        ? {...currentItem, incart: true}
+                        : currentItem
+                )),
+            } : current));
         } catch (caught) {
-            setError((caught as Error).message);
+            const message = (caught as Error).message;
+            setError(message);
+            toast.error(message);
+        } finally {
+            setBusyItem(0);
+        }
+    };
+
+    const removeFromCart = async(item: CatalogItem) => {
+        setBusyItem(item.id);
+        setError("");
+        try {
+            const args = item.isbundle || item.isprogram
+                ? {action: "removebundle", bundleid: item.id}
+                : {action: "removecourse", courseid: item.id};
+            const result = await callMoodleService<CartResponse>(cartMethodName, args);
+            void refreshNavbarCart(result);
+            toast.success(result.message);
+            setData((current) => (current ? {
+                ...current,
+                items: current.items.map((currentItem) => (
+                    currentItem.id === item.id && currentItem.itemtype === item.itemtype
+                        ? {...currentItem, incart: false}
+                        : currentItem
+                )),
+            } : current));
+        } catch (caught) {
+            const message = (caught as Error).message;
+            setError(message);
+            toast.error(message);
         } finally {
             setBusyItem(0);
         }
@@ -1487,6 +1560,7 @@ export default function Catalog({
                             onToggleWishlist={
                                 wishlistUpdateMethodName && data?.state.isloggedin ? toggleWishlist : undefined
                             }
+                            onRemoveFromCart={removeFromCart}
                         />
                     </main>
                 </div>

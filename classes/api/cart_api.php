@@ -58,7 +58,7 @@ class cart_api {
         }
 
         $context = \context_course::instance($course->id);
-        if (is_enrolled($context, $userid)) {
+        if ($userid > 0 && is_enrolled($context, $userid)) {
             throw new \moodle_exception('alreadyenrolled', 'local_moderncommerce');
         }
 
@@ -255,6 +255,9 @@ class cart_api {
         if (!$bundle || $bundle->status !== 'active' || empty($bundle->visible)) {
             throw new \moodle_exception('bundlenotavailable', 'local_moderncommerce');
         }
+        if ($userid === 0 && !empty($bundle->isprogram)) {
+            throw new \moodle_exception('guestcheckoutsignin', 'local_moderncommerce');
+        }
 
         if (access_service::user_has_product_purchase_access($userid, $bundleid)) {
             throw new \moodle_exception('productalreadyaccessible', 'local_moderncommerce');
@@ -383,10 +386,11 @@ class cart_api {
     public static function clear_cart($userid) {
         global $DB;
 
-        $carts = $DB->get_records('local_moderncommerce_carts', [
-            'userid' => (int) $userid,
-            'status' => 'active',
-        ]);
+        $conditions = ['userid' => (int)$userid, 'status' => 'active'];
+        if ((int)$userid === 0) {
+            $conditions['sessionid'] = \local_moderncommerce\services\guest_checkout_service::cart_token();
+        }
+        $carts = $DB->get_records('local_moderncommerce_carts', $conditions);
 
         foreach ($carts as $cart) {
             $DB->delete_records('local_moderncommerce_cart_items', ['cartid' => $cart->id]);
@@ -516,10 +520,18 @@ class cart_api {
     public static function get_active_cart(int $userid, bool $create = true) {
         global $DB, $SESSION;
 
-        $records = $DB->get_records('local_moderncommerce_carts', [
-            'userid' => $userid,
-            'status' => 'active',
-        ], 'timemodified DESC, id DESC', '*', 0, 1);
+        $conditions = ['userid' => $userid, 'status' => 'active'];
+        if ($userid === 0) {
+            $conditions['sessionid'] = \local_moderncommerce\services\guest_checkout_service::cart_token();
+        }
+        $records = $DB->get_records(
+            'local_moderncommerce_carts',
+            $conditions,
+            'timemodified DESC, id DESC',
+            '*',
+            0,
+            1
+        );
 
         if ($records) {
             return reset($records);
@@ -532,7 +544,9 @@ class cart_api {
         $now = time();
         $cart = (object) [
             'userid' => $userid,
-            'sessionid' => $SESSION->sessionid ?? sesskey(),
+            'sessionid' => $userid === 0
+                ? \local_moderncommerce\services\guest_checkout_service::cart_token()
+                : ($SESSION->sessionid ?? sesskey()),
             'status' => 'active',
             'currency' => self::get_currency(),
             'couponcode' => null,

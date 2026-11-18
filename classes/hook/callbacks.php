@@ -37,25 +37,37 @@ use local_moderncommerce\services\commerce_settings_service;
  * Hook callbacks for Modern Commerce.
  */
 class callbacks {
-    /** @var string Public catalog URL used as the Moodle default homepage option. */
+    /**
+     * @var string Public catalog URL used as the Moodle default homepage option.
+     */
     private const CATALOG_HOMEPAGE = '/local/moderncommerce/index.php';
 
-    /** @var string[] Allowed toast region positions. */
+    /**
+     * @var string[] Allowed toast region positions.
+     */
     private const NOTIFICATION_POSITIONS = [
         'top-left', 'top-center', 'top-right',
         'bottom-left', 'bottom-center', 'bottom-right',
     ];
 
-    /** @var string Default toast region position. */
+    /**
+     * @var string Default toast region position.
+     */
     private const NOTIFICATION_POSITION_DEFAULT = 'top-right';
 
-    /** @var int Default toast auto-dismiss delay in milliseconds. */
+    /**
+     * @var int Default toast auto-dismiss delay in milliseconds.
+     */
     private const NOTIFICATION_AUTODISMISS_DEFAULT = 4000;
 
-    /** @var string Core CSS bundle loaded on every Modern Commerce page. */
+    /**
+     * @var string Core CSS bundle loaded on every Modern Commerce page.
+     */
     private const STYLE_CORE = '/local/moderncommerce/styles/design-system.css';
 
-    /** @var array<string, string> Generated route CSS bundles. */
+    /**
+     * @var array<string, string> Generated route CSS bundles.
+     */
     private const STYLE_BUNDLES = [
         'admin' => '/local/moderncommerce/styles/bundles/admin.css',
         'learner' => '/local/moderncommerce/styles/bundles/learner.css',
@@ -141,6 +153,12 @@ class callbacks {
      */
     public static function redirect_my_to_learner_dashboard(before_http_headers $hook): void {
         global $PAGE;
+
+        // Installing Modern Commerce must not replace Moodle's dashboard implicitly.
+        // Sites that want the learner workspace to own /my can opt in explicitly.
+        if (!get_config('local_moderncommerce', 'replacecoredashboard')) {
+            return;
+        }
 
         if (!isloggedin() || isguestuser()) {
             return;
@@ -417,6 +435,7 @@ class callbacks {
             ], true);
         $learnerroutes = [
             '/local/moderncommerce/cart.php',
+            '/local/moderncommerce/guest_checkout.php',
             '/local/moderncommerce/checkout.php',
             '/local/moderncommerce/order.php',
             '/local/moderncommerce/redeem.php',
@@ -427,6 +446,7 @@ class callbacks {
         ];
         $storefrontroutes = [
             '/local/moderncommerce/index.php',
+            '/local/moderncommerce/guest_checkout.php',
             '/local/moderncommerce/about.php',
             // Dispatcher for every admin-created custom page.
             '/local/moderncommerce/page.php',

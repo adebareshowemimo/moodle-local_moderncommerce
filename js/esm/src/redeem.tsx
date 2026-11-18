@@ -12,7 +12,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {mcClasses, useModernCommerceClassSync} from "./design_system";
 import {McButton} from "./button";
 import {McInput} from "./form";
@@ -43,6 +43,15 @@ type ResolveResponse = {
     message: string;
     courses: Course[];
     planname: string;
+    requireschoice?: boolean;
+    choicetype?: string;
+};
+
+type RedeemableItem = {
+    id: number;
+    name: string;
+    type: "course" | "product";
+    coursecount: number;
 };
 
 type RedeemResponse = {
@@ -63,6 +72,7 @@ type RedeemResult = {
 type RedeemProps = {
     resolveMethodName: string;
     redeemMethodName: string;
+    searchItemsMethodName: string;
     orderId: number;
     catalogUrl: string;
     coursesUrl: string;
@@ -115,6 +125,7 @@ const callMoodleService = async <T, >(methodName: string, args: unknown): Promis
 export default function Redeem({
     resolveMethodName,
     redeemMethodName,
+    searchItemsMethodName,
     orderId,
     catalogUrl,
     coursesUrl,
@@ -131,7 +142,49 @@ export default function Redeem({
     const [preview, setPreview] = useState<ResolveResponse | null>(null);
     const [result, setResult] = useState<RedeemResult | null>(null);
 
+    // Only used for keys that let the learner choose what to unlock.
+    const [itemQuery, setItemQuery] = useState("");
+    const [items, setItems] = useState<RedeemableItem[]>([]);
+    const [chosen, setChosen] = useState<RedeemableItem | null>(null);
+
     const normalised = keycode.trim().toUpperCase();
+    const requiresChoice = preview?.requireschoice === true;
+    // A key is issued for one domain: only that catalogue is offered, with matching wording.
+    const choiceType = preview?.choicetype === "product" ? "product" : "course";
+    const choicePrompt = choiceType === "product"
+        ? (labels.choosebundletoredeem ?? "")
+        : (labels.choosecoursetoredeem ?? "");
+
+    // Load the catalogue only once the key turns out to need a choice.
+    useEffect(() => {
+        if (!requiresChoice) {
+            return undefined;
+        }
+
+        let cancelled = false;
+        const timer = window.setTimeout(() => {
+            void callMoodleService<{items: RedeemableItem[]}>(searchItemsMethodName, {
+                query: itemQuery.trim(),
+                limit: 20,
+                itemtype: choiceType,
+            })
+                .then((response) => {
+                    if (!cancelled) {
+                        setItems(response.items ?? []);
+                    }
+                })
+                .catch(() => {
+                    if (!cancelled) {
+                        setItems([]);
+                    }
+                });
+        }, 300);
+
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
+    }, [requiresChoice, itemQuery, searchItemsMethodName, choiceType]);
 
     // Previously both actions returned silently on an empty or malformed key,
     // leaving the user with no idea why nothing happened.
@@ -179,6 +232,11 @@ export default function Redeem({
         if (!checkKey()) {
             return;
         }
+        // Keys that unlock any catalogue item cannot be spent until one is chosen.
+        if (requiresChoice && !chosen) {
+            setError(choicePrompt);
+            return;
+        }
         setBusy("redeeming");
         setError("");
 
@@ -186,6 +244,8 @@ export default function Redeem({
             const response = await callMoodleService<RedeemResponse>(redeemMethodName, {
                 keycode: normalised,
                 orderid: orderId,
+                itemtype: chosen?.type ?? "",
+                itemid: chosen?.id ?? 0,
             });
             if (!response.success) {
                 setError(response.message);
@@ -211,6 +271,9 @@ export default function Redeem({
         setKeyError("");
         setPreview(null);
         setResult(null);
+        setItemQuery("");
+        setItems([]);
+        setChosen(null);
     };
 
     if (result) {
@@ -302,7 +365,8 @@ export default function Redeem({
                                 name="keycode"
                                 onKeyDown={(event) => {
                                     if (event.key === "Enter") {
-                                        void redeem();
+                                        // A key needing a choice must show the picker first.
+                                        void (preview ? redeem() : validate());
                                     }
                                 }}
                                 onValueChange={(value) => {
@@ -310,6 +374,9 @@ export default function Redeem({
                                     setPreview(null);
                                     setError("");
                                     setKeyError("");
+                                    setChosen(null);
+                                    setItems([]);
+                                    setItemQuery("");
                                 }}
                                 placeholder={labels.enterkeycode}
                                 required
@@ -328,6 +395,51 @@ export default function Redeem({
                                 </div>
                                 {preview.type === "subscription" ? (
                                     <p className={mcClasses("mc-cell-muted mb-0 mt-2")}>{preview.planname}</p>
+                                ) : requiresChoice ? (
+                                    <div className={mcClasses("mc-redeem__choice mt-2")}>
+                                        <p className={mcClasses("mc-cell-muted")}>{choicePrompt}</p>
+                                        <McInput
+                                            label={labels.searchcoursesplaceholder ?? ""}
+                                            name="redeemitemsearch"
+                                            onValueChange={(value) => {
+                                                setItemQuery(value);
+                                                setChosen(null);
+                                            }}
+                                            placeholder={labels.searchcoursesplaceholder}
+                                            type="search"
+                                            value={chosen ? chosen.name : itemQuery}
+                                        />
+                                        <div className={mcClasses("mc-course-picker__results")} role="listbox">
+                                            {items.map((item) => (
+                                                <button
+                                                    aria-selected={chosen?.id === item.id && chosen?.type === item.type}
+                                                    className={mcClasses(
+                                                        "mc-button mc-course-picker__option",
+                                                        chosen?.id === item.id && chosen?.type === item.type
+                                                            ? "mc-course-picker__option--selected"
+                                                            : ""
+                                                    )}
+                                                    data-mc-button="ghost"
+                                                    key={`${item.type}-${item.id}`}
+                                                    onClick={() => {
+                                                        setChosen(item);
+                                                        setError("");
+                                                    }}
+                                                    role="option"
+                                                    type="button"
+                                                >
+                                                    <span className={mcClasses("mc-course-picker__option-main")}>
+                                                        <strong>{item.name}</strong>
+                                                    </span>
+                                                    {item.type === "product" && (
+                                                        <span className={mcClasses("mc-badge mc-badge--neutral ms-2")}>
+                                                            {item.coursecount}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                 ) : (
                                     <ul className={mcClasses("mc-redeem__preview-list")}>
                                         {preview.courses.map((course) => (

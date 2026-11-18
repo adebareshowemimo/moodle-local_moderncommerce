@@ -70,6 +70,40 @@ class order_api {
         $couponcode = $billingdetails['couponcode'] ?? null;
         $calculations = pricing_api::calculate_cart_totals($allcartitems, $couponcode, !empty($couponcode));
 
+        return self::create_snapshot_order(
+            $userid,
+            $paymentmethod,
+            $billingdetails,
+            $allcartitems,
+            $calculations,
+            $cart ? (int)$cart->id : null
+        );
+    }
+
+    /**
+     * Create an order from a trusted, server-persisted checkout snapshot.
+     * Never expose this method directly as an external service.
+     *
+     * @param int $userid Buyer ID.
+     * @param string $paymentmethod Gateway ID.
+     * @param array $billingdetails Validated billing details.
+     * @param array $allcartitems Server-resolved line snapshots.
+     * @param array $calculations Server-calculated totals.
+     * @param int|null $cartid Source cart ID.
+     * @return object
+     */
+    public static function create_snapshot_order(
+        int $userid,
+        string $paymentmethod,
+        array $billingdetails,
+        array $allcartitems,
+        array $calculations,
+        ?int $cartid = null
+    ): object {
+        global $DB, $USER;
+        if ($userid <= 0 || !$allcartitems) {
+            throw new \invalid_parameter_exception('A buyer and line snapshots are required.');
+        }
         $transaction = $DB->start_delegated_transaction();
 
         try {
@@ -114,7 +148,7 @@ class order_api {
                 self::insert_order_item($orderid, $item, (string) $order->currency);
             }
 
-            self::create_order_operational($orderid, $cart ? (int) $cart->id : null);
+            self::create_order_operational($orderid, $cartid);
             self::record_selected_payment_method($order, $paymentmethod);
 
             if (!empty($calculations['coupon'])) {
@@ -254,6 +288,117 @@ class order_api {
     }
 
     /**
+     * Create a pending order for an optional add-on using a resolved product price.
+     *
+     * The add-on owns its purchase intent and fulfillment. Modern Commerce owns
+     * the immutable commercial order and payment flow. The metadata is stored in
+     * the order notes under the supplied add-on key and is never rendered as HTML.
+     *
+     * @param int $userid Buyer user ID.
+     * @param int $productid Modern Commerce product ID.
+     * @param int $priceid Resolved product price ID.
+     * @param float $unitprice Resolved unit price.
+     * @param int $quantity Positive integral quantity.
+     * @param string $itemtype Technical order item type.
+     * @param string $itemname Display snapshot.
+     * @param string $metakey Add-on metadata key.
+     * @param array $metadata Add-on-owned order metadata.
+     * @return object Created order.
+     */
+    public static function create_addon_order(
+        int $userid,
+        int $productid,
+        int $priceid,
+        float $unitprice,
+        int $quantity,
+        string $itemtype,
+        string $itemname,
+        string $metakey,
+        array $metadata
+    ): object {
+        global $DB, $USER;
+
+        $quantity = max(1, $quantity);
+        $unitprice = max(0, $unitprice);
+        $subtotal = $unitprice * $quantity;
+        $itemtype = clean_param($itemtype, PARAM_ALPHANUMEXT);
+        $metakey = clean_param($metakey, PARAM_ALPHANUMEXT);
+        if ($itemtype === '' || $metakey === '') {
+            throw new \moodle_exception('invaliddata', 'error');
+        }
+
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            $now = time();
+            $ordernumber = self::generate_order_number();
+            $order = (object) [
+                'userid' => $userid,
+                'ordernumber' => $ordernumber,
+                'ordertype' => 'purchase',
+                'status' => 'pending',
+                'subtotal' => $subtotal,
+                'discount' => 0,
+                'tax' => 0,
+                'fees' => 0,
+                'total' => $subtotal,
+                'refundedtotal' => 0,
+                'currency' => self::get_currency(),
+                'exchangerate' => 1,
+                'couponcode' => null,
+                'customeremail' => $USER->email ?? null,
+                'ipaddress' => getremoteaddr(),
+                'useragent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+                'referrer' => $_SERVER['HTTP_REFERER'] ?? '',
+                'notes' => json_encode([$metakey => $metadata], JSON_UNESCAPED_SLASHES),
+                'adminnotes' => null,
+                'createdby' => $USER->id ?? $userid,
+                'modifiedby' => $USER->id ?? $userid,
+                'timecreated' => $now,
+                'timemodified' => $now,
+            ];
+            pricing_service::apply_currency_snapshot($order);
+            $orderid = (int) $DB->insert_record(
+                'local_moderncommerce_orders',
+                self::filter_record_fields('local_moderncommerce_orders', $order)
+            );
+            $order->id = $orderid;
+            self::insert_order_item($orderid, (object) [
+                'productid' => $productid,
+                'priceid' => $priceid ?: null,
+                'itemtype' => $itemtype,
+                'itemname' => clean_param($itemname, PARAM_TEXT),
+                'unitprice' => $unitprice,
+                'quantity' => $quantity,
+            ], (string) $order->currency);
+            self::create_order_operational($orderid, null);
+            self::log_audit($userid, 'order_created', 'order', $orderid, null, [
+                'ordernumber' => $ordernumber,
+                'total' => $subtotal,
+                'currency' => $order->currency,
+                'addon' => $metakey,
+            ]);
+            $transaction->allow_commit();
+
+            \local_moderncommerce\event\order_created::create([
+                'objectid' => $orderid,
+                'context' => \context_system::instance(),
+                'userid' => $userid,
+                'other' => ['ordernumber' => $ordernumber],
+            ])->trigger();
+            return $order;
+        } catch (\Throwable $exception) {
+            $transaction->rollback($exception);
+            throw new \moodle_exception(
+                'error:ordercreationfailed',
+                'local_moderncommerce',
+                '',
+                null,
+                $exception->getMessage()
+            );
+        }
+    }
+
+    /**
      * Create manual invoice by admin.
      *
      * @param int $userid
@@ -369,7 +514,7 @@ class order_api {
      * @param string $status
      * @return bool
      */
-    public static function update_order_status($orderid, $status) {
+    public static function update_order_status($orderid, $status, bool $verifiedguestpayment = false) {
         global $DB, $USER;
 
         $order = $DB->get_record('local_moderncommerce_orders', ['id' => (int) $orderid], '*', MUST_EXIST);
@@ -393,7 +538,7 @@ class order_api {
         }
 
         if (
-            in_array($status, ['paid', 'completed'], true)
+            !$verifiedguestpayment && in_array($status, ['paid', 'completed'], true)
             && !in_array($oldstatus, ['paid', 'completed'], true)
         ) {
             $validation = order_validation_service::validate_order_for_payment((int) $orderid, (int) $order->userid);
@@ -437,7 +582,9 @@ class order_api {
         $isnowpaid = in_array($status, $enrollablestatuses, true);
 
         if ($isnowpaid && $wasnotpaid) {
-            cart_api::clear_cart((int) $order->userid);
+            if (!$verifiedguestpayment) {
+                cart_api::clear_cart((int) $order->userid);
+            }
 
             $event = \local_moderncommerce\event\order_paid::create([
                 'objectid' => (int) $orderid,

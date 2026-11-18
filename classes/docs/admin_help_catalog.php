@@ -100,6 +100,14 @@ class admin_help_catalog {
                 'file' => 'products-and-pricing.md',
             ],
             [
+                'id' => 'company-licensing',
+                'group' => 'commerce',
+                'title' => 'Company licensing',
+                'summary' => 'Company domains, additive licences, pooled seats, checkout, and course access.',
+                'icon' => 'bi-buildings',
+                'file' => 'company-licensing.md',
+            ],
+            [
                 'id' => 'programs-learning-paths',
                 'group' => 'commerce',
                 'title' => 'Programs and learning paths',
@@ -114,6 +122,14 @@ class admin_help_catalog {
                 'summary' => 'Gateway setup, callbacks, webhooks, refunds, and payment troubleshooting checkpoints.',
                 'icon' => 'bi-credit-card-2-front',
                 'file' => 'payments.md',
+            ],
+            [
+                'id' => 'guest-checkout',
+                'group' => 'commerce',
+                'title' => 'Guest checkout',
+                'summary' => 'Optional guest carts, Stripe payments, account creation, and purchase recovery.',
+                'icon' => 'bi-cart-check',
+                'file' => 'guest-checkout.md',
             ],
             [
                 'id' => 'orders-reports',

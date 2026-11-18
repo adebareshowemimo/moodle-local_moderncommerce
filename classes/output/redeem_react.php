@@ -45,13 +45,20 @@ class redeem_react {
             'id' => 'moderncommerce-redeem-app',
             'class' => 'local-moderncommerce-redeem',
             'props' => [
-                'validateMethodName' => 'local_moderncommerce_validate_key',
-                'redeemMethodName' => 'local_moderncommerce_redeem_key',
+                // The component resolves the key type server-side, so it needs the resolver
+                // pair rather than the older enrolment-only validate/redeem functions.
+                'resolveMethodName' => 'local_moderncommerce_resolve_key',
+                'redeemMethodName' => 'local_moderncommerce_redeem_any_key',
+                'searchItemsMethodName' => 'local_moderncommerce_search_redeemable_items',
                 'orderId' => $orderid,
                 'catalogUrl' => (new moodle_url('/local/moderncommerce/learner/index.php'))->out(false) . '#/library',
                 'coursesUrl' => (new moodle_url('/local/moderncommerce/learner/index.php'))->out(false) . '#/courses',
+                'subscriptionUrl' => (new moodle_url('/local/moderncommerce/learner/index.php'))->out(false)
+                    . '#/subscriptions',
                 'layout' => $layout,
                 'activeNav' => $activenav,
+                // Load every component string, as the learner SPA does: the shared component
+                // also renders the subscription branch, whose labels are not listed below.
                 'labels' => validation_labels::all() + [
                     'error:invalidkeyformat' => get_string('error:invalidkeyformat', 'local_moderncommerce'),
                     'title' => get_string('redeemkey', 'local_moderncommerce'),
@@ -62,6 +69,9 @@ class redeem_react {
                     'validatekey' => get_string('validatekey', 'local_moderncommerce'),
                     'redeemkey' => get_string('redeemkey', 'local_moderncommerce'),
                     'grantsaccess' => get_string('grantsaccess', 'local_moderncommerce'),
+                    'choosecoursetoredeem' => get_string('choosecoursetoredeem', 'local_moderncommerce'),
+                    'choosebundletoredeem' => get_string('choosebundletoredeem', 'local_moderncommerce'),
+                    'searchcoursesplaceholder' => get_string('searchcoursesplaceholder', 'local_moderncommerce'),
                     'alreadyenrolled' => get_string('alreadyenrolled', 'local_moderncommerce'),
                     'accesscourse' => get_string('accesscourse', 'local_moderncommerce'),
                     'redeemanother' => get_string('redeemanother', 'local_moderncommerce'),
@@ -70,7 +80,7 @@ class redeem_react {
                     'browsecatalog' => get_string('browsecatalog', 'local_moderncommerce'),
                     'loading' => get_string('loading', 'local_moderncommerce'),
                     'retry' => get_string('retry', 'local_moderncommerce'),
-                ],
+                ] + get_string_manager()->load_component_strings('local_moderncommerce', current_language()),
             ],
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 

@@ -36,22 +36,34 @@ use local_moderncommerce\services\pricing_service;
  * Redeem multiple keys page output class.
  */
 class redeem_multiple_page implements renderable, templatable {
-    /** @var object The order */
+    /**
+     * @var object The order
+     */
     protected $order;
 
-    /** @var array Course items from order */
+    /**
+     * @var array Course items from order
+     */
     protected $courseitems;
 
-    /** @var array Bundle items from order */
+    /**
+     * @var array Bundle items from order
+     */
     protected $bundleitems;
 
-    /** @var bool Whether all items were successfully redeemed */
+    /**
+     * @var bool Whether all items were successfully redeemed
+     */
     protected $hassuccess;
 
-    /** @var array Error messages */
+    /**
+     * @var array Error messages
+     */
     protected $errors;
 
-    /** @var array Success messages */
+    /**
+     * @var array Success messages
+     */
     protected $successes;
 
     /**

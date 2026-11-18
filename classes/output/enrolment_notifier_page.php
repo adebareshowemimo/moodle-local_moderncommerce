@@ -24,10 +24,14 @@ namespace local_moderncommerce\output;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class enrolment_notifier_page {
-    /** @var string Standalone enrolment notifier add-on component. */
+    /**
+     * @var string Standalone enrolment notifier add-on component.
+     */
     private const ADDON = 'local_modernenrolnotifier';
 
-    /** @var string[] Supported route views. */
+    /**
+     * @var string[] Supported route views.
+     */
     private const VIEWS = [
         'overview',
         'rules',

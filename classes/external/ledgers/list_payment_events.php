@@ -34,7 +34,9 @@ use local_moderncommerce\localisation;
  * List Modern Commerce payment events.
  */
 class list_payment_events extends external_api {
-    /** @var string Source table. */
+    /**
+     * @var string Source table.
+     */
     private const TABLE = 'local_moderncommerce_payment_events';
 
     /**

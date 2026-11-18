@@ -26,10 +26,14 @@ use context_system;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class role_preset_service {
-    /** @var string Component name. */
+    /**
+     * @var string Component name.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
-    /** @var string Marker used to prove the plugin owns a seeded role shortname. */
+    /**
+     * @var string Marker used to prove the plugin owns a seeded role shortname.
+     */
     private const MARKER_PREFIX = 'Seeded role preset: local_moderncommerce:';
 
     /**

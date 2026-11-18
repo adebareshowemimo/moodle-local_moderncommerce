@@ -31,6 +31,7 @@ use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
 use core_external\external_warnings;
+use local_moderncommerce\api\cart_api;
 use local_moderncommerce\output\catalog_page;
 use local_moderncommerce\services\access_service;
 use local_moderncommerce\services\pricing_service;
@@ -125,6 +126,7 @@ class get_catalog extends external_api {
             return self::add_access_state($item, $userid);
         }, $pageditems);
         $pageditems = self::add_wishlist_state($pageditems, $userid);
+        $pageditems = self::add_cart_state($pageditems, $userid);
         $totalpages = $params['perpage'] > 0 ? (int)ceil($total / $params['perpage']) : 1;
 
         return [
@@ -152,6 +154,7 @@ class get_catalog extends external_api {
             ],
             'state' => [
                 'isloggedin' => isloggedin() && !isguestuser(),
+                'guestcheckout' => \local_moderncommerce\services\guest_checkout_service::enabled(),
             ],
             'urls' => [
                 'catalog' => (new \moodle_url('/local/moderncommerce/index.php'))->out(false),
@@ -240,6 +243,7 @@ class get_catalog extends external_api {
             'bestseller' => new external_value(PARAM_BOOL, 'Whether item is marked bestseller.'),
             'hasaccess' => new external_value(PARAM_BOOL, 'Whether the current learner already has access.'),
             'inwishlist' => new external_value(PARAM_BOOL, 'Whether the current learner has saved this item.'),
+            'incart' => new external_value(PARAM_BOOL, 'Whether the item is already in the current learner cart.'),
             'accessurl' => new external_value(PARAM_RAW, 'Learner dashboard URL for owned items.'),
             'detailsurl' => new external_value(PARAM_RAW, 'Details page URL.'),
             'timecreated' => new external_value(PARAM_INT, 'Creation timestamp used for sorting.'),
@@ -306,6 +310,7 @@ class get_catalog extends external_api {
      */
     private static function state_structure(): external_single_structure {
         return new external_single_structure([
+            'guestcheckout' => new external_value(PARAM_BOOL, 'Guest checkout enabled.', VALUE_DEFAULT, false),
             'isloggedin' => new external_value(PARAM_BOOL, 'Whether the visitor is logged in.'),
         ]);
     }
@@ -392,6 +397,7 @@ class get_catalog extends external_api {
             'bestseller' => !empty($item['bestseller']),
             'hasaccess' => false,
             'inwishlist' => false,
+            'incart' => false,
             'accessurl' => '',
             'detailsurl' => (string)($item['detailsurl'] ?? ''),
             'timecreated' => (int)($item['timecreated'] ?? 0),
@@ -482,6 +488,56 @@ class get_catalog extends external_api {
         $item['accessurl'] = $hasaccess ? self::access_url_for_item($item, $itemtype) : '';
 
         return $item;
+    }
+
+    /**
+     * Add current learner cart state to catalog items.
+     *
+     * Lets the catalogue render an "In cart" button instead of "Add to cart",
+     * and keeps that state correct after a reload — the React flag alone would
+     * reset on every fresh page load.
+     *
+     * @param array $items Catalog items.
+     * @param int $userid Current user ID, or zero for guests.
+     * @return array Catalog items with cart state.
+     */
+    private static function add_cart_state(array $items, int $userid): array {
+        foreach ($items as $index => $item) {
+            $items[$index]['incart'] = false;
+        }
+
+        if (($userid <= 0 && !\local_moderncommerce\services\guest_checkout_service::enabled()) || empty($items)) {
+            return $items;
+        }
+
+        $courseids = [];
+        foreach (cart_api::get_cart_items($userid) as $cartitem) {
+            $courseid = (int)($cartitem->courseid ?? 0);
+            if ($courseid > 0) {
+                $courseids[$courseid] = true;
+            }
+        }
+
+        $bundleids = [];
+        foreach (cart_api::get_bundle_cart_items($userid) as $cartitem) {
+            $bundleid = (int)($cartitem->bundleid ?? 0);
+            if ($bundleid > 0) {
+                $bundleids[$bundleid] = true;
+            }
+        }
+
+        foreach ($items as $index => $item) {
+            $itemid = (int)($item['id'] ?? 0);
+            $itemtype = strtolower((string)($item['itemtype'] ?? ''));
+            if ($itemid <= 0) {
+                continue;
+            }
+            $items[$index]['incart'] = $itemtype === 'course'
+                ? isset($courseids[$itemid])
+                : isset($bundleids[$itemid]);
+        }
+
+        return $items;
     }
 
     /**

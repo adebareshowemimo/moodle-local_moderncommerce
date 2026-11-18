@@ -30,7 +30,9 @@ use core\persistent;
  * Represents a single slide within a slider widget instance.
  */
 class widget_slide extends persistent {
-    /** @var string Table name. */
+    /**
+     * @var string Table name.
+     */
     const TABLE = 'local_moderncommerce_widget_slide';
 
     /**

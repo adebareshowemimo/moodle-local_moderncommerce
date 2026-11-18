@@ -28,13 +28,19 @@ use local_moderncommerce\event\plan_deleted;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class plan_api {
-    /** Monthly billing cycle. */
+    /**
+     * Monthly billing cycle.
+     */
     const CYCLE_MONTHLY = 'monthly';
 
-    /** Yearly billing cycle. */
+    /**
+     * Yearly billing cycle.
+     */
     const CYCLE_YEARLY = 'yearly';
 
-    /** @var array Static cache for plans */
+    /**
+     * @var array Static cache for plans
+     */
     private static $cache = [];
 
     /**

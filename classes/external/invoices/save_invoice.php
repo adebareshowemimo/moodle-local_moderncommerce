@@ -38,7 +38,9 @@ use local_moderncommerce\services\pricing_service;
  * Create or update a manual invoice, recomputing totals from its line items.
  */
 class save_invoice extends external_api {
-    /** @var string[] Allowed statuses. */
+    /**
+     * @var string[] Allowed statuses.
+     */
     private const STATUSES = ['draft', 'sent', 'paid', 'overdue', 'cancelled', 'void'];
 
     /**

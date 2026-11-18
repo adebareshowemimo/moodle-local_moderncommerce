@@ -28,10 +28,14 @@ namespace local_moderncommerce\storefront;
  * Central whitelist and sanitization service for style-only widget presets.
  */
 class preset_service {
-    /** @var string Preset table name. */
+    /**
+     * @var string Preset table name.
+     */
     public const TABLE = 'local_moderncommerce_widget_preset';
 
-    /** @var string[] Type-specific settings keys that are visual enough for presets. */
+    /**
+     * @var string[] Type-specific settings keys that are visual enough for presets.
+     */
     private const SETTINGS_KEYS = [
         'showheader', 'showquote', 'showcount', 'showarrows', 'showdots', 'showfeatures', 'showdescription',
         'showtrial', 'showpromo', 'highlightfeatured', 'showeyebrow', 'showtitle', 'justifytext', 'showphoto',
@@ -73,7 +77,9 @@ class preset_service {
         'tabbgcolor', 'tabbordercolor', 'tabtextcolor', 'tabactivebgcolor', 'tabactivetextcolor',
     ];
 
-    /** @var string[] Settings keys that are booleans (stored 1/0), not text. */
+    /**
+     * @var string[] Settings keys that are booleans (stored 1/0), not text.
+     */
     private const BOOLEAN_KEYS = [
         'showheader', 'showquote', 'showcount', 'showarrows', 'showdots', 'showfeatures', 'showdescription',
         'showtrial', 'showpromo', 'highlightfeatured', 'showeyebrow', 'showtitle', 'justifytext', 'showphoto',
@@ -81,7 +87,9 @@ class preset_service {
         'centercards',
     ];
 
-    /** @var string[] Settings keys that must be sanitised as colours. */
+    /**
+     * @var string[] Settings keys that must be sanitised as colours.
+     */
     private const COLOUR_KEYS = [
         'bgcolor', 'textcolor', 'headingcolor', 'accentcolor', 'overlaycolor', 'gradientstart', 'gradientend',
         'breadcrumbcolor', 'titlecolor', 'subtitlecolor', 'primarybuttoncolor', 'primarybuttontextcolor',
@@ -105,7 +113,9 @@ class preset_service {
         'tabbordercolor', 'tabtextcolor', 'tabactivebgcolor', 'tabactivetextcolor',
     ];
 
-    /** @var string[] Settings keys that must be sanitised as pixel/numeric values. */
+    /**
+     * @var string[] Settings keys that must be sanitised as pixel/numeric values.
+     */
     private const NUMBER_KEYS = [
         'columns', 'paddingtop', 'paddingbottom', 'paddingleft', 'paddingright', 'heroradius', 'heropanelvaluefontsize',
         'cardradius', 'breadcrumbfontsize', 'titlefontsize',
@@ -122,7 +132,9 @@ class preset_service {
         'plannamefontsize', 'pricefontsize',
     ];
 
-    /** @var string[] Universal styleconfig keys accepted from presets. */
+    /**
+     * @var string[] Universal styleconfig keys accepted from presets.
+     */
     private const STYLE_KEYS = [
         'bg', 'headingcolor', 'textcolor', 'accentcolor', 'headingfontsize', 'bodyfontsize',
         'spacingtop', 'spacingbottom', 'radius',

@@ -36,10 +36,14 @@ use core_external\external_warnings;
  * Newsletter subscriber admin webservice methods.
  */
 class admin extends external_api {
-    /** @var int Maximum rows per page. */
+    /**
+     * @var int Maximum rows per page.
+     */
     private const MAX_PER_PAGE = 100;
 
-    /** @var int Maximum rows in one CSV export. */
+    /**
+     * @var int Maximum rows in one CSV export.
+     */
     private const MAX_EXPORT_ROWS = 10000;
 
     /**

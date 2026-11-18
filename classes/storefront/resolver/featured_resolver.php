@@ -91,6 +91,8 @@ class featured_resolver implements widget_resolver {
             'cardborderwidth' => min(24, max(0, (int)($settings['cardborderwidth'] ?? 0))),
             'labels' => [
                 'addtocart' => get_string('addtocart', 'local_moderncommerce'),
+                'incart' => get_string('incart', 'local_moderncommerce'),
+                'removefromcart' => get_string('removefromcart', 'local_moderncommerce'),
                 'viewdetails' => get_string('viewdetails', 'local_moderncommerce'),
                 'bestseller' => get_string('bestseller', 'local_moderncommerce'),
                 'owned' => get_string('owned', 'local_moderncommerce'),

@@ -33,10 +33,14 @@ use local_moderncommerce\subscription\services\email_service;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class process_recurring_payments extends \core\task\scheduled_task {
-    /** @var int Maximum payment retry attempts before suspension */
+    /**
+     * @var int Maximum payment retry attempts before suspension
+     */
     const MAX_RETRY_ATTEMPTS = 3;
 
-    /** @var int Days between retry attempts */
+    /**
+     * @var int Days between retry attempts
+     */
     const RETRY_INTERVAL_DAYS = 3;
 
     /**

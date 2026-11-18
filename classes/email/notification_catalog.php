@@ -28,7 +28,9 @@ namespace local_moderncommerce\email;
  * Builds the editable email-notification registry used by admin UI and delivery.
  */
 class notification_catalog {
-    /** @var string Plugin component. */
+    /**
+     * @var string Plugin component.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
     /**

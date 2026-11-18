@@ -38,7 +38,9 @@ use moodle_url;
  * List commerce customers for the admin customers screen.
  */
 class list_customers extends external_api {
-    /** @var string[] Supported account status filters. */
+    /**
+     * @var string[] Supported account status filters.
+     */
     private const ACCOUNT_STATUSES = ['active', 'suspended'];
 
     /**

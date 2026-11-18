@@ -28,10 +28,14 @@ namespace local_moderncommerce\services;
  * Canonical catalog of the dashboard KPI panels plus per-admin visibility/order resolution.
  */
 class dashboard_panel_service {
-    /** @var string Component for config storage. */
+    /**
+     * @var string Component for config storage.
+     */
     private const COMPONENT = 'local_moderncommerce';
 
-    /** @var int[] Allowed 12-grid spans (full, half, third, quarter). */
+    /**
+     * @var int[] Allowed 12-grid spans (full, half, third, quarter).
+     */
     public const SIZES = [12, 6, 4, 3];
 
     /**

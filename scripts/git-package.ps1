@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Version = '',
+    [string]$OutputDirectory = '',
     [switch]$Force
 )
 
@@ -38,6 +39,9 @@ if ($Version.Trim() -eq '') {
 
 $releaseroot = Get-ReleaseRoot
 $releasedir = Join-Path $releaseroot 'releases'
+if ($OutputDirectory.Trim() -ne '') {
+    $releasedir = [System.IO.Path]::GetFullPath($OutputDirectory)
+}
 New-Item -ItemType Directory -Force -Path $releasedir | Out-Null
 
 if (-not (Get-Command composer -ErrorAction SilentlyContinue)) {
@@ -87,14 +91,17 @@ try {
         'releases',
         'node_modules',
         'site',
+        'videos',
         'vendor',
         '.env',
         '.env.local',
-        '.phpunit.result.cache'
+        '.phpunit.result.cache',
+        'MARKETPLACE_REVIEW_TODO.md',
+        'error_log'
     )
 
     Get-ChildItem -LiteralPath $pluginroot -Force |
-        Where-Object { $_.Name -notin $excludednames -and $_.Name -notlike '.codex-*' } |
+        Where-Object { $_.Name -notin $excludednames -and $_.Name -notlike '.codex-*' -and $_.Name -notlike '*.log' } |
         ForEach-Object {
             Copy-Item -LiteralPath $_.FullName -Destination $tempplugin -Recurse -Force
         }
@@ -201,6 +208,12 @@ try {
     }
 } finally {
     if (Test-Path $temproot) {
+        $resolvedtemp = (Resolve-Path -LiteralPath $temproot).Path
+        $expectedparent = (Resolve-Path -LiteralPath $env:TEMP).Path.TrimEnd('\') + '\'
+        if (-not $resolvedtemp.StartsWith($expectedparent, [System.StringComparison]::OrdinalIgnoreCase) -or
+                (Split-Path -Leaf $resolvedtemp) -notlike 'moderncommerce-release-*') {
+            throw 'Refusing to clean a release staging directory outside the task temporary folder.'
+        }
         Remove-Item -LiteralPath $temproot -Recurse -Force
     }
 }

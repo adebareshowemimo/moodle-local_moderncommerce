@@ -32,6 +32,7 @@ use core_external\external_function_parameters;
 use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
+use local_moderncommerce\api\cart_api;
 use local_moderncommerce\services\access_service;
 use local_moderncommerce\services\meta_service;
 use local_moderncommerce\services\pricing_service;
@@ -100,12 +101,14 @@ class get_course_details extends external_api {
             'meta' => self::meta_data((int)$course->id),
             'state' => [
                 'isloggedin' => $userid > 0,
+                'guestcheckout' => \local_moderncommerce\services\guest_checkout_service::enabled(),
                 'hasaccess' => $accessurl !== null,
                 'isavailable' => true,
                 'canpurchase' => $haspurchaseoption,
                 'isinsubscriptionplan' => $isinsubscriptionplan,
                 'productid' => $productid,
                 'inwishlist' => self::is_in_wishlist($productid, $userid),
+                'incart' => self::is_in_cart((int)$course->id, $userid),
             ],
             'overview' => self::overview_data($course, $context),
             'objectives' => self::objectives_data((int)$course->id),
@@ -218,6 +221,7 @@ class get_course_details extends external_api {
      */
     private static function state_structure(): external_single_structure {
         return new external_single_structure([
+            'guestcheckout' => new external_value(PARAM_BOOL, 'Allow guest purchases.', VALUE_DEFAULT, false),
             'isloggedin' => new external_value(PARAM_BOOL, 'Whether the visitor is logged in.'),
             'hasaccess' => new external_value(PARAM_BOOL, 'Whether the visitor has course access.'),
             'isavailable' => new external_value(PARAM_BOOL, 'Whether the course is available.'),
@@ -225,6 +229,7 @@ class get_course_details extends external_api {
             'isinsubscriptionplan' => new external_value(PARAM_BOOL, 'Whether a plan can grant this course.'),
             'productid' => new external_value(PARAM_INT, 'Product backing this course (0 when none).'),
             'inwishlist' => new external_value(PARAM_BOOL, 'Whether the current learner has saved this course.'),
+            'incart' => new external_value(PARAM_BOOL, 'Whether the course is already in the learner cart.'),
         ]);
     }
 
@@ -283,6 +288,30 @@ class get_course_details extends external_api {
             'userid' => $userid,
             'productid' => $productid,
         ]);
+    }
+
+    /**
+     * Check whether the course is already in the current learner cart.
+     *
+     * Lets the detail page render an "In cart" button instead of "Add to cart",
+     * and keeps that correct after a reload.
+     *
+     * @param int $courseid Course ID.
+     * @param int $userid Current user ID, or zero for guests.
+     * @return bool
+     */
+    private static function is_in_cart(int $courseid, int $userid): bool {
+        if ($courseid <= 0 || $userid <= 0) {
+            return false;
+        }
+
+        foreach (cart_api::get_cart_items($userid) as $cartitem) {
+            if ((int)($cartitem->courseid ?? 0) === $courseid) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -35,10 +35,14 @@ use local_moderncommerce\services\pricing_service;
  * Orders list page renderable class.
  */
 class orders_page implements renderable, templatable {
-    /** @var int User ID */
+    /**
+     * @var int User ID
+     */
     protected $userid;
 
-    /** @var array Orders */
+    /**
+     * @var array Orders
+     */
     protected $orders;
 
     /**

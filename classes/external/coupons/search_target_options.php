@@ -35,7 +35,9 @@ use core_external\external_value;
  * Search target options for coupon applicability rules.
  */
 class search_target_options extends external_api {
-    /** @var string[] Supported target types. */
+    /**
+     * @var string[] Supported target types.
+     */
     private const TARGET_TYPES = ['product', 'course', 'productcategory', 'coursecategory', 'producttype', 'sku'];
 
     /**

@@ -39,7 +39,9 @@ use xmldb_table;
  * Returns a learner's subscription summary.
  */
 class get_subscription extends external_api {
-    /** @var array Active subscription statuses. */
+    /**
+     * @var array Active subscription statuses.
+     */
     private const ACTIVE_STATUSES = ['active', 'trial', 'grace'];
 
     /**

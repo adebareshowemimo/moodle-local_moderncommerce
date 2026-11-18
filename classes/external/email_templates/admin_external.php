@@ -41,13 +41,19 @@ use local_moderncommerce\email\template_manager;
  * Email templates admin webservice methods.
  */
 class admin_external extends external_api {
-    /** @var string Database table. */
+    /**
+     * @var string Database table.
+     */
     private const TABLE = 'local_moderncommerce_emailtpl';
 
-    /** @var int Maximum rows per page. */
+    /**
+     * @var int Maximum rows per page.
+     */
     private const MAX_PER_PAGE = 100;
 
-    /** @var string[] Valid template statuses. */
+    /**
+     * @var string[] Valid template statuses.
+     */
     private const STATUSES = ['active', 'inactive'];
 
     // Get metadata.

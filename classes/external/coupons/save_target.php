@@ -34,13 +34,19 @@ use core_external\external_value;
  * Save a coupon applicability target.
  */
 class save_target extends external_api {
-    /** @var string[] Supported target types. */
+    /**
+     * @var string[] Supported target types.
+     */
     private const TARGET_TYPES = ['product', 'course', 'productcategory', 'coursecategory', 'producttype', 'sku'];
 
-    /** @var string[] Text-value target types. */
+    /**
+     * @var string[] Text-value target types.
+     */
     private const VALUE_TARGET_TYPES = ['producttype', 'sku'];
 
-    /** @var string[] Supported product types. */
+    /**
+     * @var string[] Supported product types.
+     */
     private const PRODUCT_TYPES = ['course', 'bundle', 'program', 'subscription', 'digital'];
 
     /**

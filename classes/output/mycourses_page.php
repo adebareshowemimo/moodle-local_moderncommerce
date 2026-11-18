@@ -39,10 +39,14 @@ use local_moderncommerce\api\order_api;
  * My Courses page output class.
  */
 class mycourses_page implements renderable, templatable {
-    /** @var int The user ID */
+    /**
+     * @var int The user ID
+     */
     protected $userid;
 
-    /** @var string The current filter */
+    /**
+     * @var string The current filter
+     */
     protected $filter;
 
     /**

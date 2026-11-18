@@ -37,10 +37,14 @@ use local_moderncommerce\storefront\style_controls;
  * layout collapses to 2-up on tablet and 1-up on phones.
  */
 class featuregrid_resolver implements widget_resolver {
-    /** @var int Most cards an instance may render. */
+    /**
+     * @var int Most cards an instance may render.
+     */
     private const MAX_CARDS = 12;
 
-    /** @var string[] Supported card treatments. */
+    /**
+     * @var string[] Supported card treatments.
+     */
     private const STYLES = ['topbar', 'plain', 'tile', 'bordered'];
 
     /**

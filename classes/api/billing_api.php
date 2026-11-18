@@ -29,7 +29,9 @@ namespace local_moderncommerce\api;
  * Billing API class.
  */
 class billing_api {
-    /** @var string Table name */
+    /**
+     * @var string Table name
+     */
     const TABLE = 'local_moderncommerce_billing_profiles';
     /**
      * Get the default billing info for a user.
