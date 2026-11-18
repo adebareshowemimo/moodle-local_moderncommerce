@@ -19,13 +19,16 @@ Buyer details occupy the left sidebar in place of account navigation. The summar
 the native Moodle form in that sidebar, including its session key, validation, consent, and CAPTCHA when configured.
 On narrower screens the details, items, and summary stack in reading order.
 
-Stripe hosted card payments for courses and bundles. Guest coupons, programs, subscriptions, manual payments,
+Stripe hosted payments for courses and bundles, using payment methods enabled in the Stripe Dashboard.
+Delayed payment methods remain pending until Stripe confirms payment; no account or enrolment is created before that.
+Guest coupons, programs, subscriptions, manual payments,
 and zero-total purchases require signing in. Existing authenticated checkout remains available.
 
 ## Operation
 
 Enable **Allow guest checkout** in Modern Commerce checkout settings. Stripe must be enabled with a signing secret.
-Register `checkout.session.completed` alongside the existing charge/refund events in Stripe's webhook destination.
+Register `checkout.session.completed` and `checkout.session.async_payment_succeeded`
+alongside the existing charge/refund events in Stripe's webhook destination.
 Use Snapshot events from Your account; paste the destination's `whsec_` signing secret into the gateway settings.
 The switch controls new guest operations only: turning it off never prevents a paid purchase from being fulfilled.
 Run Moodle cron for fulfilment and mail retries. Check the guest checkout recovery report for pending paid purchases.

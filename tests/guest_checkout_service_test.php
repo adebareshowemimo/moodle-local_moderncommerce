@@ -30,6 +30,141 @@ use local_moderncommerce\payment\stripe_gateway;
 #[\PHPUnit\Framework\Attributes\CoversClass(guest::class)]
 final class guest_checkout_service_test extends advanced_testcase {
     /**
+     * Guest sessions let Stripe select methods while preserving totals and retry identity.
+     */
+    public function test_guest_session_uses_dashboard_payment_methods(): void {
+        $gateway = $this->getMockBuilder(stripe_gateway::class)->onlyMethods(['make_request'])->getMock();
+        $gateway->expects($this->once())->method('make_request')->with(
+            'POST',
+            '/checkout/sessions',
+            $this->callback(function (array $data): bool {
+                foreach (array_keys($data) as $key) {
+                    $this->assertFalse(str_starts_with($key, 'payment_method_types'));
+                }
+                $this->assertSame('payment', $data['mode']);
+                $this->assertSame(2500, $data['line_items[0][price_data][unit_amount]']);
+                $this->assertSame('moderncommerce-guest-42', $data['_idempotency_key']);
+                $this->assertSame(42, $data['metadata[guest_checkout_id]']);
+                return true;
+            })
+        )->willReturn(['id' => 'cs_test_dynamic', 'url' => 'https://checkout.stripe.com/test']);
+        $result = $gateway->create_guest_session(
+            (object)['id' => 42, 'timecreated' => time(), 'email' => 'buyer@example.invalid'],
+            ['totals' => ['total' => 25, 'currency' => 'USD']],
+            str_repeat('a', 64)
+        );
+        $this->assertSame('cs_test_dynamic', $result['id']);
+    }
+
+    /**
+     * Signed-in and subscription checkouts omit the retired parameter too.
+     */
+    public function test_authenticated_sessions_use_dashboard_payment_methods(): void {
+        $buyer = $this->getDataGenerator()->create_user();
+        foreach ([false, true] as $subscription) {
+            $gateway = $this->getMockBuilder(stripe_gateway::class)->onlyMethods([
+                'make_request', 'is_enabled', 'get_config', 'log_transaction',
+            ])->getMock();
+            $gateway->method('is_enabled')->willReturn(true);
+            $gateway->method('get_config')->willReturn([]);
+            $gateway->expects($this->once())->method('make_request')->with(
+                'POST',
+                '/checkout/sessions',
+                $this->callback(function (array $data) use ($subscription): bool {
+                    foreach (array_keys($data) as $key) {
+                        $this->assertFalse(str_starts_with($key, 'payment_method_types'));
+                    }
+                    $this->assertSame('payment', $data['mode']);
+                    $this->assertSame(2500, $data['line_items[0][price_data][unit_amount]']);
+                    if ($subscription) {
+                        $this->assertSame('off_session', $data['payment_intent_data[setup_future_usage]']);
+                        $this->assertSame('always', $data['customer_creation']);
+                    }
+                    return true;
+                })
+            )->willReturn(['id' => 'cs_test_dynamic', 'url' => 'https://checkout.stripe.com/test']);
+            $result = $gateway->initialize_payment((object)[
+                'id' => 999, 'userid' => $buyer->id, 'ordernumber' => 'DYNAMIC-TEST', 'total' => 25, 'currency' => 'USD',
+                'notes' => $subscription ? json_encode(['subscription' => ['planid' => 1]]) : '',
+            ]);
+            $this->assertTrue($result['success']);
+        }
+    }
+
+    /**
+     * Acknowledged delayed sessions do not provision until a verified success arrives.
+     */
+    public function test_delayed_webhook_waits_for_confirmed_payment(): void {
+        global $CFG, $DB;
+        [$record, $session, $course] = $this->purchase();
+        gateway_manager::save_gateway_config('stripe', ['enabled' => 1, 'testmode' => 1,
+            'secretkey' => 'sk_test_fixture', 'webhooksecret' => 'whsec_fixture']);
+        require_once($CFG->libdir . '/filelib.php');
+        $sink = $this->redirectEmails();
+        $users = $DB->count_records('user');
+        foreach (
+            ['checkout.session.completed' => 'unpaid', 'checkout.session.async_payment_succeeded' => 'paid'] as $type => $status
+        ) {
+            $session['payment_status'] = $status;
+            curl::mock_response(json_encode($session));
+            $event = ['type' => $type, 'data' => ['object' => $session]];
+            $raw = json_encode($event);
+            $now = time();
+            $signature = 't=' . $now . ',v1=' . hash_hmac('sha256', $now . '.' . $raw, 'whsec_fixture');
+            $this->assertTrue((new stripe_gateway())->process_webhook($event, ['Stripe-Signature' => $signature], $raw));
+            $saved = $DB->get_record(guest::TABLE, ['id' => $record->id]);
+            if ($status === 'unpaid') {
+                $this->assertSame('pending', $saved->status);
+                $this->assertEmpty($saved->userid);
+                $this->assertSame($users, $DB->count_records('user'));
+            } else {
+                $this->assertSame('fulfilled', $saved->status);
+                $this->assertTrue(is_enrolled(context_course::instance($course->id), $saved->userid, '', true));
+            }
+        }
+        $sink->close();
+    }
+
+    /**
+     * Signed-in orders also wait for the delayed payment success event.
+     */
+    public function test_authenticated_delayed_payment_is_fulfilled_only_after_success(): void {
+        global $DB;
+        [$fixture, , $course] = $this->purchase();
+        $snapshot = json_decode($fixture->payload);
+        $DB->delete_records(guest::TABLE, ['id' => $fixture->id]);
+        $DB->insert_record('local_moderncommerce_product_prices', (object)[
+            'productid' => $snapshot->items[0]->productid, 'pricetype' => 'regular',
+            'amount' => 25, 'enabled' => 1, 'timecreated' => time(), 'timemodified' => time(),
+        ]);
+        $buyer = $this->getDataGenerator()->create_user();
+        $this->setUser($buyer);
+        gateway_manager::save_gateway_config('stripe', ['enabled' => 1, 'testmode' => 1,
+            'secretkey' => 'sk_test_fixture', 'webhooksecret' => 'whsec_fixture']);
+        $sink = $this->redirectEmails();
+        cart_api::add_to_cart($buyer->id, $course->id);
+        $order = order_api::create_order($buyer->id, 'stripe');
+        $session = [
+            'id' => 'cs_test_authenticated_delayed', 'client_reference_id' => $order->ordernumber,
+            'metadata' => ['order_id' => $order->id], 'payment_intent' => 'pi_test_authenticated_delayed',
+            'amount_total' => 2500, 'currency' => 'usd', 'created' => time(),
+        ];
+        foreach (
+            ['checkout.session.completed' => 'unpaid', 'checkout.session.async_payment_succeeded' => 'paid'] as $type => $status
+        ) {
+            $session['payment_status'] = $status;
+            $event = ['type' => $type, 'data' => ['object' => $session]];
+            $raw = json_encode($event);
+            $now = time();
+            $signature = 't=' . $now . ',v1=' . hash_hmac('sha256', $now . '.' . $raw, 'whsec_fixture');
+            $this->assertTrue((new stripe_gateway())->process_webhook($event, ['Stripe-Signature' => $signature], $raw));
+            $this->assertSame($status === 'paid' ? 'paid' : 'pending', order_api::get_order($order->id)->status);
+            $this->assertSame($status === 'paid', is_enrolled(context_course::instance($course->id), $buyer->id, '', true));
+        }
+        $sink->close();
+    }
+
+    /**
      * Every guest purchase field is declared, including pseudonymous identifiers.
      */
     public function test_guest_purchase_privacy_metadata_is_complete(): void {

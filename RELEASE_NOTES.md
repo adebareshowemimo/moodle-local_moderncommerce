@@ -1,5 +1,19 @@
 # ModernCommerce release notes
 
+## ModernCommerce 2.5.1
+
+Moodle build: `2026111802`. Requires Moodle 5.2 and PHP 8.3 or later.
+
+- Removes the legacy `payment_method_types` parameter from guest and signed-in
+  Stripe Checkout Session requests. Eligible payment methods now follow the Stripe Dashboard configuration.
+- Acknowledges valid guest sessions while delayed payments remain pending,
+  and handles `checkout.session.async_payment_succeeded` for signed-in orders.
+  Accounts, enrolments, and paid order status still require confirmed payment.
+- Preserves purchase totals, metadata, retry identity, and subscription mandate setup.
+
+Include `checkout.session.async_payment_succeeded` in the Stripe webhook destination
+when enabling delayed payment methods. No API key changes are required for this fix.
+
 ## ModernCommerce 2.5.0
 
 Moodle build: `2026111801`. Requires Moodle 5.2 and PHP 8.3 or later.

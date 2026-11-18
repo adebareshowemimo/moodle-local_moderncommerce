@@ -38,7 +38,8 @@ class stripe_gateway implements gateway_interface, gateway_return_interface {
         $cancelurl = new \moodle_url('/local/moderncommerce/guest_checkout.php', ['cancelled' => 1]);
         return $this->make_request('POST', '/checkout/sessions', [
             '_idempotency_key' => 'moderncommerce-guest-' . $record->id,
-            'payment_method_types[]' => 'card', 'mode' => 'payment',
+            // Stripe selects eligible payment methods from the account Dashboard.
+            'mode' => 'payment',
             'success_url' => $returnurl->out(false), 'cancel_url' => $cancelurl->out(false),
             'expires_at' => $record->timecreated + HOURSECS,
             'customer_email' => $record->email, 'client_reference_id' => 'guest:' . $record->id,
@@ -97,7 +98,6 @@ class stripe_gateway implements gateway_interface, gateway_return_interface {
             ])->out(false);
             // Create Stripe checkout session.
             $sessiondata = [
-                'payment_method_types[]' => 'card',
                 'mode' => 'payment',
                 'success_url' => $successurl,
                 'cancel_url' => $cancelurl,
@@ -196,9 +196,12 @@ class stripe_gateway implements gateway_interface, gateway_return_interface {
         $object = $data['data']['object'] ?? [];
         if (!empty($object['metadata']['guest_checkout_id'])) {
             if (in_array($eventtype, ['checkout.session.completed', 'checkout.session.async_payment_succeeded'], true)) {
-                return \local_moderncommerce\services\guest_checkout_service::confirm_session(
+                \local_moderncommerce\services\guest_checkout_service::confirm_session(
                     $this->retrieve_guest_session($object['id'])
                 );
+                // A valid completed session can still be awaiting an asynchronous payment.
+                // Acknowledge delivery while confirmation keeps the purchase pending.
+                return true;
             }
             // Guest charges arrive before the Moodle account/order exists.
             // Do not pass their metadata through the authenticated order resolver.
@@ -218,6 +221,7 @@ class stripe_gateway implements gateway_interface, gateway_return_interface {
 
         switch ($eventtype) {
             case 'checkout.session.completed':
+            case 'checkout.session.async_payment_succeeded':
                 return $this->handle_checkout_session_completed($data['data']['object'], $eventtype);
             case 'charge.succeeded':
                 return $this->handle_payment_success($data['data']['object'], $eventtype);
