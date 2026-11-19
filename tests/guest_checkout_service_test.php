@@ -30,6 +30,149 @@ use local_moderncommerce\payment\stripe_gateway;
 #[\PHPUnit\Framework\Attributes\CoversClass(guest::class)]
 final class guest_checkout_service_test extends advanced_testcase {
     /**
+     * Core's validated first-password form replaces a stale admin destination with My learning.
+     */
+    public function test_first_password_setup_returns_guest_buyer_to_learning(): void {
+        global $DB, $SESSION, $CFG;
+        require_once($CFG->dirroot . '/login/lib.php');
+        require_once($CFG->dirroot . '/local/moderncommerce/lib.php');
+        [$record, $session] = $this->purchase();
+        $sink = $this->redirectEmails();
+        guest::confirm_session($session);
+        $user = \core_user::get_user($DB->get_field(guest::TABLE, 'userid', ['id' => $record->id]));
+        $this->setUser($user);
+        $SESSION->wantsurl = $CFG->wwwroot . '/local/moderncommerce/admin/pricing.php';
+        local_moderncommerce_extend_set_password_form(null, $user);
+        $this->assertSame($CFG->wwwroot . '/local/moderncommerce/learner/index.php', core_login_get_return_url());
+        $SESSION->wantsurl = $CFG->wwwroot . '/course/index.php';
+        $user->password = 'already-established';
+        local_moderncommerce_extend_set_password_form(null, $user);
+        $this->assertSame($CFG->wwwroot . '/course/index.php', $SESSION->wantsurl);
+        $sink->close();
+    }
+
+    /**
+     * Ordinary users' password reset destinations are unchanged.
+     */
+    public function test_password_setup_does_not_redirect_unrelated_accounts(): void {
+        global $SESSION;
+        $user = $this->getDataGenerator()->create_user();
+        $user->password = AUTH_PASSWORD_NOT_CACHED;
+        $SESSION->wantsurl = '/original-destination';
+        guest::prepare_password_setup($user);
+        $this->assertSame('/original-destination', $SESSION->wantsurl);
+    }
+
+    /**
+     * The exact normalized email becomes the username after a paid purchase.
+     */
+    public function test_paid_guest_username_is_the_email_address(): void {
+        global $DB;
+        [$record, $session] = $this->purchase();
+        $sink = $this->redirectEmails();
+        guest::confirm_session($session);
+        $userid = $DB->get_field(guest::TABLE, 'userid', ['id' => $record->id]);
+        $this->assertSame($record->email, $DB->get_field('user', 'username', ['id' => $userid]));
+        $this->assertSame(AUTH_PASSWORD_NOT_CACHED, $DB->get_field('user', 'password', ['id' => $userid]));
+        $sink->close();
+    }
+
+    /**
+     * Both email and username collisions block checkout, including differing account emails.
+     */
+    public function test_email_check_handles_case_email_and_username_collisions(): void {
+        $this->assertTrue(guest::check_email(' New.Buyer@Example.com ')['available']);
+        $this->getDataGenerator()->create_user(['email' => 'buyer@example.com']);
+        $this->assertSame('guestcheckoutemailinuse', guest::check_email(' BUYER@EXAMPLE.COM ')['errorcode']);
+        $this->getDataGenerator()->create_user(['username' => 'reserved@example.com', 'email' => 'other@example.com']);
+        $this->assertSame('guestcheckoutemailinuse', guest::check_email('reserved@example.com')['errorcode']);
+    }
+
+    /**
+     * Do not silently alter valid email characters that Moodle disallows in usernames.
+     */
+    public function test_email_check_respects_moodle_username_rules(): void {
+        global $CFG;
+        $CFG->extendedusernamechars = false;
+        $this->assertSame('guestcheckoutemailusername', guest::check_email('buyer+courses@example.com')['errorcode']);
+        $CFG->extendedusernamechars = true;
+        $this->assertTrue(guest::check_email('buyer+courses@example.com')['available']);
+        $this->assertFalse(guest::check_email('invalid')['available']);
+    }
+
+    /**
+     * Server submission rejects a taken username before any provider request or purchase record.
+     */
+    public function test_start_rechecks_identity_before_contacting_stripe(): void {
+        global $DB;
+        set_config('guest_checkout_enabled', 1, 'local_moderncommerce');
+        $this->getDataGenerator()->create_user(['username' => 'reserved@example.com']);
+        $_POST['sesskey'] = sesskey();
+        try {
+            guest::start(['firstname' => 'Test', 'lastname' => 'Buyer', 'email' => 'reserved@example.com']);
+            $this->fail('A reserved username must not reach payment.');
+        } catch (moodle_exception $e) {
+            $this->assertSame('guestcheckoutemailinuse', $e->errorcode);
+        } finally {
+            unset($_POST['sesskey']);
+        }
+        $this->assertSame(0, $DB->count_records(guest::TABLE));
+    }
+
+    /**
+     * A collision after payment never attaches a purchase to a username owned by another email.
+     */
+    public function test_late_username_collision_keeps_paid_purchase_recoverable(): void {
+        global $DB;
+        [$record, $session] = $this->purchase();
+        $existing = $this->getDataGenerator()->create_user([
+            'username' => $record->email, 'email' => 'different@example.com',
+        ]);
+        $sink = $this->redirectEmails();
+        try {
+            guest::confirm_session($session);
+            $this->fail('A paid username collision must require recovery.');
+        } catch (moodle_exception $e) {
+            $this->assertSame('guestcheckoutemailinuse', $e->errorcode);
+        }
+        $saved = $DB->get_record(guest::TABLE, ['id' => $record->id]);
+        $this->assertSame('paid', $saved->status);
+        $this->assertEmpty($saved->userid);
+        $this->assertEmpty($saved->orderid);
+        $this->assertSame($record->email, $DB->get_field('user', 'username', ['id' => $existing->id]));
+        $sink->close();
+    }
+
+    /**
+     * Anonymous feedback requires the feature, session key, and bounded requests.
+     */
+    public function test_public_email_feedback_is_session_protected_and_rate_limited(): void {
+        global $SESSION, $USER;
+        set_config('guest_checkout_enabled', 1, 'local_moderncommerce');
+        $this->setUser();
+        $USER->ignoresesskey = false;
+        $USER->sesskey = 'guestcheckfixture';
+        $_POST['sesskey'] = 'guestcheckfixture';
+        try {
+            $reply = \local_moderncommerce\external\checkout\check_guest_email::execute('fresh@example.com');
+            $this->assertTrue($reply['available']);
+            $this->assertSame(['available', 'message'], array_keys($reply));
+            $SESSION->moderncommerce_email_checks = ['bucket' => (int)floor(time() / (10 * MINSECS)), 'count' => 30];
+            try {
+                \local_moderncommerce\external\checkout\check_guest_email::execute('another@example.com');
+                $this->fail('Session lookup limit must be enforced.');
+            } catch (moodle_exception $e) {
+                $this->assertSame('guestcheckoutlimited', $e->errorcode);
+            }
+            unset($_POST['sesskey']);
+            $this->expectException(\moodle_exception::class);
+            \local_moderncommerce\external\checkout\check_guest_email::execute('fresh@example.com');
+        } finally {
+            unset($_POST['sesskey']);
+        }
+    }
+
+    /**
      * A new buyer receives a welcome and the native expiring password-setting link.
      */
     public function test_new_guest_receives_welcome_instead_of_password_reset_copy(): void {

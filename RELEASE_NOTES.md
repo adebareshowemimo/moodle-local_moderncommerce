@@ -1,5 +1,22 @@
 # ModernCommerce release notes
 
+## ModernCommerce 2.5.3
+
+Moodle build: `2026111804`. Requires Moodle 5.2 and PHP 8.3 or later.
+
+- New guest purchasers use their normalized checkout email as their username.
+- Adds accessible AJAX availability feedback before payment. Existing emails and usernames
+  ask the buyer to sign in. Server validation repeats the check when JavaScript is unavailable.
+- Protects public checks with a session key, feature/access checks, and per-browser/network limits.
+- Handles late account collisions without assigning a purchase to another email's account;
+  paid purchases remain recoverable.
+- Directs paid guest purchasers to **My learning** after their first native Moodle password setup,
+  replacing stale browser destinations such as an administrator page. Already emailed links also benefit.
+- Existing accounts and subsequent password resets retain their usual behavior.
+
+Run Moodle's official CLI upgrade to register the new AJAX service and cache definition.
+Emails must satisfy Moodle's configured username character rules; existing usernames are not renamed.
+
 ## ModernCommerce 2.5.2
 
 Moodle build: `2026111803`. Requires Moodle 5.2 and PHP 8.3 or later.

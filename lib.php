@@ -1222,6 +1222,19 @@ function local_moderncommerce_subscription_format_cycle(string $cycle): string {
 }
 
 /**
+ * Select the learner dashboard for a verified guest purchaser's first password setup.
+ *
+ * Core invokes this only after validating its password token. Core retains password
+ * validation, session creation and required-profile checks; no reset token is handled here.
+ *
+ * @param MoodleQuickForm $mform Core password setup form.
+ * @param stdClass $user Account authenticated by the expiring reset token.
+ */
+function local_moderncommerce_extend_set_password_form($mform, $user): void {
+    \local_moderncommerce\services\guest_checkout_service::prepare_password_setup($user);
+}
+
+/**
  * Prepare subscription email placeholders.
  *
  * @param object $subscription Subscription record.

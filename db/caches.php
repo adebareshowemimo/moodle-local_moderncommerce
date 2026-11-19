@@ -25,6 +25,12 @@
 defined('MOODLE_INTERNAL') || die();
 
 $definitions = [
+    'guestemailchecks' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'simplekeys' => true,
+        'simpledata' => true,
+        'ttl' => 600,
+    ],
     // Admin-created custom storefront pages. Read on every storefront render (the page
     // catalog and the zone registry both consult it), so the raw rows are cached under a
     // single key. Only raw DB records are stored - never the merged page catalog, whose

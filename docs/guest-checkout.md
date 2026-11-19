@@ -34,6 +34,18 @@ The switch controls new guest operations only: turning it off never prevents a p
 Run Moodle cron for fulfilment and mail retries. Check the guest checkout recovery report for pending paid purchases.
 No Moodle account is created for abandoned or failed payment attempts.
 
+New guest accounts use the checkout email address as their username, trimmed and converted to lowercase.
+The checkout form checks availability while the buyer types and again before payment. If the email or
+username is already in use, the buyer must sign in to continue. This includes older accounts whose
+generated username differs from their email. Existing usernames are not renamed.
+The public feedback service requires a browser session key, guest checkout enabled, catalog access,
+and rate limits per browser and network address. It returns no account details.
+Server form validation and payment initiation repeat the check even if JavaScript is disabled.
+Emails must satisfy Moodle's configured username rules; characters are never silently removed.
+For example, plus-addressed emails require Moodle's extended username characters setting.
+After payment, existing-email ownership claims still require login. A late username collision with
+another email keeps the paid purchase recoverable for administrator assistance and never attaches it to that account.
+
 Payment status is verified using Stripe's API as well as the signed event. Repeated events and concurrent attempts
 are protected by Moodle locks. The browser confirmation page never establishes a login session.
 New learners receive the **Guest account welcome** email, with the site name, account-creation confirmation,
@@ -42,6 +54,10 @@ and Moodle's expiring password-setting link. The subject and HTML content are ed
 Use `{set_password_url}` for the secure link and `{password_expiry_minutes}` for its validity period, which follows
 Moodle's password-reset expiry setting. `{firstname}`, `{sitename}`, `{login_url}`, and `{forgot_password_url}` are also available.
 Preview links never contain real password tokens. No temporary password is generated or sent.
+During a paid guest account's first password setup, Modern Commerce replaces any stale login destination
+with `/local/moderncommerce/learner/index.php`. This also works for previously emailed native Moodle links.
+Moodle still validates the expiring token, password policy, login session, and required profile details.
+Other users' password resets and later password resets retain their existing destinations.
 Administrator customisations survive upgrades. As with other commerce emails, disabling the notification suppresses it;
 the learner can still request a password link from Moodle's sign-in page.
 Existing learners claim through a link and their normal login; they do not receive a new-account welcome or password token.

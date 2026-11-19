@@ -60,6 +60,12 @@ class guest_checkout extends \moodleform {
         $errors = parent::validation($data, $files);
         if (!validate_email(trim($data['email'] ?? '')) || email_is_not_allowed(trim($data['email'] ?? ''))) {
             $errors['email'] = get_string('invalidemail');
+        } else {
+            \local_moderncommerce\services\guest_checkout_service::limit_email_checks();
+            $check = \local_moderncommerce\services\guest_checkout_service::check_email($data['email']);
+            if (!$check['available']) {
+                $errors['email'] = $check['message'];
+            }
         }
         if (empty($data['consent'])) {
             $errors['consent'] = get_string('required');

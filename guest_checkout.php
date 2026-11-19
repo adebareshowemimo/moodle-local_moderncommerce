@@ -138,6 +138,11 @@ if (isloggedin() && !isguestuser()) {
 $form = new \local_moderncommerce\form\guest_checkout($url, null, 'post', '', [
     'id' => 'mc-guest-details-form',
 ]);
+$PAGE->requires->js_call_amd('local_moderncommerce/guest_checkout', 'init', [[
+    'checking' => get_string('guestcheckoutemailchecking', 'local_moderncommerce'),
+    'failed' => get_string('guestcheckoutemailcheckfailed', 'local_moderncommerce'),
+    'invalid' => get_string('invalidemail'),
+]]);
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         guest::cart_userid();

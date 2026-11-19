@@ -43,6 +43,80 @@ class guest_checkout_service {
     }
 
     /**
+     * Replace a stale session destination during a paid guest's first native password setup.
+     *
+     * @param object $user User whose reset token core has validated.
+     */
+    public static function prepare_password_setup(object $user): void {
+        global $DB, $SESSION;
+        if (
+            empty($user->id) || !empty($user->deleted) || !empty($user->suspended) ||
+                ($user->password ?? '') !== AUTH_PASSWORD_NOT_CACHED || ($user->auth ?? '') !== 'manual'
+        ) {
+            return;
+        }
+        if ($DB->record_exists(self::TABLE, ['userid' => $user->id, 'newaccount' => 1, 'status' => 'fulfilled'])) {
+            $SESSION->wantsurl = (new \moodle_url('/local/moderncommerce/learner/index.php'))->out(false);
+        }
+    }
+
+    /**
+     * Return a safe checkout eligibility message; never disclose account details.
+     *
+     * @param string $email Buyer email, also used as the new account username.
+     * @return array Availability and localized feedback.
+     */
+    public static function check_email(string $email): array {
+        global $CFG, $DB;
+        $email = \core_text::strtolower(trim($email));
+        $error = '';
+        if (!validate_email($email) || \core_text::strlen($email) > 100 || email_is_not_allowed($email)) {
+            $error = 'guestcheckoutdetails';
+        } else if (
+            $DB->record_exists_select(
+                'user',
+                'mnethostid = :host AND (LOWER(username) = :username OR (deleted = 0 AND LOWER(email) = :email))',
+                ['host' => $CFG->mnet_localhost_id, 'username' => $email, 'email' => $email]
+            )
+        ) {
+            $error = 'guestcheckoutemailinuse';
+        } else if (clean_param($email, PARAM_USERNAME) !== $email) {
+            // Never silently strip characters from an email to make a different username.
+            $error = 'guestcheckoutemailusername';
+        }
+        return ['available' => $error === '', 'errorcode' => $error, 'message' => get_string(
+            $error ?: 'guestcheckoutemailavailable',
+            'local_moderncommerce'
+        )];
+    }
+
+    /**
+     * Bound public identity lookups per browser and keyed network address.
+     */
+    public static function limit_email_checks(): void {
+        global $SESSION;
+        $bucket = (int)floor(time() / (10 * MINSECS));
+        $key = self::ip_hash() . '_' . $bucket;
+        $lock = self::lock('emailcheck:' . $key);
+        try {
+            $cache = \cache::make('local_moderncommerce', 'guestemailchecks');
+            $count = (int)$cache->get($key);
+            $session = $SESSION->moderncommerce_email_checks ?? ['bucket' => $bucket, 'count' => 0];
+            if ($session['bucket'] !== $bucket) {
+                $session = ['bucket' => $bucket, 'count' => 0];
+            }
+            if ($count >= 60 || $session['count'] >= 30) {
+                throw new \moodle_exception('guestcheckoutlimited', 'local_moderncommerce');
+            }
+            $cache->set($key, $count + 1);
+            $session['count']++;
+            $SESSION->moderncommerce_email_checks = $session;
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
      * A random server-session owner, unrelated to Moodle's authentication session ID.
      */
     public static function cart_token(): string {
@@ -143,6 +217,11 @@ class guest_checkout_service {
                 \core_text::strlen($billing['email']) > 100 || email_is_not_allowed($billing['email'])
         ) {
             throw new \moodle_exception('guestcheckoutdetails', 'local_moderncommerce');
+        }
+        self::limit_email_checks();
+        $eligibility = self::check_email($billing['email']);
+        if (!$eligibility['available']) {
+            throw new \moodle_exception($eligibility['errorcode'], 'local_moderncommerce');
         }
         $config = gateway_manager::get_gateway_config('stripe');
         if (empty($config['enabled']) || empty($config['secret_key']) || empty($config['webhook_secret'])) {
@@ -409,11 +488,17 @@ class guest_checkout_service {
                     if (!is_enabled_auth('manual')) {
                         throw new \moodle_exception('guestcheckoutmanualauth', 'local_moderncommerce');
                     }
+                    $eligibility = self::check_email($record->email);
+                    if (!$eligibility['available']) {
+                        // A username claimed while payment was open must never attach to another email's owner.
+                        // Keep the verified payment recoverable for administrator assistance.
+                        throw new \moodle_exception($eligibility['errorcode'], 'local_moderncommerce');
+                    }
                     require_once($CFG->dirroot . '/user/lib.php');
                     $transaction = $DB->start_delegated_transaction();
                     $record->userid = user_create_user((object)[
                         'auth' => 'manual', 'confirmed' => 1, 'mnethostid' => $CFG->mnet_localhost_id,
-                        'username' => 'buyer_' . bin2hex(random_bytes(16)),
+                        'username' => \core_text::strtolower(trim($record->email)),
                         // Core rejects this sentinel for every password login. The
                         // emailed reset link establishes the first usable password.
                         'password' => AUTH_PASSWORD_NOT_CACHED, 'email' => $record->email,

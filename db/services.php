@@ -25,6 +25,15 @@
 defined('MOODLE_INTERNAL') || die();
 
 $functions = [
+    'local_moderncommerce_check_guest_email' => [
+        'classname' => 'local_moderncommerce\\external\\checkout\\check_guest_email',
+        'methodname' => 'execute',
+        'description' => 'Check guest email eligibility before starting payment, using a protected browser session.',
+        'type' => 'read',
+        'ajax' => true,
+        'loginrequired' => false,
+        'capabilities' => 'local/moderncommerce:viewcatalog',
+    ],
     'local_moderncommerce_get_catalog' => [
         'classname'     => 'local_moderncommerce\external\catalog\get_catalog',
         'methodname'    => 'execute',

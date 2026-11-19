@@ -40,6 +40,9 @@ jobs:
       - name: Run fast checks
         run: composer run mc:check-fast
 
+      - name: Check guest checkout browser logic
+        run: node --test scripts/test-guest-checkout.mjs
+
       - name: Build release package
         run: composer run mc:package
 
