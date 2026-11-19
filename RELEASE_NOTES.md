@@ -1,5 +1,23 @@
 # ModernCommerce release notes
 
+## ModernCommerce 2.5.4
+
+Moodle build: `2026111806`. Requires Moodle 5.2 and PHP 8.3 or later.
+
+- Updates the guest welcome email itself to show the recipient's username, explain the
+  first-password redirect to **My learning**, and link returning learners to that page.
+- Adds `{username}` and `{learning_url}` to the welcome template editor and safe previews.
+- Upgrades unchanged original welcome content stored in the template table or outgoing-email
+  settings, while preserving administrator-customised bodies, subjects and template selections.
+- Password links still use Moodle's secure native password setup page; the dashboard redirect
+  happens after saving the first password.
+- Adds a dedicated **Request a new password link** page. A separate seven-day token identifies
+  the paid guest account without asking for an email address; a protected POST sends a fresh
+  password-setting link to its registered email. Renewal tokens rotate after delivery, are stored
+  only as hashes, and cannot log anyone in or return password-setting tokens to the browser.
+- Enforces a five-minute request cooldown, network/browser limits, account status checks,
+  and expiry/refund checks. Recovery remains available if new guest checkout is disabled.
+
 ## ModernCommerce 2.5.3
 
 Moodle build: `2026111804`. Requires Moodle 5.2 and PHP 8.3 or later.

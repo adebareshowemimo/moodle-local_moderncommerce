@@ -260,7 +260,8 @@ class provider implements
                 'state', 'country', 'postcode', 'timecreated', 'timemodified',
             ],
             'local_moderncommerce_guestpay' => [
-                'tokenhash', 'claimhash', 'iphash', 'sessionhash', 'email', 'payload', 'stripeid', 'paymentdata',
+                'tokenhash', 'claimhash', 'accesshash', 'accessexpires', 'iphash', 'sessionhash', 'email',
+                'payload', 'stripeid', 'paymentdata',
                 'status', 'userid', 'orderid', 'newaccount', 'mailsent', 'attempts', 'lasterror', 'timecreated', 'timemodified',
             ],
             'local_moderncommerce_program_progress' => [

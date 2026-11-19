@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/moderncommerce/db" VERSION="2026111800" COMMENT="Modern Commerce clean install schema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
+<XMLDB PATH="local/moderncommerce/db" VERSION="2026111806" COMMENT="Modern Commerce clean install schema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
   <TABLES>
 
     <TABLE NAME="local_moderncommerce_products" COMMENT="Sellable courses, bundles, programs, and plans">
@@ -2150,6 +2150,8 @@
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="tokenhash" TYPE="char" LENGTH="64" NOTNULL="true"/>
         <FIELD NAME="claimhash" TYPE="char" LENGTH="64" NOTNULL="false"/>
+        <FIELD NAME="accesshash" TYPE="char" LENGTH="64" NOTNULL="false"/>
+        <FIELD NAME="accessexpires" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="iphash" TYPE="char" LENGTH="64" NOTNULL="false"/>
         <FIELD NAME="sessionhash" TYPE="char" LENGTH="64" NOTNULL="true"/>
         <FIELD NAME="email" TYPE="char" LENGTH="100" NOTNULL="true"/>
@@ -2174,6 +2176,7 @@
       <INDEXES>
         <INDEX NAME="tokenhash" UNIQUE="true" FIELDS="tokenhash"/>
         <INDEX NAME="claimhash" UNIQUE="true" FIELDS="claimhash"/>
+        <INDEX NAME="accesshash" UNIQUE="true" FIELDS="accesshash"/>
         <INDEX NAME="iphash" UNIQUE="false" FIELDS="iphash"/>
         <INDEX NAME="stripeid" UNIQUE="true" FIELDS="stripeid"/>
         <INDEX NAME="status" UNIQUE="false" FIELDS="status"/>

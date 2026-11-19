@@ -1537,5 +1537,30 @@ function xmldb_local_moderncommerce_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026111803, 'local', 'moderncommerce');
     }
 
+    if ($oldversion < 2026111805) {
+        \local_moderncommerce\email\commerce_seed::upgrade_guest_welcome_template();
+        upgrade_plugin_savepoint(true, 2026111805, 'local', 'moderncommerce');
+    }
+
+    if ($oldversion < 2026111806) {
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('local_moderncommerce_guestpay');
+        $fields = [
+            new xmldb_field('accesshash', XMLDB_TYPE_CHAR, '64', null, null, null, null, 'claimhash'),
+            new xmldb_field('accessexpires', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'accesshash'),
+        ];
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        $index = new xmldb_index('accesshash', XMLDB_INDEX_UNIQUE, ['accesshash']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+        \local_moderncommerce\email\commerce_seed::upgrade_guest_welcome_template();
+        upgrade_plugin_savepoint(true, 2026111806, 'local', 'moderncommerce');
+    }
+
     return true;
 }

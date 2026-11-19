@@ -595,10 +595,14 @@ class guest_checkout_service {
             if (\local_moderncommerce\email\notification_catalog::is_enabled($templatekey)) {
                 $reset = core_login_generate_password_reset($user);
                 $url = new \moodle_url('/login/forgot_password.php', ['token' => $reset->token]);
+                $access = guest_access_service::prepare_link();
                 // Render directly to mail: password-setting tokens must not enter notification logs or queues.
                 $mail = \local_moderncommerce\api\email_api::render($templatekey, [
                     'firstname' => $user->firstname, 'lastname' => $user->lastname,
                     'fullname' => fullname($user), 'email' => $user->email,
+                    'username' => $user->username,
+                    'learning_url' => (new \moodle_url('/local/moderncommerce/learner/index.php'))->out(false),
+                    'password_request_url' => $access['url'],
                     'sitename' => format_string(get_site()->fullname, true, ['escape' => false]),
                     'set_password_url' => $url->out(false),
                     'password_expiry_minutes' => (int) floor(($CFG->pwresettime ?? 1800) / MINSECS),
@@ -612,6 +616,9 @@ class guest_checkout_service {
                     $mail['plain'],
                     $mail['html']
                 );
+                if ($sent) {
+                    guest_access_service::activate_link((int)$record->id, $access);
+                }
             } else {
                 $sent = true; // Honour the administrator's delivery switch, as for other commerce emails.
             }

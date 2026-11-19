@@ -51,6 +51,34 @@ class commerce_seed {
     }
 
     /**
+     * Refresh the original bundled welcome copy while preserving administrator customisations.
+     */
+    public static function upgrade_guest_welcome_template(): void {
+        global $DB;
+        self::ensure_guest_welcome_template();
+        $originalhashes = [
+            'baa39b6aad4e11fb91d2dec8e4a5834265daabf9cd90e59345f97edcd73075c9',
+            'fda14af969a944dff80bed83f9620dca602ffc3a772029652cbce321e8cb028a',
+        ];
+        $isoriginal = static function (string $body) use ($originalhashes): bool {
+            return in_array(hash('sha256', trim(str_replace("\r\n", "\n", $body))), $originalhashes, true);
+        };
+        $template = $DB->get_record('local_moderncommerce_emailtpl', ['template_key' => self::GUEST_WELCOME], '*', MUST_EXIST);
+        $updated = notification_catalog::seeded_record(self::GUEST_WELCOME);
+        if ($isoriginal($template->body)) {
+            $template->body = $updated->body;
+            $template->placeholders = $updated->placeholders;
+            $template->timemodified = time();
+            $DB->update_record('local_moderncommerce_emailtpl', $template);
+        }
+        $selected = (int)get_config(self::MC, self::GUEST_WELCOME . '_template');
+        $body = get_config(self::MC, self::GUEST_WELCOME . '_body');
+        if ((!$selected || $selected === (int)$template->id) && $body !== false && $isoriginal((string)$body)) {
+            set_config(self::GUEST_WELCOME . '_body', $updated->body, self::MC);
+        }
+    }
+
+    /**
      * @var string Commerce component.
      */
     private const MC = 'local_moderncommerce';
@@ -139,8 +167,8 @@ class commerce_seed {
                 'subject' => get_string('emailtpl_moderncommerce_guest_welcome_subject', self::MC),
                 'body' => get_string('emailtpl_moderncommerce_guest_welcome_body', self::MC),
                 'placeholders' => json_encode([
-                    'firstname', 'lastname', 'fullname', 'email', 'sitename', 'siteurl', 'supportemail',
-                    'set_password_url', 'password_expiry_minutes', 'login_url', 'forgot_password_url',
+                    'firstname', 'lastname', 'fullname', 'email', 'username', 'learning_url', 'sitename', 'siteurl', 'supportemail',
+                    'set_password_url', 'password_expiry_minutes', 'password_request_url', 'login_url', 'forgot_password_url',
                 ]),
                 'locked' => 1,
             ],

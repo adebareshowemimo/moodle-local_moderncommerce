@@ -1176,9 +1176,12 @@ $string['emaildisabled'] = 'Email Disabled';
 $string['emaildisplay'] = 'Email Display';
 $string['emailenabled'] = 'Email Enabled';
 $string['emailph_forgot_password_url'] = 'Link to request a new password-setting email';
+$string['emailph_learning_url'] = 'Link to the Modern Commerce My learning page';
 $string['emailph_login_url'] = 'Link to sign in to the site';
 $string['emailph_password_expiry_minutes'] = 'Password-setting link validity in minutes, from the Moodle security setting';
+$string['emailph_password_request_url'] = 'Secure link to request another password-setting email without entering an email address';
 $string['emailph_set_password_url'] = 'Secure, expiring link for the recipient to set their password';
+$string['emailph_username'] = 'Recipient account username used to sign in';
 $string['emailplaceholder'] = 'you@example.com';
 $string['emailrequired'] = 'Please enter your email address.';
 $string['emailsettings'] = 'Email Settings';
@@ -1317,10 +1320,11 @@ $string['emailtpl_moderncommerce_enrollment_confirmation_subject'] = 'You\'re en
 $string['emailtpl_moderncommerce_guest_welcome_body'] = '<h2>Welcome to {sitename}</h2>
 <p>Hi {firstname},</p>
 <p>Thank you for your purchase. We have created a learning account for you at <strong>{sitename}</strong> and enrolled you in your purchased courses.</p>
-<p>Please set your password to sign in and start learning.</p>
+<p>Your username is <strong>{username}</strong>.</p>
+<p>Please set your password to sign in and start learning. After saving your password, you will be taken to <strong>My learning</strong> to access your courses.</p>
 <p><a class="mc-button" href="{set_password_url}">Set your password</a></p>
-<p>This secure link is valid for {password_expiry_minutes} minutes. If it expires, <a href="{forgot_password_url}">request a new link</a>.</p>
-<p>If you have already set your password, <a href="{login_url}">sign in</a>.</p>
+<p>This secure link is valid for {password_expiry_minutes} minutes. If it expires, <a href="{password_request_url}">request a new link</a>.</p>
+<p>If you have already set your password, <a href="{learning_url}">go to My learning</a> and sign in with your username and password.</p>
 <p>Need help? Contact <a href="mailto:{supportemail}">{supportemail}</a>.</p>';
 $string['emailtpl_moderncommerce_guest_welcome_name'] = 'Guest account welcome';
 $string['emailtpl_moderncommerce_guest_welcome_subject'] = 'Welcome to {sitename} — set your password';
@@ -2030,6 +2034,20 @@ $string['gradeungraded'] = 'Not graded';
 $string['grantsaccess'] = 'Grants Access';
 $string['gridview'] = 'Grid view';
 $string['grossrevenue'] = 'Gross Revenue';
+$string['guestaccesshelp'] = 'We will email a fresh password-setting link to the address used for your purchase. You do not need to enter your email again.';
+$string['guestaccessintro'] = 'Get back to your learning account.';
+$string['guestaccessinvalid'] = 'This renewal link has expired, has already been replaced, or is no longer valid for this account. Use the newest welcome email, or contact support for help.';
+$string['guestaccessinvalidtitle'] = 'This renewal link is unavailable';
+$string['guestaccesslearning'] = 'Go to My learning';
+$string['guestaccesslimited'] = 'Please wait five minutes between password-link requests, then try again.';
+$string['guestaccesssecurity'] = 'Your password link expires after the time shown in your email. This page only sends a new email; it cannot sign anyone in or change a password.';
+$string['guestaccesssecuritytitle'] = 'Secure account access';
+$string['guestaccesssend'] = 'Send a new link';
+$string['guestaccesssent'] = 'We have emailed a fresh password-setting link to your registered address. Check your inbox and spam folder. Use the latest email to set your password and access My learning.';
+$string['guestaccesssenttitle'] = 'Check your email';
+$string['guestaccesssupport'] = 'Contact support';
+$string['guestaccesstitle'] = 'Request a new password link';
+$string['guestaccessunavailable'] = 'Password link requests are currently unavailable. Please contact support.';
 $string['guestcheckout'] = 'Guest checkout';
 $string['guestcheckoutbusy'] = 'Your purchase is being processed. Please refresh in a moment.';
 $string['guestcheckoutcheckemail'] = 'Check the email address used at checkout for a link to claim your purchase.';
@@ -3168,6 +3186,8 @@ $string['privacy:metadata:external:outbound_http_webhook'] = 'Modern Commerce ca
 $string['privacy:metadata:external:paypal'] = 'Modern Commerce sends payment and customer details to PayPal when PayPal payments are enabled.';
 $string['privacy:metadata:external:paystack'] = 'Modern Commerce sends payment and customer details to Paystack when Paystack payments are enabled.';
 $string['privacy:metadata:external:stripe'] = 'Modern Commerce sends payment and customer details to Stripe when Stripe payments are enabled.';
+$string['privacy:metadata:field:accessexpires'] = 'The expiry time of the password link renewal token.';
+$string['privacy:metadata:field:accesshash'] = 'A one-way hash of the email-only password link renewal token.';
 $string['privacy:metadata:field:action'] = 'The subscription action that was recorded.';
 $string['privacy:metadata:field:actoruserid'] = 'The user who performed the recorded action.';
 $string['privacy:metadata:field:address1'] = 'The first address line.';

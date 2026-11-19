@@ -30,6 +30,166 @@ use local_moderncommerce\payment\stripe_gateway;
 #[\PHPUnit\Framework\Attributes\CoversClass(guest::class)]
 final class guest_checkout_service_test extends advanced_testcase {
     /**
+     * A separate renewal token emails a fresh link and never creates a login session or password.
+     */
+    public function test_guest_access_renewal_emails_and_rotates_without_signing_in(): void {
+        global $DB, $USER;
+        [$record, $token, $sink] = $this->renewal_fixture();
+        $userid = $USER->id;
+        $before = count($sink->get_messages());
+        $this->assertFalse(guest::enabled());
+        $this->assertTrue(\local_moderncommerce\services\guest_access_service::available($token));
+        $this->assertSame(1, $DB->count_records('user_password_resets', ['userid' => $record->userid]));
+        $_POST['sesskey'] = sesskey();
+        try {
+            \local_moderncommerce\services\guest_access_service::request($token);
+        } finally {
+            unset($_POST['sesskey']);
+        }
+        $this->assertSame($before + 1, count($sink->get_messages()));
+        $this->assertSame(2, $DB->count_records('user_password_resets', ['userid' => $record->userid]));
+        $this->assertFalse(\local_moderncommerce\services\guest_access_service::available($token));
+        $this->assertSame($userid, $USER->id);
+        $this->assertSame(AUTH_PASSWORD_NOT_CACHED, $DB->get_field('user', 'password', ['id' => $record->userid]));
+        $messages = $sink->get_messages();
+        $mail = end($messages);
+        $this->assertSame($record->email, $mail->to);
+        $this->assertStringContainsString('/login/forgot_password.php?token=', quoted_printable_decode($mail->body));
+        $this->assertStringNotContainsString('guest_access.php?token=' . $token, quoted_printable_decode($mail->body));
+        $sink->close();
+    }
+
+    /**
+     * Page views do not generate mail and a recent request cannot be repeated.
+     */
+    public function test_guest_access_view_and_cooldown_do_not_send_mail(): void {
+        global $DB;
+        [$record, $token, $sink] = $this->renewal_fixture();
+        $before = count($sink->get_messages());
+        $DB->set_field(guest::TABLE, 'mailsent', time(), ['id' => $record->id]);
+        $this->assertTrue(\local_moderncommerce\services\guest_access_service::available($token));
+        $_POST['sesskey'] = sesskey();
+        try {
+            \local_moderncommerce\services\guest_access_service::request($token);
+            $this->fail('Recent renewal must be throttled.');
+        } catch (moodle_exception $e) {
+            $this->assertSame('guestaccesslimited', $e->errorcode);
+        } finally {
+            unset($_POST['sesskey']);
+        }
+        $this->assertSame($before, count($sink->get_messages()));
+        $this->assertSame(1, $DB->count_records('user_password_resets', ['userid' => $record->userid]));
+        $sink->close();
+    }
+
+    /**
+     * Expired/native/forged links and ineligible accounts cannot renew access.
+     */
+    public function test_guest_access_rejects_invalid_expired_and_changed_accounts(): void {
+        global $DB;
+        [$record, $token, $sink] = $this->renewal_fixture();
+        $service = \local_moderncommerce\services\guest_access_service::class;
+        $this->assertFalse($service::available(str_repeat('a', 64)));
+        $reset = $DB->get_field('user_password_resets', 'token', ['userid' => $record->userid]);
+        $this->assertFalse($service::available($reset));
+        $DB->set_field(guest::TABLE, 'accessexpires', time() - 1, ['id' => $record->id]);
+        $this->assertFalse($service::available($token));
+        $DB->set_field(guest::TABLE, 'accessexpires', time() + DAYSECS, ['id' => $record->id]);
+        $DB->set_field('user', 'suspended', 1, ['id' => $record->userid]);
+        $this->assertFalse($service::available($token));
+        $DB->set_field('user', 'suspended', 0, ['id' => $record->userid]);
+        $DB->set_field('user', 'email', 'changed@example.com', ['id' => $record->userid]);
+        $this->assertFalse($service::available($token));
+        $DB->set_field('user', 'email', $record->email, ['id' => $record->userid]);
+        $DB->set_field(guest::TABLE, 'status', 'refunded', ['id' => $record->id]);
+        $this->assertFalse($service::available($token));
+        $_POST['sesskey'] = sesskey();
+        try {
+            $service::request($token);
+            $this->fail('Refunded purchases cannot request access emails.');
+        } catch (moodle_exception $e) {
+            $this->assertSame('guestaccessinvalid', $e->errorcode);
+        } finally {
+            unset($_POST['sesskey']);
+        }
+        $this->assertSame(1, $DB->count_records('user_password_resets', ['userid' => $record->userid]));
+        $sink->close();
+    }
+
+    /**
+     * A leaked URL cannot trigger a password email through a cross-site POST.
+     */
+    public function test_guest_access_requires_a_valid_session_key(): void {
+        global $USER;
+        [, $token, $sink] = $this->renewal_fixture();
+        $USER->ignoresesskey = false;
+        $_POST['sesskey'] = 'incorrect-session-key';
+        try {
+            \local_moderncommerce\services\guest_access_service::request($token);
+            $this->fail('Renewal requires a valid session key.');
+        } catch (moodle_exception $e) {
+            $this->assertSame('invalidsesskey', $e->errorcode);
+        } finally {
+            unset($_POST['sesskey']);
+            $sink->close();
+        }
+    }
+
+    /**
+     * Upgrades replace only the original bundled copy, including a matching outgoing override.
+     */
+    public function test_guest_welcome_upgrade_preserves_customised_copy(): void {
+        global $DB;
+        $seed = \local_moderncommerce\email\commerce_seed::class;
+        $key = $seed::GUEST_WELCOME;
+        $seed::ensure_guest_welcome_template();
+        $id = $DB->get_field('local_moderncommerce_emailtpl', 'id', ['template_key' => $key]);
+        $legacy = require(__DIR__ . '/fixtures/guest_welcome_legacy.php');
+        $DB->set_field('local_moderncommerce_emailtpl', 'body', $legacy, ['id' => $id]);
+        set_config($key . '_body', $legacy, 'local_moderncommerce');
+        set_config($key . '_subject', 'Administrator subject', 'local_moderncommerce');
+        $seed::upgrade_guest_welcome_template();
+        $current = get_string('emailtpl_moderncommerce_guest_welcome_body', 'local_moderncommerce');
+        $this->assertSame($current, $DB->get_field('local_moderncommerce_emailtpl', 'body', ['id' => $id]));
+        $this->assertSame($current, get_config('local_moderncommerce', $key . '_body'));
+        $this->assertSame('Administrator subject', get_config('local_moderncommerce', $key . '_subject'));
+        $DB->set_field('local_moderncommerce_emailtpl', 'body', '<p>Custom template</p>', ['id' => $id]);
+        set_config($key . '_body', '<p>Custom outgoing email</p>', 'local_moderncommerce');
+        $seed::upgrade_guest_welcome_template();
+        $this->assertSame('<p>Custom template</p>', $DB->get_field('local_moderncommerce_emailtpl', 'body', ['id' => $id]));
+        $this->assertSame('<p>Custom outgoing email</p>', get_config('local_moderncommerce', $key . '_body'));
+        set_config($key . '_template', (int)$id + 100, 'local_moderncommerce');
+        set_config($key . '_body', $legacy, 'local_moderncommerce');
+        $seed::upgrade_guest_welcome_template();
+        $this->assertSame($legacy, get_config('local_moderncommerce', $key . '_body'));
+    }
+
+    /**
+     * Create a paid guest with a real delivered renewal link and a completed cooldown.
+     *
+     * @return array Purchase, renewal token and captured email sink.
+     */
+    private function renewal_fixture(): array {
+        global $DB;
+        [$record, $session] = $this->purchase();
+        $sink = $this->redirectEmails();
+        guest::confirm_session($session);
+        $token = '';
+        foreach ($sink->get_messages() as $mail) {
+            if (preg_match('/guest_access\.php\?token=([a-f0-9]{64})/', quoted_printable_decode($mail->body), $match)) {
+                $token = $match[1];
+            }
+        }
+        $this->assertNotEmpty($token);
+        $DB->update_record(guest::TABLE, (object)[
+            'id' => $record->id, 'mailsent' => time() - 6 * MINSECS, 'timemodified' => time() - 6 * MINSECS,
+        ]);
+        $saved = $DB->get_record(guest::TABLE, ['id' => $record->id]);
+        $this->assertSame(hash('sha256', $token), $saved->accesshash);
+        return [$saved, $token, $sink];
+    }
+
+    /**
      * Core's validated first-password form replaces a stale admin destination with My learning.
      */
     public function test_first_password_setup_returns_guest_buyer_to_learning(): void {
@@ -194,7 +354,10 @@ final class guest_checkout_service_test extends advanced_testcase {
         $this->assertStringContainsString('45 minutes', $body);
         $this->assertStringContainsString('token=' . $reset->token, $body);
         $this->assertStringNotContainsString('A password reset was requested', $body);
-        $this->assertStringNotContainsString($user->username, $body);
+        $this->assertStringContainsString($user->username, $body);
+        $this->assertStringContainsString('After saving your password', $body);
+        $this->assertStringContainsString('/local/moderncommerce/learner/index.php', $body);
+        $this->assertStringContainsString('/local/moderncommerce/guest_access.php?token=', $body);
         $this->assertSame(AUTH_PASSWORD_NOT_CACHED, $user->password);
         $sink->close();
     }

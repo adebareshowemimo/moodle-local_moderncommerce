@@ -54,6 +54,18 @@ and Moodle's expiring password-setting link. The subject and HTML content are ed
 Use `{set_password_url}` for the secure link and `{password_expiry_minutes}` for its validity period, which follows
 Moodle's password-reset expiry setting. `{firstname}`, `{sitename}`, `{login_url}`, and `{forgot_password_url}` are also available.
 Preview links never contain real password tokens. No temporary password is generated or sent.
+The welcome email shows the recipient's actual `{username}` (the checkout email for new accounts),
+explains the password-setup destination, and includes a `{learning_url}` link to My learning.
+Upgrades refresh the unchanged original bundled copy, including an unchanged outgoing-email override.
+Customised bodies, subjects and alternative selected templates are preserved.
+Use `{password_request_url}` for the dedicated **Request a new password link** page.
+Its separate renewal token identifies the paid guest account for seven days without asking for an email.
+Opening the page sends nothing; the buyer presses **Send a new link**, protected by a session key.
+The fresh password-setting link is emailed only to the registered address and never returned in the browser.
+The renewal token is stored only as a hash and rotates after successful email delivery.
+Requests have a five-minute cooldown plus per-browser/network limits. Expired, replaced or refunded
+purchase links and suspended/deleted accounts cannot renew; users can contact support if renewal is unavailable.
+Renewal works after guest checkout is disabled, while the welcome email delivery switch must remain enabled.
 During a paid guest account's first password setup, Modern Commerce replaces any stale login destination
 with `/local/moderncommerce/learner/index.php`. This also works for previously emailed native Moodle links.
 Moodle still validates the expiring token, password policy, login session, and required profile details.

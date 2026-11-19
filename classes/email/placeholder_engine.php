@@ -36,6 +36,9 @@ class placeholder_engine {
     public static function get_available_placeholders() {
         return [
             'user' => [
+                '{password_request_url}' => get_string('emailph_password_request_url', 'local_moderncommerce'),
+                '{username}' => get_string('emailph_username', 'local_moderncommerce'),
+                '{learning_url}' => get_string('emailph_learning_url', 'local_moderncommerce'),
                 '{set_password_url}' => get_string('emailph_set_password_url', 'local_moderncommerce'),
                 '{password_expiry_minutes}' => get_string('emailph_password_expiry_minutes', 'local_moderncommerce'),
                 '{login_url}' => get_string('emailph_login_url', 'local_moderncommerce'),
