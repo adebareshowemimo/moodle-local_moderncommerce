@@ -1017,7 +1017,7 @@ class admin_external extends external_api {
             'password_request_url' => (new \moodle_url('/local/moderncommerce/guest_access.php'))->out(false),
             'username' => $USER->username ?? 'jane.doe@example.com',
             'learning_url' => (new \moodle_url('/local/moderncommerce/learner/index.php'))->out(false),
-            'set_password_url' => (new \moodle_url('/login/forgot_password.php'))->out(false),
+            'set_password_url' => (new \moodle_url('/local/moderncommerce/set_password.php'))->out(false),
             'password_expiry_minutes' => (int) floor(($CFG->pwresettime ?? 1800) / MINSECS),
             'login_url' => (new \moodle_url('/login/index.php'))->out(false),
             'forgot_password_url' => (new \moodle_url('/login/forgot_password.php'))->out(false),

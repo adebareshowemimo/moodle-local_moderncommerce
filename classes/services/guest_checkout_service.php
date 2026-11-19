@@ -594,8 +594,10 @@ class guest_checkout_service {
             $templatekey = \local_moderncommerce\email\commerce_seed::GUEST_WELCOME;
             if (\local_moderncommerce\email\notification_catalog::is_enabled($templatekey)) {
                 $reset = core_login_generate_password_reset($user);
-                $url = new \moodle_url('/login/forgot_password.php', ['token' => $reset->token]);
                 $access = guest_access_service::prepare_link();
+                $url = new \moodle_url('/local/moderncommerce/set_password.php', [
+                    'token' => $reset->token, 'renew' => $access['token'],
+                ]);
                 // Render directly to mail: password-setting tokens must not enter notification logs or queues.
                 $mail = \local_moderncommerce\api\email_api::render($templatekey, [
                     'firstname' => $user->firstname, 'lastname' => $user->lastname,

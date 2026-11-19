@@ -19,6 +19,7 @@ use local_moderncommerce\api\cart_api;
 use local_moderncommerce\api\order_api;
 use local_moderncommerce\payment\gateway_manager;
 use local_moderncommerce\payment\stripe_gateway;
+use local_moderncommerce\services\guest_password_service as password_service;
 
 /**
  * Payment/account boundaries and private anonymous carts.
@@ -29,6 +30,165 @@ use local_moderncommerce\payment\stripe_gateway;
  */
 #[\PHPUnit\Framework\Attributes\CoversClass(guest::class)]
 final class guest_checkout_service_test extends advanced_testcase {
+    /**
+     * Native authentication stores the password and consumes every outstanding link for the buyer.
+     */
+    public function test_commerce_password_save_consumes_tokens_and_keeps_native_hashing(): void {
+        global $DB, $USER, $CFG;
+        [$record, , $sink] = $this->renewal_fixture();
+        $token = $DB->get_field('user_password_resets', 'token', ['userid' => $record->userid]);
+        $this->assertSame('valid', password_service::inspect($token)['state']);
+        $this->assertSame($record->email, password_service::inspect($token)['user']->username);
+        $this->assertStringContainsString(
+            '/local/moderncommerce/set_password.php?token=',
+            password_service::legacy_target(password_service::inspect($token)['user'])
+        );
+        core_login_generate_password_reset(\core_user::get_user($record->userid));
+        $CFG->passwordreuselimit = 3;
+        set_user_preference('auth_forcepasswordchange', 1, $record->userid);
+        $this->setUser();
+        $_POST['sesskey'] = sesskey();
+        try {
+            $user = password_service::save($token, 'Commerce-Finish!946', 'Commerce-Finish!946');
+        } finally {
+            unset($_POST['sesskey']);
+        }
+        $this->assertTrue(validate_internal_user_password($user, 'Commerce-Finish!946'));
+        $this->assertSame(0, $DB->count_records('user_password_resets', ['userid' => $user->id]));
+        $this->assertSame('invalid', password_service::inspect($token)['state']);
+        $this->assertEmpty(get_user_preferences('auth_forcepasswordchange', null, $user));
+        $this->assertEmpty($USER->id);
+        $second = core_login_generate_password_reset($user);
+        $_POST['sesskey'] = sesskey();
+        try {
+            password_service::save($second->token, 'Commerce-Finish!946', 'Commerce-Finish!946');
+            $this->fail('Password history must be enforced.');
+        } catch (moodle_exception $e) {
+            $this->assertSame('errorpasswordreused', $e->errorcode);
+        } finally {
+            unset($_POST['sesskey']);
+        }
+        $this->assertSame('valid', password_service::inspect($second->token)['state']);
+        $sink->close();
+    }
+
+    /**
+     * Bad confirmation and weak/empty passwords leave the native token available for correction.
+     */
+    public function test_commerce_password_validation_preserves_token_on_failure(): void {
+        global $DB, $CFG;
+        [$record, , $sink] = $this->renewal_fixture();
+        $token = $DB->get_field('user_password_resets', 'token', ['userid' => $record->userid]);
+        $CFG->passwordpolicy = 1;
+        $CFG->minpasswordlength = 12;
+        $this->setUser();
+        $_POST['sesskey'] = sesskey();
+        try {
+            foreach (
+                [['', '', 'mcpasswordpolicy'], ['abc', 'abc', 'mcpasswordpolicy'],
+                ['Commerce-Finish!946', 'Different!123', 'passwordsdiffer']] as [$password, $confirm, $error]
+            ) {
+                try {
+                    password_service::save($token, $password, $confirm);
+                    $this->fail('Invalid password must be rejected.');
+                } catch (moodle_exception $e) {
+                    $this->assertSame($error, $e->errorcode);
+                }
+            }
+        } finally {
+            unset($_POST['sesskey']);
+        }
+        $this->assertSame('valid', password_service::inspect($token)['state']);
+        $this->assertSame(AUTH_PASSWORD_NOT_CACHED, $DB->get_field('user', 'password', ['id' => $record->userid]));
+        $sink->close();
+    }
+
+    /**
+     * Expired and suspended accounts do not expose an account or accept a new password.
+     */
+    public function test_commerce_password_rejects_expired_and_ineligible_accounts(): void {
+        global $DB, $CFG;
+        [$record, , $sink] = $this->renewal_fixture();
+        $token = $DB->get_field('user_password_resets', 'token', ['userid' => $record->userid]);
+        $DB->set_field(
+            'user_password_resets',
+            'timerequested',
+            time() - ($CFG->pwresettime ?? 1800) - 1,
+            ['userid' => $record->userid]
+        );
+        $this->assertSame('expired', password_service::inspect($token)['state']);
+        $this->assertNull(password_service::inspect($token)['user']);
+        $this->setUser();
+        $_POST['sesskey'] = sesskey();
+        try {
+            password_service::save($token, 'Commerce-Finish!946', 'Commerce-Finish!946');
+            $this->fail('An expired token must not change a password.');
+        } catch (moodle_exception $e) {
+            $this->assertSame('mcpasswordinvalid', $e->errorcode);
+        } finally {
+            unset($_POST['sesskey']);
+        }
+        $DB->set_field('user_password_resets', 'timerequested', time(), ['userid' => $record->userid]);
+        $DB->set_field('user', 'suspended', 1, ['id' => $record->userid]);
+        $this->assertSame('invalid', password_service::inspect($token)['state']);
+        $DB->set_field('user', 'suspended', 0, ['id' => $record->userid]);
+        $DB->set_field(guest::TABLE, 'status', 'refunded', ['id' => $record->id]);
+        $this->assertSame('invalid', password_service::inspect($token)['state']);
+        $this->assertSame(AUTH_PASSWORD_NOT_CACHED, $DB->get_field('user', 'password', ['id' => $record->userid]));
+        $sink->close();
+    }
+
+    /**
+     * A valid email token cannot switch an already signed-in different account.
+     */
+    public function test_commerce_password_requires_session_key_and_matching_signed_in_account(): void {
+        global $DB, $USER;
+        [$record, , $sink] = $this->renewal_fixture();
+        $token = $DB->get_field('user_password_resets', 'token', ['userid' => $record->userid]);
+        $USER->ignoresesskey = false;
+        $_POST['sesskey'] = 'wrong-key';
+        try {
+            password_service::save($token, 'Commerce-Finish!946', 'Commerce-Finish!946');
+            $this->fail('A session key is required.');
+        } catch (moodle_exception $e) {
+            $this->assertSame('invalidsesskey', $e->errorcode);
+        }
+        $_POST['sesskey'] = sesskey();
+        try {
+            password_service::save($token, 'Commerce-Finish!946', 'Commerce-Finish!946');
+            $this->fail('A different signed-in user must not be switched.');
+        } catch (moodle_exception $e) {
+            $this->assertSame('mcpassworddifferentuser', $e->errorcode);
+        } finally {
+            unset($_POST['sesskey']);
+        }
+        $this->assertSame('valid', password_service::inspect($token)['state']);
+        $sink->close();
+    }
+
+    /**
+     * The branded form inherits the native validation and supports expired-link renewal.
+     */
+    public function test_commerce_password_form_and_expired_link_renewal(): void {
+        global $DB;
+        [$record, $renew, $sink] = $this->renewal_fixture();
+        $token = $DB->get_field('user_password_resets', 'token', ['userid' => $record->userid]);
+        $user = password_service::inspect($token)['user'];
+        $form = new \local_moderncommerce\form\set_password(null, $user);
+        $this->assertInstanceOf(\login_set_password_form::class, $form);
+        $this->assertStringContainsString('name="password2"', $form->render());
+        $this->assertStringContainsString('guest_access.php?token=' . $renew, password_service::renewal_url($token, $renew));
+        $this->assertSame('', password_service::renewal_url($token, str_repeat('a', 64)));
+        $other = $this->getDataGenerator()->create_user();
+        $otherreset = core_login_generate_password_reset($other);
+        $other->token = $otherreset->token;
+        $this->assertSame('invalid', password_service::inspect($otherreset->token)['state']);
+        $this->assertSame('', password_service::legacy_target($other));
+        $DB->delete_records('user_password_resets', ['userid' => $record->userid]);
+        $this->assertStringContainsString('guest_access.php?token=' . $renew, password_service::renewal_url($token, $renew));
+        $sink->close();
+    }
+
     /**
      * A separate renewal token emails a fresh link and never creates a login session or password.
      */
@@ -54,7 +214,7 @@ final class guest_checkout_service_test extends advanced_testcase {
         $messages = $sink->get_messages();
         $mail = end($messages);
         $this->assertSame($record->email, $mail->to);
-        $this->assertStringContainsString('/login/forgot_password.php?token=', quoted_printable_decode($mail->body));
+        $this->assertStringContainsString('/local/moderncommerce/set_password.php?token=', quoted_printable_decode($mail->body));
         $this->assertStringNotContainsString('guest_access.php?token=' . $token, quoted_printable_decode($mail->body));
         $sink->close();
     }
@@ -411,6 +571,7 @@ final class guest_checkout_service_test extends advanced_testcase {
         $this->assertSame(0, $DB->count_records('user_password_resets', ['userid' => $saved->userid]));
         foreach ($sink->get_messages() as $mail) {
             $this->assertStringNotContainsString('forgot_password.php?token=', quoted_printable_decode($mail->body));
+            $this->assertStringNotContainsString('set_password.php?token=', quoted_printable_decode($mail->body));
         }
         $sink->close();
     }
@@ -772,6 +933,7 @@ final class guest_checkout_service_test extends advanced_testcase {
         $this->assertSame(0, $DB->count_records('user_password_resets', ['userid' => $existing->id]));
         foreach ($sink->get_messages() as $mail) {
             $this->assertStringNotContainsString('forgot_password.php?token=', quoted_printable_decode($mail->body));
+            $this->assertStringNotContainsString('set_password.php?token=', quoted_printable_decode($mail->body));
         }
         $sink->close();
     }

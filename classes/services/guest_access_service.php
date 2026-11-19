@@ -27,11 +27,12 @@ class guest_access_service {
     /**
      * Prepare a separate seven-day renewal token without invalidating an older email.
      *
-     * @return array Link and hashed persistence data; never log or queue this payload.
+     * @return array Link, raw token and hashed persistence data; never log or queue this payload.
      */
     public static function prepare_link(): array {
         $token = bin2hex(random_bytes(32));
         return [
+            'token' => $token,
             'hash' => hash('sha256', $token), 'expires' => time() + 7 * DAYSECS,
             'url' => (new \moodle_url('/local/moderncommerce/guest_access.php', ['token' => $token]))->out(false),
         ];

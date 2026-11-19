@@ -434,6 +434,7 @@ class callbacks {
                 '/local/moderncommerce/styleguide.php',
             ], true);
         $learnerroutes = [
+            '/local/moderncommerce/set_password.php',
             '/local/moderncommerce/guest_access.php',
             '/local/moderncommerce/cart.php',
             '/local/moderncommerce/guest_checkout.php',
@@ -446,6 +447,7 @@ class callbacks {
             '/local/moderncommerce/success.php',
         ];
         $storefrontroutes = [
+            '/local/moderncommerce/set_password.php',
             '/local/moderncommerce/guest_access.php',
             '/local/moderncommerce/index.php',
             '/local/moderncommerce/guest_checkout.php',

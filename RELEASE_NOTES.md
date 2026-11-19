@@ -1,5 +1,26 @@
 # ModernCommerce release notes
 
+## ModernCommerce 2.5.5
+
+Moodle build: `2026111807`. Requires Moodle 5.2 and PHP 8.3 or later.
+
+- Adds `/local/moderncommerce/set_password.php`, a branded page with password and
+  confirmation fields. Welcome and renewal emails now point directly to this page.
+- Reuses Moodle's native password form, validation hooks, password policy/history,
+  manual authentication API and session-management APIs.
+- Serialises saves per account, revalidates tokens before saving, and consumes all
+  outstanding password tokens after a successful change. Invalid, expired, refunded,
+  suspended and unrelated-account tokens cannot change a password through this page.
+- Prevents switching a different signed-in account. Successful setup signs in the learner
+  through Moodle and returns to My learning, with required-profile checks retained.
+- Carries a separate renewal capability so expired password links can offer the dedicated
+  email-only renewal page. Secrets are removed from the address bar before displaying forms.
+- Existing valid Moodle password links for paid guest accounts forward to this page,
+  ensuring they share the same password-saving flow. Other accounts retain the native page.
+
+Install and run Moodle's official CLI upgrade to refresh the plugin and class caches.
+Existing template placeholders continue to work; no template content replacement is required.
+
 ## ModernCommerce 2.5.4
 
 Moodle build: `2026111806`. Requires Moodle 5.2 and PHP 8.3 or later.

@@ -54,6 +54,16 @@ and Moodle's expiring password-setting link. The subject and HTML content are ed
 Use `{set_password_url}` for the secure link and `{password_expiry_minutes}` for its validity period, which follows
 Moodle's password-reset expiry setting. `{firstname}`, `{sitename}`, `{login_url}`, and `{forgot_password_url}` are also available.
 Preview links never contain real password tokens. No temporary password is generated or sent.
+The **Set your password** button opens `/local/moderncommerce/set_password.php`.
+This dedicated page contains the password and confirmation fields, reuses Moodle's native
+password form and validation hooks, and writes passwords through the native manual authentication API.
+Native token expiry, password policy/history, other-session logout and required-profile checks apply.
+Successful changes consume all outstanding reset tokens for the account and redirect to My learning.
+Password saves are serialised per account to prevent concurrent reuse; a different signed-in account
+cannot be switched by submitting a buyer's link. Existing valid native Moodle links for these guest
+accounts are forwarded to the branded page. Other accounts retain Moodle's original page.
+New email links carry a separate email-only renewal capability so expired links can offer the
+dedicated renewal page. Tokens are moved out of the address bar before the form is rendered.
 The welcome email shows the recipient's actual `{username}` (the checkout email for new accounts),
 explains the password-setup destination, and includes a `{learning_url}` link to My learning.
 Upgrades refresh the unchanged original bundled copy, including an unchanged outgoing-email override.
@@ -69,7 +79,7 @@ Renewal works after guest checkout is disabled, while the welcome email delivery
 During a paid guest account's first password setup, Modern Commerce replaces any stale login destination
 with `/local/moderncommerce/learner/index.php`. This also works for previously emailed native Moodle links.
 Moodle still validates the expiring token, password policy, login session, and required profile details.
-Other users' password resets and later password resets retain their existing destinations.
+Accounts unrelated to paid guest purchases retain Moodle's normal password page and destination.
 Administrator customisations survive upgrades. As with other commerce emails, disabling the notification suppresses it;
 the learner can still request a password link from Moodle's sign-in page.
 Existing learners claim through a link and their normal login; they do not receive a new-account welcome or password token.
