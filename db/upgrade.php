@@ -1562,5 +1562,30 @@ function xmldb_local_moderncommerce_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026111806, 'local', 'moderncommerce');
     }
 
+    if ($oldversion < 2026111808) {
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('local_moderncommerce_guestpay');
+        $fields = [
+            new xmldb_field('gateway', XMLDB_TYPE_CHAR, '50', null, XMLDB_NOTNULL, null, 'stripe', 'stripeid'),
+            new xmldb_field('providerreference', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'gateway'),
+            new xmldb_field('providertransactionid', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'providerreference'),
+            new xmldb_field('checkouturl', XMLDB_TYPE_TEXT, null, null, null, null, null, 'providertransactionid'),
+        ];
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        $indexes = ['providerreference' => 'providerreference', 'providertransaction' => 'providertransactionid'];
+        foreach ($indexes as $name => $field) {
+            $index = new xmldb_index($name, XMLDB_INDEX_NOTUNIQUE, ['gateway', $field]);
+            if (!$dbman->index_exists($table, $index)) {
+                $dbman->add_index($table, $index);
+            }
+        }
+        $DB->execute('UPDATE {local_moderncommerce_guestpay} SET providerreference = stripeid WHERE providerreference IS NULL');
+        upgrade_plugin_savepoint(true, 2026111808, 'local', 'moderncommerce');
+    }
+
     return true;
 }

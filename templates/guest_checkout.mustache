@@ -58,6 +58,7 @@
                 <section class="mc-card mc-guest-checkout__status">
                     <h2 class="mc-page-title">{{statustitle}}</h2>
                     {{#claimmessage}}<p>{{claimmessage}}</p>{{/claimmessage}}
+                    {{#manualinstructions}}<p>{{manualinstructions}}</p><p><strong>{{manualamount}}</strong></p>{{/manualinstructions}}
                     <div class="mc-guest-checkout__status-actions">
                         {{{statusactions}}}
                         <a href="{{refreshurl}}" class="mc-button mc-btn-soft">{{#str}}refresh{{/str}}</a>
@@ -143,6 +144,7 @@
                                     <span class="mc-order-row__value">{{totals.total}}</span>
                                 </div>
                                 <button type="submit" form="mc-guest-details-form" name="submitbutton" value="1"
+                                        {{^canpay}}disabled{{/canpay}}
                                         class="mc-button btn-mc-primary w-100 d-flex justify-content-center mt-3">
                                     <i class="bi bi-lock me-1" aria-hidden="true"></i>
                                     {{#str}}guestcheckoutpay, local_moderncommerce{{/str}}

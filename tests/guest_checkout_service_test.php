@@ -31,6 +31,297 @@ use local_moderncommerce\services\guest_password_service as password_service;
 #[\PHPUnit\Framework\Attributes\CoversClass(guest::class)]
 final class guest_checkout_service_test extends advanced_testcase {
     /**
+     * Provider verification creates one account/order and preserves the selected gateway on replay.
+     */
+    public function test_paystack_and_flutterwave_verified_payments_are_idempotent(): void {
+        global $DB;
+        foreach (['paystack', 'flutterwave'] as $gateway) {
+            [$record, , $course] = $this->provider_purchase($gateway);
+            $response = $this->provider_response($record);
+            $sink = $this->redirectEmails();
+            foreach ([1, 2] as $attempt) {
+                curl::mock_response(json_encode($response));
+                $this->assertTrue(guest::reconcile($record));
+            }
+            $saved = $DB->get_record(guest::TABLE, ['id' => $record->id]);
+            $this->assertSame('fulfilled', $saved->status);
+            $this->assertSame($gateway, $DB->get_field(
+                'local_moderncommerce_payment_attempts',
+                'gateway',
+                ['orderid' => $saved->orderid],
+                IGNORE_MULTIPLE
+            ));
+            $this->assertSame(1, $DB->count_records('user', ['email' => $record->email]));
+            $this->assertSame(1, $DB->count_records('local_moderncommerce_orders', ['userid' => $saved->userid]));
+            $this->assertTrue(is_enrolled(context_course::instance($course->id), $saved->userid, '', true));
+            $sink->close();
+        }
+    }
+
+    /**
+     * An API success flag alone is insufficient: references, amounts, currency and mode must match.
+     */
+    public function test_provider_verification_rejects_mismatched_payment_details(): void {
+        global $DB;
+        foreach (['paystack', 'flutterwave'] as $gateway) {
+            [$record] = $this->provider_purchase($gateway);
+            $valid = $this->provider_response($record);
+            $reference = $gateway === 'paystack' ? 'reference' : 'tx_ref';
+            $invalid = [$reference => 'other-purchase', 'amount' => 1, 'currency' => 'EUR'];
+            $invalid[$gateway === 'paystack' ? 'metadata' : 'meta'] = ['guest_checkout_id' => $record->id + 1];
+            if ($gateway === 'paystack') {
+                $invalid['domain'] = 'live';
+            }
+            foreach ($invalid as $field => $value) {
+                $response = $valid;
+                $response['data'][$field] = $value;
+                curl::mock_response(json_encode($response));
+                try {
+                    guest::reconcile($record);
+                    $this->fail('Mismatched payment must not provision a buyer.');
+                } catch (moodle_exception $e) {
+                    $this->assertSame('guestcheckoutverification', $e->errorcode);
+                }
+            }
+            $response = $valid;
+            $response['data']['status'] = 'pending';
+            curl::mock_response(json_encode($response));
+            $this->assertFalse(guest::reconcile($record));
+            $this->assertFalse($DB->record_exists('user', ['email' => $record->email]));
+            $this->assertSame('pending', $DB->get_field(guest::TABLE, 'status', ['id' => $record->id]));
+        }
+    }
+
+    /**
+     * PayPal approval is captured only after matching the immutable amount and guest reference.
+     */
+    public function test_paypal_approval_capture_and_replay(): void {
+        global $DB;
+        [$record, , $course] = $this->provider_purchase('paypal');
+        $unit = ['custom_id' => 'guest:' . $record->id, 'reference_id' => 'guest:' . $record->id,
+            'amount' => ['value' => '25.00', 'currency_code' => 'USD']];
+        $approved = ['id' => $record->providerreference, 'status' => 'APPROVED', 'purchase_units' => [$unit]];
+        $complete = $approved;
+        $complete['status'] = 'COMPLETED';
+        $complete['purchase_units'][0]['payments']['captures'] = [[
+            'id' => 'CAPTURE-TEST', 'status' => 'COMPLETED', 'amount' => $unit['amount'],
+        ]];
+        $sink = $this->redirectEmails();
+        foreach (array_reverse([$approved, ['id' => $record->providerreference], $complete]) as $response) {
+            curl::mock_response(json_encode($response));
+            curl::mock_response(json_encode(['access_token' => 'test-oauth']));
+        }
+        $this->assertTrue(guest::reconcile($record));
+        curl::mock_response(json_encode($complete));
+        curl::mock_response(json_encode(['access_token' => 'test-oauth']));
+        $this->assertTrue(guest::reconcile($record));
+        $saved = $DB->get_record(guest::TABLE, ['id' => $record->id]);
+        $this->assertSame('CAPTURE-TEST', $saved->providertransactionid);
+        $this->assertSame('fulfilled', $saved->status);
+        $this->assertSame(1, $DB->count_records('local_moderncommerce_orders', ['userid' => $saved->userid]));
+        $this->assertTrue(is_enrolled(context_course::instance($course->id), $saved->userid, '', true));
+        $sink->close();
+    }
+
+    /**
+     * A mismatched approved PayPal order must never reach capture or create a learner.
+     */
+    public function test_paypal_rejects_wrong_approved_total_before_capture(): void {
+        global $DB;
+        [$record] = $this->provider_purchase('paypal');
+        curl::mock_response(json_encode(['id' => $record->providerreference, 'status' => 'APPROVED', 'purchase_units' => [[
+            'custom_id' => 'guest:' . $record->id, 'reference_id' => 'guest:' . $record->id,
+            'amount' => ['value' => '1.00', 'currency_code' => 'USD'],
+        ]]]));
+        curl::mock_response(json_encode(['access_token' => 'test-oauth']));
+        try {
+            guest::reconcile($record);
+            $this->fail('A mismatched order must be rejected before capture.');
+        } catch (moodle_exception $e) {
+            $this->assertSame('guestcheckoutverification', $e->errorcode);
+        }
+        $this->assertFalse($DB->record_exists('user', ['email' => $record->email]));
+        $this->assertSame('pending', $DB->get_field(guest::TABLE, 'status', ['id' => $record->id]));
+    }
+
+    /**
+     * Manual payment is never provisioned by a browser return and requires order-management authority.
+     */
+    public function test_manual_payment_requires_authorized_confirmation(): void {
+        global $DB;
+        [$record, , $course] = $this->provider_purchase('manual');
+        $this->assertFalse(guest::reconcile($record));
+        $this->assertFalse($DB->record_exists('user', ['email' => $record->email]));
+        $this->setUser($this->getDataGenerator()->create_user());
+        $_POST['sesskey'] = sesskey();
+        try {
+            guest::confirm_manual($record->id);
+            $this->fail('Learners cannot approve an offline payment.');
+        } catch (required_capability_exception $e) {
+            $this->assertSame('nopermissions', $e->errorcode);
+        }
+        $this->setAdminUser();
+        $_POST['sesskey'] = sesskey();
+        $sink = $this->redirectEmails();
+        try {
+            guest::confirm_manual($record->id);
+            guest::confirm_manual($record->id);
+        } finally {
+            unset($_POST['sesskey']);
+        }
+        $saved = $DB->get_record(guest::TABLE, ['id' => $record->id]);
+        $this->assertSame('fulfilled', $saved->status);
+        $this->assertSame(1, $DB->count_records('local_moderncommerce_orders', ['userid' => $saved->userid]));
+        $this->assertSame('guest.manual.approved', json_decode($saved->paymentdata)->eventtype);
+        $this->assertTrue(is_enrolled(context_course::instance($course->id), $saved->userid, '', true));
+        $sink->close();
+    }
+
+    /**
+     * Hosted creation binds the callback to the guest capability, including PayPal's token-name collision.
+     */
+    public function test_all_provider_session_creation_preserves_guest_identity(): void {
+        global $DB;
+        foreach (['paystack', 'flutterwave', 'paypal', 'manual'] as $gateway) {
+            [$record] = $this->provider_purchase($gateway);
+            if ($gateway === 'paystack') {
+                curl::mock_response(json_encode(['status' => true, 'data' => [
+                    'reference' => $record->providerreference, 'authorization_url' => 'https://checkout.paystack.com/test',
+                ]]));
+            } else if ($gateway === 'flutterwave') {
+                curl::mock_response(json_encode([
+                    'status' => 'success', 'data' => ['link' => 'https://checkout.flutterwave.com/test'],
+                ]));
+            } else if ($gateway === 'paypal') {
+                curl::mock_response(json_encode(['id' => 'PAYPAL-TEST', 'links' => [
+                    ['rel' => 'approve', 'href' => 'https://www.sandbox.paypal.com/checkoutnow?token=PAYPAL-TEST'],
+                ]]));
+                curl::mock_response(json_encode(['access_token' => 'test-oauth']));
+            }
+            $session = \local_moderncommerce\services\guest_gateway_service::create(
+                $record,
+                json_decode($record->payload, true),
+                str_repeat('b', 64)
+            );
+            $this->assertNotEmpty($session['id']);
+            $this->assertStringContainsString($gateway === 'manual' ? 'guesttoken=' : 'https://', $session['url']);
+            $this->assertFalse($DB->record_exists('user', ['email' => $record->email]));
+        }
+    }
+
+    /**
+     * Prepare a non-Stripe purchase with independent tokens and native gateway credentials.
+     * @param string $gateway Gateway ID.
+     * @return array
+     */
+    private function provider_purchase(string $gateway): array {
+        global $CFG, $DB;
+        require_once($CFG->libdir . '/filelib.php');
+        $DB->delete_records(guest::TABLE, ['tokenhash' => hash('sha256', str_repeat('b', 64))]);
+        $fixture = $this->purchase($gateway . '@example.com');
+        $record = $fixture[0];
+        $record->gateway = $gateway;
+        $record->providerreference = 'MCG-TEST-' . $record->id;
+        $record->stripeid = null;
+        $record->tokenhash = hash('sha256', $gateway);
+        $DB->update_record(guest::TABLE, $record);
+        gateway_manager::save_gateway_config($gateway, [
+            'enabled' => 1, 'testmode' => 1, 'secretkey' => 'sk_test_fixture', 'merchantid' => 'test-client',
+            'publickey' => 'pk_test_fixture', 'webhooksecret' => 'test-signing',
+        ]);
+        return $fixture;
+    }
+
+    /**
+     * Successful provider response for a frozen USD25 purchase.
+     * @param object $record Purchase.
+     * @return array
+     */
+    private function provider_response(object $record): array {
+        return ['status' => $record->gateway === 'paystack' ? true : 'success', 'data' => [
+            'id' => 12345, 'status' => $record->gateway === 'paystack' ? 'success' : 'successful',
+            'reference' => $record->providerreference, 'tx_ref' => $record->providerreference,
+            'amount' => $record->gateway === 'paystack' ? 2500 : 25, 'currency' => 'USD', 'domain' => 'test',
+            'metadata' => ['guest_checkout_id' => $record->id], 'meta' => ['guest_checkout_id' => $record->id],
+        ]];
+    }
+
+    /**
+     * The selector includes every ready built-in gateway and excludes disabled or unsupported methods.
+     */
+    public function test_guest_gateway_methods_respect_configuration_and_currency(): void {
+        foreach (['stripe', 'paystack', 'flutterwave', 'paypal', 'manual'] as $gateway) {
+            gateway_manager::save_gateway_config($gateway, [
+                'enabled' => 1, 'testmode' => 1, 'secretkey' => 'sk_test_fixture', 'merchantid' => 'test-client',
+                'publickey' => 'pk_test_fixture', 'webhooksecret' => 'whsec_fixture',
+                'methodtype' => $gateway === 'manual' ? 'offline' : 'redirect',
+            ]);
+        }
+        $methods = \local_moderncommerce\services\guest_gateway_service::methods('USD');
+        $this->assertEqualsCanonicalizing(['stripe', 'paystack', 'flutterwave', 'paypal', 'manual'], array_keys($methods));
+        gateway_manager::save_gateway_config('paypal', ['enabled' => 0]);
+        $this->assertArrayNotHasKey('paypal', \local_moderncommerce\services\guest_gateway_service::methods('USD'));
+        $this->assertArrayNotHasKey('paystack', \local_moderncommerce\services\guest_gateway_service::methods('JPY'));
+        $this->assertArrayNotHasKey('enrollkey', $methods);
+    }
+
+    /**
+     * Offline submission stays pending, reuses its reference, and retains the anonymous cart.
+     */
+    public function test_manual_start_reuses_attempt_without_creating_an_account(): void {
+        global $DB, $SESSION;
+        [$fixture, , $course] = $this->purchase();
+        $snapshot = json_decode($fixture->payload);
+        $DB->delete_records(guest::TABLE, ['id' => $fixture->id]);
+        $DB->insert_record('local_moderncommerce_product_prices', (object)[
+            'productid' => $snapshot->items[0]->productid, 'pricetype' => 'regular',
+            'amount' => 25, 'enabled' => 1, 'timecreated' => time(), 'timemodified' => time(),
+        ]);
+        set_config('guest_checkout_enabled', 1, 'local_moderncommerce');
+        gateway_manager::save_gateway_config('manual', ['enabled' => 1, 'methodtype' => 'offline']);
+        $this->setUser(null);
+        $_POST['sesskey'] = sesskey();
+        unset($SESSION->moderncommerce_guest_payment);
+        cart_api::add_to_cart(0, $course->id);
+        $billing = ['firstname' => 'Test', 'lastname' => 'Buyer', 'email' => 'offline@example.com', 'gateway' => 'manual'];
+        try {
+            $first = guest::start($billing);
+            $second = guest::start($billing);
+        } finally {
+            unset($_POST['sesskey']);
+        }
+        $saved = $DB->get_record(guest::TABLE, ['id' => $first['record']->id]);
+        $this->assertEquals($saved->id, $second['record']->id);
+        $this->assertSame('manual', $saved->gateway);
+        $this->assertSame('pending', $saved->status);
+        $this->assertSame($first['url'], $second['url']);
+        $this->assertStringContainsString('guesttoken=', $first['url']);
+        $this->assertFalse($DB->record_exists('user', ['email' => $saved->email]));
+        $this->assertSame(1, cart_api::get_cart_count(0));
+    }
+
+    /**
+     * Paystack signed events reach the guest adapter only after signature verification.
+     */
+    public function test_paystack_guest_webhook_requires_signature_and_queries_api(): void {
+        global $DB;
+        [$record] = $this->provider_purchase('paystack');
+        $response = $this->provider_response($record);
+        $event = ['event' => 'charge.success', 'data' => $response['data']];
+        $raw = json_encode($event);
+        $gateway = new \local_moderncommerce\payment\paystack_gateway();
+        $this->assertFalse($gateway->process_webhook($event, ['x-paystack-signature' => 'forged'], $raw));
+        $this->assertFalse($DB->record_exists('user', ['email' => $record->email]));
+        curl::mock_response(json_encode($response));
+        $sink = $this->redirectEmails();
+        $this->assertTrue($gateway->process_webhook($event, [
+            'x-paystack-signature' => hash_hmac('sha512', $raw, 'sk_test_fixture'),
+        ], $raw));
+        $this->assertSame('fulfilled', $DB->get_field(guest::TABLE, 'status', ['id' => $record->id]));
+        $sink->close();
+    }
+
+    /**
      * Native authentication stores the password and consumes every outstanding link for the buyer.
      */
     public function test_commerce_password_save_consumes_tokens_and_keeps_native_hashing(): void {
@@ -1062,7 +1353,8 @@ final class guest_checkout_service_test extends advanced_testcase {
         global $DB;
         $course = $this->getDataGenerator()->create_course();
         $productid = $DB->insert_record('local_moderncommerce_products', (object)[
-            'name' => $course->fullname, 'producttype' => 'course', 'slug' => 'test-' . $course->id,
+            'name' => $course->fullname, 'sku' => 'test-' . $course->id,
+            'producttype' => 'course', 'slug' => 'test-' . $course->id,
             'status' => 'active', 'visible' => 1, 'timecreated' => time(), 'timemodified' => time(),
         ]);
         $DB->insert_record('local_moderncommerce_product_courses', (object)[

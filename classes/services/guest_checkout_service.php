@@ -207,6 +207,7 @@ class guest_checkout_service {
             throw new \moodle_exception('guestcheckoutdisabled', 'local_moderncommerce');
         }
         self::cart_userid();
+        $gatewayid = clean_param($billing['gateway'] ?? 'stripe', PARAM_ALPHANUMEXT);
         $billing = [
             'firstname' => trim(clean_param($billing['firstname'] ?? '', PARAM_NOTAGS)),
             'lastname' => trim(clean_param($billing['lastname'] ?? '', PARAM_NOTAGS)),
@@ -223,26 +224,39 @@ class guest_checkout_service {
         if (!$eligibility['available']) {
             throw new \moodle_exception($eligibility['errorcode'], 'local_moderncommerce');
         }
-        $config = gateway_manager::get_gateway_config('stripe');
-        if (empty($config['enabled']) || empty($config['secret_key']) || empty($config['webhook_secret'])) {
-            throw new \moodle_exception('guestcheckoutunavailable', 'local_moderncommerce');
-        }
-        if (!is_enabled_auth('manual') || (!empty($config['testmode']) && !str_contains($config['secret_key'], '_test_'))) {
+        $config = gateway_manager::get_gateway_config($gatewayid);
+        if (
+            !is_enabled_auth('manual') || ($gatewayid === 'stripe' &&
+                (!empty($config['testmode']) && !str_contains($config['secret_key'] ?? '', '_test_')))
+        ) {
             throw new \moodle_exception('guestcheckoutunavailable', 'local_moderncommerce');
         }
         $lock = self::lock('start:' . self::cart_token());
         try {
             $snapshot = self::snapshot();
+            if (!isset(guest_gateway_service::methods($snapshot['totals']['currency'])[$gatewayid])) {
+                throw new \moodle_exception('guestcheckoutgatewayunavailable', 'local_moderncommerce');
+            }
             $snapshot['billing'] = $billing;
-            $snapshot['testmode'] = str_contains($config['secret_key'], '_test_');
+            $snapshot['testmode'] = guest_gateway_service::testmode($gatewayid);
             $json = json_encode($snapshot, JSON_THROW_ON_ERROR);
-            // A repeated submit reuses the exact same Stripe session instead of charging twice.
+            // A repeated submit reuses the same provider checkout attempt.
             if (!empty($SESSION->moderncommerce_guest_payment)) {
                 $previous = self::by_token($SESSION->moderncommerce_guest_payment);
                 if (
-                    $previous && $previous->status === 'pending' && $previous->payload === $json &&
+                    $previous && $previous->status === 'pending' && ($previous->gateway ?? 'stripe') === $gatewayid &&
+                        $previous->payload === $json &&
                         $previous->timecreated > time() - 50 * MINSECS
                 ) {
+                    if ($gatewayid !== 'stripe' && !empty($previous->checkouturl)) {
+                        return ['record' => $previous, 'url' => $previous->checkouturl];
+                    }
+                    if ($gatewayid !== 'stripe') {
+                        $session = guest_gateway_service::create($previous, $snapshot, $SESSION->moderncommerce_guest_payment);
+                        $DB->update_record(self::TABLE, (object)['id' => $previous->id,
+                            'providerreference' => $session['id'], 'checkouturl' => $session['url']]);
+                        return ['record' => $previous, 'url' => $session['url']];
+                    }
                     $session = $previous->stripeid
                         ? (new stripe_gateway())->retrieve_guest_session($previous->stripeid)
                         : (new stripe_gateway())->create_guest_session(
@@ -251,7 +265,9 @@ class guest_checkout_service {
                             $SESSION->moderncommerce_guest_payment
                         );
                     if (($session['status'] ?? '') === 'open') {
-                        $DB->set_field(self::TABLE, 'stripeid', $session['id'], ['id' => $previous->id]);
+                        $DB->update_record(self::TABLE, (object)['id' => $previous->id,
+                            'stripeid' => $session['id'], 'providerreference' => $session['id'],
+                            'checkouturl' => $session['url']]);
                         return ['record' => $previous, 'url' => $session['url']];
                     }
                 }
@@ -279,13 +295,21 @@ class guest_checkout_service {
             $record = (object)[
                 'tokenhash' => hash('sha256', $token), 'sessionhash' => self::cart_token(),
                 'iphash' => self::ip_hash(),
-                'email' => $billing['email'], 'payload' => $json, 'status' => 'pending',
+                'email' => $billing['email'], 'payload' => $json, 'status' => 'pending', 'gateway' => $gatewayid,
                 'timecreated' => time(), 'timemodified' => time(),
             ];
             $record->id = $DB->insert_record(self::TABLE, $record);
             $SESSION->moderncommerce_guest_payment = $token;
-            $session = (new stripe_gateway())->create_guest_session($record, $snapshot, $token);
-            $DB->set_field(self::TABLE, 'stripeid', $session['id'], ['id' => $record->id]);
+            $record->providerreference = 'MCG-' . $record->id . '-' . substr($record->tokenhash, 0, 20);
+            $DB->set_field(self::TABLE, 'providerreference', $record->providerreference, ['id' => $record->id]);
+            $session = $gatewayid === 'stripe'
+                ? (new stripe_gateway())->create_guest_session($record, $snapshot, $token)
+                : guest_gateway_service::create($record, $snapshot, $token);
+            $update = (object)['id' => $record->id, 'providerreference' => $session['id'], 'checkouturl' => $session['url']];
+            if ($gatewayid === 'stripe') {
+                $update->stripeid = $session['id'];
+            }
+            $DB->update_record(self::TABLE, $update);
             return ['record' => $record, 'url' => $session['url']];
         } finally {
             $lock->release();
@@ -316,7 +340,7 @@ class guest_checkout_service {
         $record = $DB->get_record(self::TABLE, ['id' => $id], '*', MUST_EXIST);
         $snapshot = json_decode($record->payload, true, 512, JSON_THROW_ON_ERROR);
         if (
-            ($session['id'] ?? '') !== $record->stripeid ||
+            ($record->gateway ?? 'stripe') !== 'stripe' || ($session['id'] ?? '') !== $record->stripeid ||
                 ($session['client_reference_id'] ?? '') !== 'guest:' . $record->id ||
                 (bool)($session['livemode'] ?? false) === (bool)$snapshot['testmode'] ||
                 ($session['mode'] ?? '') !== 'payment' ||
@@ -331,24 +355,41 @@ class guest_checkout_service {
         if (($session['payment_status'] ?? '') !== 'paid' || ($session['status'] ?? '') !== 'complete') {
             return false;
         }
+        return self::record_verified($record, [
+            'id' => $session['id'], 'payment_intent' => $session['payment_intent'],
+            'amount_total' => $session['amount_total'], 'currency' => $session['currency'],
+            'source' => 'webhook', 'eventtype' => 'checkout.session.completed',
+        ]);
+    }
+
+    /**
+     * Commit provider-verified settlement before any identity or enrolment is created.
+     * @param object $record Purchase.
+     * @param array $payment Verified normalized payment.
+     * @return bool
+     */
+    private static function record_verified(object $record, array $payment): bool {
+        global $DB;
+        $id = (int)$record->id;
+        $snapshot = json_decode($record->payload, true, 512, JSON_THROW_ON_ERROR);
         $lock = self::lock('payment:' . $record->id);
         try {
             $record = $DB->get_record(self::TABLE, ['id' => $id], '*', MUST_EXIST);
             if ($record->status === 'refunded') {
                 return true;
             }
-            $record->paymentdata = json_encode([
-                'id' => $session['id'], 'payment_intent' => $session['payment_intent'],
-                'amount_total' => $session['amount_total'], 'currency' => $session['currency'],
-            ], JSON_THROW_ON_ERROR);
-            $firstpayment = $record->status === 'pending';
+            if (($record->gateway ?? 'stripe') !== 'manual' || empty($record->paymentdata)) {
+                $record->paymentdata = json_encode($payment, JSON_THROW_ON_ERROR);
+            }
+            $record->providertransactionid = $payment['payment_intent'];
+            $firstpayment = in_array($record->status, ['pending', 'expired'], true);
             if ($firstpayment) {
                 $record->status = 'paid';
             }
             $record->timemodified = time();
             $DB->update_record(self::TABLE, $record);
             // Remove only purchased lines; a buyer may have added other courses
-            // in a second tab while Stripe Checkout was open.
+            // in a second tab while the hosted checkout was open.
             $cart = !empty($snapshot['cartid']) ? $DB->get_record('local_moderncommerce_carts', [
                 'id' => (int)$snapshot['cartid'], 'userid' => 0, 'sessionid' => $record->sessionhash,
             ]) : null;
@@ -368,9 +409,20 @@ class guest_checkout_service {
     }
 
     /**
-     * Reconcile a browser return or cron recovery with Stripe; no browser status is trusted.
+     * Reconcile a browser return or cron recovery with the provider; no browser status is trusted.
      */
     public static function reconcile(object $record): bool {
+        if (($record->gateway ?? 'stripe') !== 'stripe') {
+            if (empty($record->providerreference)) {
+                return false;
+            }
+            $payment = guest_gateway_service::verify($record);
+            if (!empty($payment['refunded'])) {
+                guest_gateway_service::refund($record, $payment['payment_intent']);
+                return false;
+            }
+            return $payment ? self::record_verified($record, $payment) : false;
+        }
         if (!$record->stripeid) {
             return false;
         }
@@ -381,6 +433,46 @@ class guest_checkout_service {
             return false;
         }
         return self::confirm_session($session);
+    }
+
+    /**
+     * Confirm actual offline settlement with order-management authority and CSRF protection.
+     * @param int $id Guest purchase ID.
+     */
+    public static function confirm_manual(int $id): void {
+        global $DB, $USER;
+        require_login();
+        require_sesskey();
+        require_capability('local/moderncommerce:manageorders', \context_system::instance());
+        $record = $DB->get_record(self::TABLE, ['id' => $id, 'gateway' => 'manual'], '*', MUST_EXIST);
+        if (!in_array($record->status, ['pending', 'paid', 'claim', 'fulfilled'], true)) {
+            throw new \moodle_exception('guestcheckoutverification', 'local_moderncommerce');
+        }
+        $snapshot = json_decode($record->payload, true, 512, JSON_THROW_ON_ERROR);
+        self::record_verified($record, [
+            'id' => $record->providerreference, 'payment_intent' => 'manual-' . $id,
+            'amount_total' => self::minor_amount((float)$snapshot['totals']['total'], $snapshot['totals']['currency']),
+            'currency' => $snapshot['totals']['currency'], 'source' => 'admin',
+            'eventtype' => 'guest.manual.approved', 'approvedby' => (int)$USER->id,
+        ]);
+    }
+
+    /**
+     * Mark a provider-authenticated refund under the fulfilment lock.
+     * @param int $id Guest purchase ID.
+     * @param string $gateway Provider ID.
+     * @return int Existing order ID.
+     */
+    public static function mark_provider_refund(int $id, string $gateway): int {
+        global $DB;
+        $lock = self::lock('payment:' . $id);
+        try {
+            $record = $DB->get_record(self::TABLE, ['id' => $id, 'gateway' => $gateway], '*', MUST_EXIST);
+            $DB->set_field(self::TABLE, 'status', 'refunded', ['id' => $id]);
+            return (int)$record->orderid;
+        } finally {
+            $lock->release();
+        }
     }
 
     /**
@@ -440,6 +532,9 @@ class guest_checkout_service {
         $lock = self::lock('payment:' . $id);
         try {
             $record = $DB->get_record(self::TABLE, ['id' => $id], '*', MUST_EXIST);
+            if (($record->gateway ?? 'stripe') !== 'stripe') {
+                throw new \moodle_exception('guestcheckoutverification', 'local_moderncommerce');
+            }
             if (!empty($charge['refunded'])) {
                 $DB->set_field(self::TABLE, 'status', 'refunded', ['id' => $id]);
             }
@@ -520,7 +615,7 @@ class guest_checkout_service {
                 $totals = (array)$snapshot->totals;
                 $order = order_api::create_snapshot_order(
                     (int)$record->userid,
-                    'stripe',
+                    $record->gateway ?? 'stripe',
                     (array)$snapshot->billing,
                     $snapshot->items,
                     $totals
@@ -532,11 +627,12 @@ class guest_checkout_service {
             }
             $order = order_api::get_order((int)$record->orderid);
             $payment = json_decode($record->paymentdata);
-            gateway_manager::record_payment_result($order, 'stripe', (object)[
+            gateway_manager::record_payment_result($order, $record->gateway ?? 'stripe', (object)[
                 'status' => 'success', 'orderid' => $order->id, 'orderreference' => $order->ordernumber,
                 'gatewayreference' => $payment->id, 'gatewaytransactionid' => $payment->payment_intent,
                 'amount' => (float)$snapshot->totals->total, 'currency' => $payment->currency,
-                'source' => 'webhook', 'eventtype' => 'checkout.session.completed', 'gatewayeventid' => $payment->id,
+                'source' => $payment->source ?? 'webhook', 'eventtype' => $payment->eventtype ?? 'checkout.session.completed',
+                'gatewayeventid' => $payment->id,
             ]);
             if (!in_array($order->status, ['paid', 'completed'], true)) {
                 // Money has already settled. Never cancel this paid purchase because

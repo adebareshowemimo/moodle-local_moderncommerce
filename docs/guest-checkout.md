@@ -5,8 +5,8 @@
 1. Add an opt-in checkout setting, disabled by default.
 2. Isolate anonymous carts by a random server-session token.
 3. Provide a public, CSRF-protected cart and checkout form using existing storefront components.
-4. Freeze items, prices, tax, and buyer details before creating a Stripe Checkout Session.
-5. Verify signed payment notifications and retrieve the Checkout Session before fulfilment.
+4. Freeze items, prices, tax, buyer details and the selected gateway before starting hosted checkout.
+5. Verify signed payment notifications and retrieve authoritative provider payment state before fulfilment.
 6. After payment, create a manual Moodle account for a new email. Existing accounts must sign in before claiming.
 7. Create the normal commerce order from the frozen snapshot and reuse paid-order enrolment.
 8. Retry incomplete fulfilment and email delivery through cron; expose recovery on the confirmation page.
@@ -19,17 +19,32 @@ Buyer details occupy the left sidebar in place of account navigation. The summar
 the native Moodle form in that sidebar, including its session key, validation, consent, and CAPTCHA when configured.
 On narrower screens the details, items, and summary stack in reading order.
 
-Stripe hosted payments for courses and bundles, using payment methods enabled in the Stripe Dashboard.
-Delayed payment methods remain pending until Stripe confirms payment; no account or enrolment is created before that.
-Guest coupons, programs, subscriptions, manual payments,
+Courses and bundles support enabled, configured Stripe, PayPal, Paystack, Flutterwave and manual payment methods.
+The payment selector respects gateway display order and currency support. Unavailable gateways are hidden.
+Delayed payment methods remain pending until the provider confirms payment; no account or enrolment is created before that.
+Guest coupons, programs, subscriptions, enrolment-key redemption,
 and zero-total purchases require signing in. Existing authenticated checkout remains available.
 
 ## Operation
 
-Enable **Allow guest checkout** in Modern Commerce checkout settings. Stripe must be enabled with a signing secret.
+Enable **Allow guest checkout** in Modern Commerce checkout settings and configure the desired gateways.
+Stripe requires its webhook signing secret.
 Register `checkout.session.completed` and `checkout.session.async_payment_succeeded`
 alongside the existing charge/refund events in Stripe's webhook destination.
 Use Snapshot events from Your account; paste the destination's `whsec_` signing secret into the gateway settings.
+PayPal requires its client ID, secret and webhook ID; use order-approved, capture-completed and refund events.
+Paystack and Flutterwave use their existing gateway credentials, signing configuration and webhook endpoints.
+The gateway test/live environment must match the purchase snapshot during verification.
+PayPal callback URLs use `guesttoken` to avoid colliding with PayPal's appended `token` order ID.
+Paystack verifies the stored reference, amount, currency, metadata and API environment. Flutterwave verifies the
+stored transaction reference, amount and currency. PayPal verifies the approved order before capture and the
+completed capture before fulfilment. Callback query values never establish that payment succeeded.
+
+Manual payments show the amount and unique payment reference. The buyer arranges payment with site support.
+An administrator with **Manage commerce orders** opens **Guest purchase recovery**, checks that payment was
+received, and selects **Confirm payment received**. This action requires a session key and records the approver.
+Only then are the account, paid order and enrolments created. Repeated approvals reuse the same order.
+Manual methods must be enabled in gateway settings. Enrolment keys continue through their separate signed-in redemption flow.
 The switch controls new guest operations only: turning it off never prevents a paid purchase from being fulfilled.
 Run Moodle cron for fulfilment and mail retries. Check the guest checkout recovery report for pending paid purchases.
 No Moodle account is created for abandoned or failed payment attempts.
@@ -46,7 +61,7 @@ For example, plus-addressed emails require Moodle's extended username characters
 After payment, existing-email ownership claims still require login. A late username collision with
 another email keeps the paid purchase recoverable for administrator assistance and never attaches it to that account.
 
-Payment status is verified using Stripe's API as well as the signed event. Repeated events and concurrent attempts
+Payment status is verified using the selected gateway's API as well as the signed event. Repeated events and concurrent attempts
 are protected by Moodle locks. The browser confirmation page never establishes a login session.
 New learners receive the **Guest account welcome** email, with the site name, account-creation confirmation,
 and Moodle's expiring password-setting link. The subject and HTML content are editable in
@@ -94,7 +109,7 @@ in the privacy provider once associated with a user. Never log API keys, passwor
 
 The Checkout settings tab links to `/local/moderncommerce/admin/guest_checkouts.php`.
 The recovery link is spaced separately from the guest checkout switch and wraps onto its own line on phones.
-Administrators with the commerce settings capability can inspect pending, paid, claim, fulfilled, expired,
+Administrators with the commerce settings or order-management capability can inspect pending, paid, claim, fulfilled, expired,
 and refunded attempts, retry processing, or resend account access. The report never displays payment secrets
 or account claim tokens. Existing-account claims are completed by that account's owner through normal login.
 For ambiguous email addresses, suspended/deleted users, or unavailable course enrolment, resolve the underlying
@@ -103,20 +118,21 @@ account/course issue and retry the purchase. Do not charge the buyer again.
 ## Validation
 
 Run the guest checkout PHPUnit tests, PHP syntax checks, React build, Moodle CLI upgrade and cache purge.
-Before production enablement, complete a Stripe test purchase and verify the payment, account email, enrolment,
+Before production enablement, complete a sandbox purchase for each enabled provider and verify the payment, account email, enrolment,
 repeated webhook delivery, cancellation, and existing-account claim flow.
 
-### Implementation verification — 18 November 2026
+### Multi-gateway verification — 18 November 2026
 
-- Isolated Moodle PHPUnit environment: **15 tests, 65 assertions passed**, including existing authenticated checkout.
-- PHP syntax checks passed for the changed PHP files; React production build and documentation checks passed.
-- Browser checks passed for anonymous storefront add/remove, cart navigation, required consent, unavailable payment
-  recovery, desktop layout, and a 390px mobile layout.
-- Stripe requests were simulated in automated tests. A real Stripe test purchase and email delivery still need
-  verification against the deployment environment before enabling this feature for customers.
+- The isolated Moodle test environment includes clean-install coverage for the added provider fields and privacy declarations.
+- The full guest checkout/password regression suite passed: **51 tests, 371 assertions**; five JavaScript submission/race tests passed.
+- Chrome displayed all five configured methods on desktop and at 390px mobile width without horizontal overflow.
+- Regression tests cover hosted initiation, provider amount/reference/currency checks, PayPal approval/capture,
+  repeat fulfilment, gateway availability, manual receipt approval, welcome emails and password setup.
+- Provider responses are simulated in automated tests. Real sandbox purchases and email delivery still need
+  verification for each enabled provider against the deployment environment before enabling this feature for customers.
 - The normal local site's official CLI upgrade was attempted but stopped on an unreadable
-  `theme/boost_union/db/access.php`. Cache clearing also failed with “The override class does not exist”.
-  These environment issues must be resolved before completing the upgrade on that site.
+  `theme/boost_union/db/access.php`. The official language-cache purge succeeded.
+  The unrelated theme permissions must be resolved before completing the upgrade on that site.
 
 After deploying the plugin files, run the official commands from the Moodle repository root:
 
@@ -125,5 +141,5 @@ C:\xampp\php\php.exe admin/cli/upgrade.php --non-interactive
 C:\xampp\php\php.exe admin/cli/purge_caches.php
 ```
 
-Then configure the Stripe webhook, complete a sandbox purchase, and enable guest checkout through the Checkout
+Then configure the enabled gateway webhooks, complete sandbox purchases, and enable guest checkout through the Checkout
 settings tab. This implementation does not enable the feature or deploy files to the hosted site automatically.

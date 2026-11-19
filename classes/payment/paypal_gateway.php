@@ -45,6 +45,8 @@ use local_moderncommerce\services\commerce_settings_service;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class paypal_gateway implements gateway_interface, gateway_return_interface {
+    use guest_api_trait;
+
     /**
      * @var string Gateway name
      */
@@ -377,6 +379,10 @@ class paypal_gateway implements gateway_interface, gateway_return_interface {
         }
 
         $eventtype = $payload['event_type'] ?? '';
+        $guestresult = \local_moderncommerce\services\guest_gateway_service::webhook(self::GATEWAY_NAME, $payload);
+        if ($guestresult !== null) {
+            return $guestresult;
+        }
         $resource = $payload['resource'] ?? [];
 
         switch ($eventtype) {

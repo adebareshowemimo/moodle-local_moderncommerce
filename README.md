@@ -9,7 +9,7 @@ ModernCommerce was created by Adebare Showemimo and is maintained by [Agunfon In
 - Product catalog for courses, bundles, programs, and subscription plans
 - Configurable prices, sale pricing, inventory, categories, tags, and attributes
 - Cart, checkout, orders, invoices, refunds, coupons, and tax handling
-- Optional Stripe guest checkout with account creation and course enrolment after verified payment
+- Optional guest checkout with Stripe, PayPal, Paystack, Flutterwave and administrator-confirmed manual payments
 - Stripe, PayPal, Paystack, and Flutterwave payment gateways
 - Signed payment webhooks, payment-event tracking, and diagnostic logs
 - Automatic Moodle enrolment, access entitlements, and prepaid enrolment keys
@@ -29,7 +29,7 @@ ModernCommerce was created by Adebare Showemimo and is maintained by [Agunfon In
 - Moodle cron configured
 - HTTPS for production payment gateways and webhooks
 
-The Moodle component name is `local_moderncommerce`. The current plugin release is `2.5.5` (Moodle build `2026111807`).
+The Moodle component name is `local_moderncommerce`. The current plugin release is `2.6.0` (Moodle build `2026111808`).
 
 ## Installation
 

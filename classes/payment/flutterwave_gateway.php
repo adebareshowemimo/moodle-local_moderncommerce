@@ -27,6 +27,8 @@ use local_moderncommerce\logging\paylog_service;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class flutterwave_gateway implements gateway_interface, gateway_return_interface {
+    use guest_api_trait;
+
     /**
      * @var string Flutterwave API base URL
      */
@@ -163,6 +165,10 @@ class flutterwave_gateway implements gateway_interface, gateway_return_interface
             return false;
         }
         $event = $payload['event'] ?? '';
+        $guestresult = \local_moderncommerce\services\guest_gateway_service::webhook(self::GATEWAY_NAME, $payload);
+        if ($guestresult !== null) {
+            return $guestresult;
+        }
         $data = $payload['data'] ?? [];
 
         switch ($event) {

@@ -261,7 +261,7 @@ class provider implements
             ],
             'local_moderncommerce_guestpay' => [
                 'tokenhash', 'claimhash', 'accesshash', 'accessexpires', 'iphash', 'sessionhash', 'email',
-                'payload', 'stripeid', 'paymentdata',
+                'payload', 'stripeid', 'gateway', 'providerreference', 'providertransactionid', 'checkouturl', 'paymentdata',
                 'status', 'userid', 'orderid', 'newaccount', 'mailsent', 'attempts', 'lasterror', 'timecreated', 'timemodified',
             ],
             'local_moderncommerce_program_progress' => [

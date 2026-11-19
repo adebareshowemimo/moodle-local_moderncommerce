@@ -28,7 +28,9 @@ use local_moderncommerce\services\guest_checkout_service as guest;
 
 require_login();
 $PAGE->set_context(context_system::instance());
-require_capability('local/moderncommerce:managesettings', context_system::instance());
+if (!has_capability('local/moderncommerce:manageorders', context_system::instance())) {
+    require_capability('local/moderncommerce:managesettings', context_system::instance());
+}
 $url = new moodle_url('/local/moderncommerce/admin/guest_checkouts.php');
 $PAGE->set_url($url);
 $PAGE->set_pagelayout('admin');
@@ -38,7 +40,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_sesskey();
     $record = $DB->get_record(guest::TABLE, ['id' => required_param('id', PARAM_INT)], '*', MUST_EXIST);
     try {
-        if (required_param('action', PARAM_ALPHA) === 'resend') {
+        $action = required_param('action', PARAM_ALPHA);
+        if ($action === 'approve') {
+            if (!required_param('confirmed', PARAM_BOOL)) {
+                throw new moodle_exception('guestcheckoutverification', 'local_moderncommerce');
+            }
+            guest::confirm_manual((int)$record->id);
+        } else if ($action === 'resend') {
             guest::resend((int)$record->id);
         } else if ($record->status === 'pending') {
             guest::reconcile($record);
@@ -58,11 +66,32 @@ echo html_writer::link(
 );
 $page = max(0, optional_param('page', 0, PARAM_INT));
 $table = new html_table();
-$table->head = [get_string('idnumber'), get_string('email'), get_string('status'), get_string('date'), get_string('actions')];
+$table->head = [get_string('idnumber'), get_string('email'),
+    get_string('guestcheckoutgateway', 'local_moderncommerce'), get_string('status'), get_string('date'), get_string('actions')];
 $table->attributes['class'] = 'table table-bordered';
 $records = $DB->get_records(guest::TABLE, [], 'timecreated DESC', '*', $page * 50, 50);
 foreach ($records as $record) {
     $actions = '';
+    if (
+        ($record->gateway ?? 'stripe') === 'manual' && $record->status === 'pending' &&
+            has_capability('local/moderncommerce:manageorders', context_system::instance())
+    ) {
+        $actions .= html_writer::tag(
+            'form',
+            html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]) .
+            html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $record->id]) .
+            html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'approve']) .
+            html_writer::tag('label', html_writer::empty_tag('input', [
+                'type' => 'checkbox', 'name' => 'confirmed', 'value' => 1, 'required' => 'required',
+            ]) . s(get_string('guestcheckoutmanualconfirm', 'local_moderncommerce'))) .
+            html_writer::tag(
+                'button',
+                s(get_string('guestcheckoutmanualapprove', 'local_moderncommerce')),
+                ['type' => 'submit', 'class' => 'mc-button mc-btn-soft']
+            ),
+            ['method' => 'post', 'action' => $url->out(false)]
+        );
+    }
     foreach (['retry' => 'refresh', 'resend' => 'guestcheckoutresend'] as $action => $label) {
         $actions .= html_writer::tag(
             'form',
@@ -78,7 +107,8 @@ foreach ($records as $record) {
             ['method' => 'post', 'action' => $url->out(false), 'class' => 'd-inline-block me-2']
         );
     }
-    $table->data[] = [(int)$record->id, s($record->email),
+    $table->data[] = [(int)$record->id, s($record->email), s($record->gateway ?? 'stripe') .
+        html_writer::tag('small', s($record->providerreference ?? $record->stripeid ?? ''), ['class' => 'd-block']),
         s(get_string('guestcheckoutstatus_' . $record->status, 'local_moderncommerce')) .
             ($record->lasterror ? html_writer::tag('small', s($record->lasterror), ['class' => 'd-block']) : ''),
         userdate($record->timecreated), $actions];

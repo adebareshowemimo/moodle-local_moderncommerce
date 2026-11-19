@@ -29,7 +29,7 @@ use local_moderncommerce\services\guest_checkout_service as guest;
 use local_moderncommerce\services\pricing_service;
 use local_moderncommerce\api\cart_api;
 
-$token = optional_param('token', '', PARAM_ALPHANUM);
+$token = optional_param('guesttoken', '', PARAM_ALPHANUM) ?: optional_param('token', '', PARAM_ALPHANUM);
 $claim = optional_param('claim', 0, PARAM_BOOL);
 $courseid = optional_param('courseid', 0, PARAM_INT);
 $bundleid = optional_param('bundleid', 0, PARAM_INT);
@@ -106,6 +106,18 @@ if ($record) {
     $view['errorhtml'] = $error ? $OUTPUT->notification($error, 'warning') : '';
     $view['refreshurl'] = $url->out(false);
     $view['statusactions'] = '';
+    if (($record->gateway ?? 'stripe') === 'manual' && $record->status === 'pending') {
+        $snapshot = json_decode($record->payload, true, 512, JSON_THROW_ON_ERROR);
+        $view['manualinstructions'] = get_string(
+            'guestcheckoutmanualinstructions',
+            'local_moderncommerce',
+            $record->providerreference
+        );
+        $view['manualamount'] = pricing_service::format_price(
+            (float)$snapshot['totals']['total'],
+            $snapshot['totals']['currency']
+        );
+    }
     if ($record->status === 'claim') {
         if ($claim) {
             $view['statusactions'] .= $postbutton('claim', get_string('guestcheckoutclaim', 'local_moderncommerce'));
@@ -135,7 +147,9 @@ if (isloggedin() && !isguestuser()) {
         'courseid' => $courseid, 'bundleid' => $bundleid,
     ])));
 }
-$form = new \local_moderncommerce\form\guest_checkout($url, null, 'post', '', [
+$methods = \local_moderncommerce\services\guest_gateway_service::methods(pricing_service::get_currency_config()->currency);
+$view['canpay'] = !empty($methods);
+$form = new \local_moderncommerce\form\guest_checkout($url, ['gateways' => $methods], 'post', '', [
     'id' => 'mc-guest-details-form',
 ]);
 $PAGE->requires->js_call_amd('local_moderncommerce/guest_checkout', 'init', [[

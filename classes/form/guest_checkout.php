@@ -42,6 +42,14 @@ class guest_checkout extends \moodleform {
             $form->setType($field, $field === 'email' ? PARAM_RAW_TRIMMED : PARAM_NOTAGS);
             $form->addRule($field, get_string('required'), 'required', null, 'client');
         }
+        $methods = $this->_customdata['gateways'] ?? [];
+        $choices = array_map(static fn(array $method) => $method['name'], $methods);
+        $form->addElement('select', 'gateway', get_string('guestcheckoutgateway', 'local_moderncommerce'), $choices);
+        $form->setType('gateway', PARAM_ALPHANUMEXT);
+        $form->addRule('gateway', get_string('required'), 'required', null, 'client');
+        if (!$choices) {
+            $form->addElement('static', 'nogateways', '', s(get_string('guestcheckoutnogateways', 'local_moderncommerce')));
+        }
         $form->addElement('advcheckbox', 'consent', get_string('guestcheckoutconsent', 'local_moderncommerce'));
         $form->addElement('hidden', 'action', 'pay');
         $form->setType('action', PARAM_ALPHA);
@@ -58,6 +66,9 @@ class guest_checkout extends \moodleform {
      */
     public function validation($data, $files): array {
         $errors = parent::validation($data, $files);
+        if (!isset(($this->_customdata['gateways'] ?? [])[$data['gateway'] ?? ''])) {
+            $errors['gateway'] = get_string('guestcheckoutgatewayunavailable', 'local_moderncommerce');
+        }
         if (!validate_email(trim($data['email'] ?? '')) || email_is_not_allowed(trim($data['email'] ?? ''))) {
             $errors['email'] = get_string('invalidemail');
         } else {
