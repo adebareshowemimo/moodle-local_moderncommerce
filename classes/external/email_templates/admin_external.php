@@ -1013,6 +1013,11 @@ class admin_external extends external_api {
         global $CFG, $USER;
 
         $sample = [
+            // Preview links never generate or expose a real password-setting token.
+            'set_password_url' => (new \moodle_url('/login/forgot_password.php'))->out(false),
+            'password_expiry_minutes' => (int) floor(($CFG->pwresettime ?? 1800) / MINSECS),
+            'login_url' => (new \moodle_url('/login/index.php'))->out(false),
+            'forgot_password_url' => (new \moodle_url('/login/forgot_password.php'))->out(false),
             'firstname' => $USER->firstname ?? 'Jane',
             'lastname' => $USER->lastname ?? 'Doe',
             'fullname' => fullname($USER),

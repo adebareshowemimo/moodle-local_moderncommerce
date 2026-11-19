@@ -30,6 +30,100 @@ use local_moderncommerce\payment\stripe_gateway;
 #[\PHPUnit\Framework\Attributes\CoversClass(guest::class)]
 final class guest_checkout_service_test extends advanced_testcase {
     /**
+     * A new buyer receives a welcome and the native expiring password-setting link.
+     */
+    public function test_new_guest_receives_welcome_instead_of_password_reset_copy(): void {
+        global $CFG, $DB, $SITE;
+        $SITE->fullname = 'Training & Learning';
+        $CFG->pwresettime = 45 * MINSECS;
+        [$record, $session] = $this->purchase();
+        $sink = $this->redirectEmails();
+        guest::confirm_session($session);
+        $saved = $DB->get_record(guest::TABLE, ['id' => $record->id]);
+        $user = \core_user::get_user($saved->userid);
+        $reset = $DB->get_record('user_password_resets', ['userid' => $user->id], '*', MUST_EXIST);
+        $welcome = array_values(array_filter($sink->get_messages(), static fn($mail) =>
+            $mail->subject === 'Welcome to Training & Learning — set your password'));
+        $this->assertCount(1, $welcome);
+        $body = quoted_printable_decode($welcome[0]->body);
+        $this->assertSame($record->email, $welcome[0]->to);
+        $this->assertStringContainsString('We have created a learning account for you', $body);
+        $this->assertStringContainsString('45 minutes', $body);
+        $this->assertStringContainsString('token=' . $reset->token, $body);
+        $this->assertStringNotContainsString('A password reset was requested', $body);
+        $this->assertStringNotContainsString($user->username, $body);
+        $this->assertSame(AUTH_PASSWORD_NOT_CACHED, $user->password);
+        $sink->close();
+    }
+
+    /**
+     * The existing admin editor exposes the welcome and its saved content controls delivery.
+     */
+    public function test_admin_can_customize_guest_welcome_without_seed_overwriting_edits(): void {
+        global $DB;
+        $key = \local_moderncommerce\email\commerce_seed::GUEST_WELCOME;
+        \local_moderncommerce\email\commerce_seed::ensure_guest_welcome_template();
+        $id = $DB->get_field('local_moderncommerce_emailtpl', 'id', ['template_key' => $key]);
+        $DB->set_field('local_moderncommerce_emailtpl', 'subject', 'Preserved subject', ['id' => $id]);
+        \local_moderncommerce\email\commerce_seed::ensure_guest_welcome_template();
+        $this->assertSame('Preserved subject', $DB->get_field('local_moderncommerce_emailtpl', 'subject', ['id' => $id]));
+        $this->assertSame(1, $DB->count_records('local_moderncommerce_emailtpl', ['template_key' => $key]));
+        $types = \local_moderncommerce\external\emails\list_emails::execute();
+        $this->assertContains($key, array_column($types['items'], 'key'));
+        $editor = \local_moderncommerce\external\emails\get_email::execute($key);
+        $this->assertContains('{set_password_url}', $editor['placeholders']);
+        $this->assertContains('{password_expiry_minutes}', $editor['placeholders']);
+        \local_moderncommerce\external\emails\save_email::execute(
+            $key,
+            true,
+            'Your new account at {sitename}',
+            '<p>Welcome, {firstname}. <a href="{set_password_url}">Choose your password</a>.</p>'
+        );
+        [$record, $session] = $this->purchase();
+        $sink = $this->redirectEmails();
+        guest::confirm_session($session);
+        $welcome = array_values(array_filter($sink->get_messages(), static fn($mail) =>
+            str_starts_with($mail->subject, 'Your new account at ')));
+        $this->assertCount(1, $welcome);
+        $this->assertSame($record->email, $welcome[0]->to);
+        $this->assertStringContainsString('Welcome, Test.', quoted_printable_decode($welcome[0]->body));
+        $this->assertStringContainsString('Choose your password', quoted_printable_decode($welcome[0]->body));
+        $sink->close();
+    }
+
+    /**
+     * Disabling this notification uses the same delivery switch as other commerce emails.
+     */
+    public function test_disabled_welcome_does_not_generate_or_email_a_password_token(): void {
+        global $DB;
+        set_config('moderncommerce_guest_welcome_enabled', 0, 'local_moderncommerce');
+        [$record, $session] = $this->purchase();
+        $sink = $this->redirectEmails();
+        guest::confirm_session($session);
+        $saved = $DB->get_record(guest::TABLE, ['id' => $record->id]);
+        $this->assertSame('fulfilled', $saved->status);
+        $this->assertSame(0, $DB->count_records('user_password_resets', ['userid' => $saved->userid]));
+        foreach ($sink->get_messages() as $mail) {
+            $this->assertStringNotContainsString('forgot_password.php?token=', quoted_printable_decode($mail->body));
+        }
+        $sink->close();
+    }
+
+    /**
+     * A buyer cannot edit the welcome template through the administrator service.
+     */
+    public function test_guest_welcome_editor_requires_administrator_permission(): void {
+        $this->setUser($this->getDataGenerator()->create_user());
+        $this->expectException(\required_capability_exception::class);
+        \local_moderncommerce\external\emails\save_email::execute(
+            \local_moderncommerce\email\commerce_seed::GUEST_WELCOME,
+            true,
+            'Unauthorised subject',
+            '<p>Unauthorised body</p>'
+        );
+    }
+
+    /**
      * Guest sessions let Stripe select methods while preserving totals and retry identity.
      */
     public function test_guest_session_uses_dashboard_payment_methods(): void {
@@ -369,6 +463,10 @@ final class guest_checkout_service_test extends advanced_testcase {
         $this->assertEquals($existing->id, $saved->userid);
         $this->assertTrue(is_enrolled(context_course::instance($course->id), $existing->id, '', true));
         $this->assertSame(1, $DB->count_records('user', ['email' => $record->email]));
+        $this->assertSame(0, $DB->count_records('user_password_resets', ['userid' => $existing->id]));
+        foreach ($sink->get_messages() as $mail) {
+            $this->assertStringNotContainsString('forgot_password.php?token=', quoted_printable_decode($mail->body));
+        }
         $sink->close();
     }
 

@@ -506,8 +506,30 @@ class guest_checkout_service {
         if ($record->newaccount && $record->userid) {
             require_once($CFG->dirroot . '/login/lib.php');
             $user = \core_user::get_user($record->userid, '*', MUST_EXIST);
-            $reset = core_login_generate_password_reset($user);
-            $sent = send_password_change_confirmation_email($user, $reset);
+            $templatekey = \local_moderncommerce\email\commerce_seed::GUEST_WELCOME;
+            if (\local_moderncommerce\email\notification_catalog::is_enabled($templatekey)) {
+                $reset = core_login_generate_password_reset($user);
+                $url = new \moodle_url('/login/forgot_password.php', ['token' => $reset->token]);
+                // Render directly to mail: password-setting tokens must not enter notification logs or queues.
+                $mail = \local_moderncommerce\api\email_api::render($templatekey, [
+                    'firstname' => $user->firstname, 'lastname' => $user->lastname,
+                    'fullname' => fullname($user), 'email' => $user->email,
+                    'sitename' => format_string(get_site()->fullname, true, ['escape' => false]),
+                    'set_password_url' => $url->out(false),
+                    'password_expiry_minutes' => (int) floor(($CFG->pwresettime ?? 1800) / MINSECS),
+                    'login_url' => (new \moodle_url('/login/index.php'))->out(false),
+                    'forgot_password_url' => (new \moodle_url('/login/forgot_password.php'))->out(false),
+                ]);
+                $sent = email_to_user(
+                    $user,
+                    \core_user::get_support_user(),
+                    html_entity_decode($mail['subject'], ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+                    $mail['plain'],
+                    $mail['html']
+                );
+            } else {
+                $sent = true; // Honour the administrator's delivery switch, as for other commerce emails.
+            }
         } else {
             $token = bin2hex(random_bytes(32));
             $DB->set_field(self::TABLE, 'claimhash', hash('sha256', $token), ['id' => $record->id]);

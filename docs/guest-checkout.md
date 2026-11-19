@@ -36,7 +36,15 @@ No Moodle account is created for abandoned or failed payment attempts.
 
 Payment status is verified using Stripe's API as well as the signed event. Repeated events and concurrent attempts
 are protected by Moodle locks. The browser confirmation page never establishes a login session.
-New learners receive Moodle's expiring password setup link; existing learners claim through a link and their normal login.
+New learners receive the **Guest account welcome** email, with the site name, account-creation confirmation,
+and Moodle's expiring password-setting link. The subject and HTML content are editable in
+**Email Templates → Outgoing emails → Guest account welcome**. The bundled template also appears in the template list.
+Use `{set_password_url}` for the secure link and `{password_expiry_minutes}` for its validity period, which follows
+Moodle's password-reset expiry setting. `{firstname}`, `{sitename}`, `{login_url}`, and `{forgot_password_url}` are also available.
+Preview links never contain real password tokens. No temporary password is generated or sent.
+Administrator customisations survive upgrades. As with other commerce emails, disabling the notification suppresses it;
+the learner can still request a password link from Moodle's sign-in page.
+Existing learners claim through a link and their normal login; they do not receive a new-account welcome or password token.
 An entered payment email is never treated as proof of ownership of an existing Moodle account.
 Checkout collects consent to create the account. Moodle's configured site policies remain enforced on first login.
 Anonymous initiation is limited by browser session, email address, and a keyed hash of the network address.

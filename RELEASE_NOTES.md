@@ -1,5 +1,22 @@
 # ModernCommerce release notes
 
+## ModernCommerce 2.5.2
+
+Moodle build: `2026111803`. Requires Moodle 5.2 and PHP 8.3 or later.
+
+- New guest purchasers receive a welcome email confirming their learning account
+  has been created and inviting them to set their password. The message uses the
+  Moodle site name and the recipient's details rather than password-reset request wording.
+- Adds **Guest account welcome** to the email template manager, including an editable
+  subject, visual/HTML body, reusable content selection, and delivery switch.
+- Retains Moodle's native expiring password-setting tokens. Preview links never
+  contain a real token, and tokens bypass notification logs and queues.
+- Installs the bundled template on install/upgrade without overwriting administrator edits.
+
+Customise it under **Email Templates → Outgoing emails → Guest account welcome**.
+Use `{set_password_url}` for the secure link and `{password_expiry_minutes}` for its configured validity.
+Existing-account purchase claims retain their normal sign-in flow.
+
 ## ModernCommerce 2.5.1
 
 Moodle build: `2026111802`. Requires Moodle 5.2 and PHP 8.3 or later.

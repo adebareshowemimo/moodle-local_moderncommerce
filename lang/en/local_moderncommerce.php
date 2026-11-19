@@ -1174,6 +1174,10 @@ $string['emailbody'] = 'Email Body';
 $string['emaildisabled'] = 'Email Disabled';
 $string['emaildisplay'] = 'Email Display';
 $string['emailenabled'] = 'Email Enabled';
+$string['emailph_forgot_password_url'] = 'Link to request a new password-setting email';
+$string['emailph_login_url'] = 'Link to sign in to the site';
+$string['emailph_password_expiry_minutes'] = 'Password-setting link validity in minutes, from the Moodle security setting';
+$string['emailph_set_password_url'] = 'Secure, expiring link for the recipient to set their password';
 $string['emailplaceholder'] = 'you@example.com';
 $string['emailrequired'] = 'Please enter your email address.';
 $string['emailsettings'] = 'Email Settings';
@@ -1309,6 +1313,16 @@ $string['emailtpl_moderncommerce_enrollment_confirmation_body'] = '<p>Hi {firstn
 <p>Questions about your courses? Just reply or reach us at {supportemail}.</p>';
 $string['emailtpl_moderncommerce_enrollment_confirmation_name'] = 'Order Completed / Enrolled';
 $string['emailtpl_moderncommerce_enrollment_confirmation_subject'] = 'You\'re enrolled, {firstname} 🎉';
+$string['emailtpl_moderncommerce_guest_welcome_body'] = '<h2>Welcome to {sitename}</h2>
+<p>Hi {firstname},</p>
+<p>Thank you for your purchase. We have created a learning account for you at <strong>{sitename}</strong> and enrolled you in your purchased courses.</p>
+<p>Please set your password to sign in and start learning.</p>
+<p><a class="mc-button" href="{set_password_url}">Set your password</a></p>
+<p>This secure link is valid for {password_expiry_minutes} minutes. If it expires, <a href="{forgot_password_url}">request a new link</a>.</p>
+<p>If you have already set your password, <a href="{login_url}">sign in</a>.</p>
+<p>Need help? Contact <a href="mailto:{supportemail}">{supportemail}</a>.</p>';
+$string['emailtpl_moderncommerce_guest_welcome_name'] = 'Guest account welcome';
+$string['emailtpl_moderncommerce_guest_welcome_subject'] = 'Welcome to {sitename} — set your password';
 $string['emailtpl_moderncommerce_invoice_cancelled_body'] = '<p>Hi {firstname},</p>
 <p>We\'re writing to confirm that invoice <strong>{invoice_number}</strong> for <strong>{invoice_total}</strong> has been cancelled and is no longer payable.</p>
 <p>No action is required on your part. If a payment was already made against this invoice, any applicable credit or refund will be handled separately.</p>
@@ -2051,6 +2065,7 @@ $string['guestcheckoutstatus_pending'] = 'Waiting for payment confirmation';
 $string['guestcheckoutstatus_refunded'] = 'This purchase was refunded';
 $string['guestcheckoutunavailable'] = 'Guest payment is unavailable. Please sign in or contact support.';
 $string['guestcheckoutverification'] = 'Payment details could not be verified. Contact support with your payment receipt.';
+$string['guestwelcomeemail_desc'] = 'Welcomes new guest purchasers and explains that a learning account has been created. Include {set_password_url} so the learner can set their password.';
 $string['haveakey'] = 'Have a subscription key?';
 $string['haveakey_desc'] = 'Redeem a pre-paid key to activate your plan instantly.';
 $string['help'] = 'Help';

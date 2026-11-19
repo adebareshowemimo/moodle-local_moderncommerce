@@ -35,6 +35,21 @@ namespace local_moderncommerce\email;
  * Bundled Modern Commerce notification email templates.
  */
 class commerce_seed {
+    /** @var string New-account notification for paid guest purchases. */
+    public const GUEST_WELCOME = 'moderncommerce_guest_welcome';
+
+    /**
+     * Install the account welcome template without replacing administrator edits.
+     */
+    public static function ensure_guest_welcome_template(): void {
+        global $DB;
+        if ($DB->record_exists('local_moderncommerce_emailtpl', ['template_key' => self::GUEST_WELCOME])) {
+            return;
+        }
+        $template = notification_catalog::seeded_record(self::GUEST_WELCOME);
+        (new template_manager())->create_template($template);
+    }
+
     /**
      * @var string Commerce component.
      */
@@ -116,6 +131,19 @@ class commerce_seed {
      */
     private static function cart_checkout(): array {
         return [
+            [
+                'template_key' => self::GUEST_WELCOME,
+                'component' => self::MC,
+                'name' => get_string('emailtpl_moderncommerce_guest_welcome_name', self::MC),
+                'template_type' => 'transactional',
+                'subject' => get_string('emailtpl_moderncommerce_guest_welcome_subject', self::MC),
+                'body' => get_string('emailtpl_moderncommerce_guest_welcome_body', self::MC),
+                'placeholders' => json_encode([
+                    'firstname', 'lastname', 'fullname', 'email', 'sitename', 'siteurl', 'supportemail',
+                    'set_password_url', 'password_expiry_minutes', 'login_url', 'forgot_password_url',
+                ]),
+                'locked' => 1,
+            ],
             self::row(
                 'moderncommerce_cart_abandoned_1h',
                 self::MC,

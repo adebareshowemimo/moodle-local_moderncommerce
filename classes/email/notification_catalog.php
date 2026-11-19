@@ -65,10 +65,11 @@ class notification_catalog {
                 'configkey' => $templatekey,
                 'templatekey' => $templatekey,
                 'name' => (string) ($definition['name'] ?? $templatekey),
-                'description' => self::description(
-                    (string) ($definition['name'] ?? $templatekey),
-                    $category
-                ),
+                'description' => $templatekey === commerce_seed::GUEST_WELCOME
+                    ? get_string('guestwelcomeemail_desc', self::COMPONENT) : self::description(
+                        (string) ($definition['name'] ?? $templatekey),
+                        $category
+                    ),
                 'icon' => self::icon($templatekey, $category),
                 'color' => self::color($templatekey, $category),
                 'category' => $category,

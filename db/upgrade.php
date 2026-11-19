@@ -1532,5 +1532,10 @@ function xmldb_local_moderncommerce_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026111800, 'local', 'moderncommerce');
     }
 
+    if ($oldversion < 2026111803) {
+        \local_moderncommerce\email\commerce_seed::ensure_guest_welcome_template();
+        upgrade_plugin_savepoint(true, 2026111803, 'local', 'moderncommerce');
+    }
+
     return true;
 }
