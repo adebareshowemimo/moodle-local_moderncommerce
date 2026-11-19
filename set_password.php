@@ -63,7 +63,7 @@ $form = $user ? new \local_moderncommerce\form\set_password($url, $user) : null;
 $error = '';
 if ($form) {
     $form->set_data((object)[
-        'username' => $user->username, 'username2' => $user->username, 'token' => $token, 'renew' => $renew,
+        'username' => $user->username, 'username2' => s($user->username), 'token' => $token, 'renew' => $renew,
     ]);
     if ($form->is_cancelled()) {
         unset($SESSION->moderncommerce_password_setup);
