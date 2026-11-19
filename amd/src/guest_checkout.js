@@ -27,6 +27,12 @@ import Ajax from 'core/ajax';
  */
 export const init = (config) => {
     const form = document.getElementById('mc-guest-details-form');
+    const paymentFields = form?.querySelector('#mc-guest-payment-fields');
+    const paymentSlot = document.getElementById('mc-guest-payment-slot');
+    if (paymentFields && paymentSlot) {
+        // Native radio inputs keep their explicit form association outside the sidebar.
+        paymentSlot.append(paymentFields);
+    }
     const email = form?.querySelector('[name="email"]');
     if (!email || email.dataset.guestEmailCheck) {
         return;

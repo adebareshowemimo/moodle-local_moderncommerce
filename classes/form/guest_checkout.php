@@ -43,13 +43,40 @@ class guest_checkout extends \moodleform {
             $form->addRule($field, get_string('required'), 'required', null, 'client');
         }
         $methods = $this->_customdata['gateways'] ?? [];
-        $choices = array_map(static fn(array $method) => $method['name'], $methods);
-        $form->addElement('select', 'gateway', get_string('guestcheckoutgateway', 'local_moderncommerce'), $choices);
-        $form->setType('gateway', PARAM_ALPHANUMEXT);
-        $form->addRule('gateway', get_string('required'), 'required', null, 'client');
-        if (!$choices) {
+        $form->addElement('html', \html_writer::start_tag('section', [
+            'id' => 'mc-guest-payment-fields', 'class' => 'mc-form-section mt-3',
+            'role' => 'radiogroup', 'aria-labelledby' => 'mc-guest-payment-title',
+        ]) . \html_writer::div(\html_writer::tag(
+            'h2',
+            \html_writer::tag('i', '', ['class' => 'bi bi-credit-card me-2', 'aria-hidden' => 'true']) .
+                s(get_string('paymentmethod', 'local_moderncommerce')),
+            ['id' => 'mc-guest-payment-title', 'class' => 'mc-form-section__title']
+        ), 'mc-form-section__header') .
+            \html_writer::start_div('mc-form-section__body'));
+        $options = [];
+        foreach ($methods as $id => $method) {
+            $icon = preg_replace('/^(bi\s+|fa\s+)/', '', trim($method['icon'] ?? ''));
+            $icon = preg_replace('/^bi-/', '', $icon);
+            $icon = ['fa-credit-card' => 'credit-card-2-front', 'fa-cc-stripe' => 'stripe',
+                'fa-cc-paypal' => 'paypal', 'fa-university' => 'bank', 'fa-key' => 'key'][$icon] ?? $icon;
+            $icon = preg_match('/^[a-z0-9-]+$/D', $icon) ? $icon : 'credit-card-2-front';
+            $label = \html_writer::span(\html_writer::tag('i', '', [
+                'class' => 'bi bi-' . $icon, 'aria-hidden' => 'true',
+            ]), 'mc-payment-option__icon', ['aria-hidden' => 'true']) .
+                \html_writer::span(\html_writer::span(s($method['name']), 'mc-payment-option__name') .
+                \html_writer::span(s($method['description'] ?? ''), 'mc-payment-option__desc'));
+            $options[] = $form->createElement('radio', 'gateway', '', $label, $id, [
+                'class' => 'mc-payment-option', 'form' => 'mc-guest-details-form',
+            ]);
+        }
+        if ($options) {
+            $form->addGroup($options, 'gatewaychoices', '', null, false);
+            $form->setDefault('gateway', array_key_first($methods));
+        } else {
             $form->addElement('static', 'nogateways', '', s(get_string('guestcheckoutnogateways', 'local_moderncommerce')));
         }
+        $form->setType('gateway', PARAM_ALPHANUMEXT);
+        $form->addElement('html', \html_writer::end_div() . \html_writer::end_tag('section'));
         $form->addElement('advcheckbox', 'consent', get_string('guestcheckoutconsent', 'local_moderncommerce'));
         $form->addElement('hidden', 'action', 'pay');
         $form->setType('action', PARAM_ALPHA);

@@ -29,7 +29,7 @@ ModernCommerce was created by Adebare Showemimo and is maintained by [Agunfon In
 - Moodle cron configured
 - HTTPS for production payment gateways and webhooks
 
-The Moodle component name is `local_moderncommerce`. The current plugin release is `2.6.0` (Moodle build `2026111808`).
+The Moodle component name is `local_moderncommerce`. The current plugin release is `2.6.1` (Moodle build `2026111900`).
 
 ## Installation
 

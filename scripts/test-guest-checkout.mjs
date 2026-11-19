@@ -27,7 +27,7 @@ function checkout() {
     let submit;
     let purchases = 0;
     const form = {
-        querySelector: () => email,
+        querySelector: (selector) => selector === '[name="email"]' ? email : null,
         addEventListener: (name, fn) => { submit = fn; },
         requestSubmit: async() => {
             const event = {prevented: false, preventDefault() { this.prevented = true; }, stopImmediatePropagation() {}};
@@ -38,7 +38,8 @@ function checkout() {
         },
     };
     vm.runInNewContext(`${source}\ninit(config);`, {
-        document: {getElementById: () => form, createElement: () => ({...feedback, setAttribute() {}})},
+        document: {getElementById: id => id === 'mc-guest-details-form' ? form : null,
+            createElement: () => ({...feedback, setAttribute() {}})},
         config: {checking: 'Checking', failed: 'Try again', invalid: 'Invalid email'},
         Promise,
         setTimeout: () => 1,

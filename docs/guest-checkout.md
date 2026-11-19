@@ -21,6 +21,11 @@ On narrower screens the details, items, and summary stack in reading order.
 
 Courses and bundles support enabled, configured Stripe, PayPal, Paystack, Flutterwave and manual payment methods.
 The payment selector respects gateway display order and currency support. Unavailable gateways are hidden.
+Guest checkout uses the original checkout's payment cards: each option shows its icon, name and description,
+with selected and keyboard-focus states. Cards appear in a dedicated Payment method section below the cart.
+The left sidebar contains identity fields and account consent. The underlying Moodle radio inputs explicitly
+belong to the details form, so the summary's payment button submits the selected gateway with the buyer details.
+If JavaScript is unavailable, the same native cards remain inside the details form and still work.
 Delayed payment methods remain pending until the provider confirms payment; no account or enrolment is created before that.
 Guest coupons, programs, subscriptions, enrolment-key redemption,
 and zero-total purchases require signing in. Existing authenticated checkout remains available.

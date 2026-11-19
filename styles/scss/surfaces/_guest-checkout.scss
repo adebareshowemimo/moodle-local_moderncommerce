@@ -4,6 +4,56 @@ body.mc-guest-checkout-layout #page-header {
 }
 
 .mc-guest-checkout {
+    #mc-guest-payment-fields {
+        .fitem {
+            margin: 0;
+        }
+
+        .fitem > [class*="col-"] {
+            flex: 0 0 100%;
+            width: 100%;
+            max-width: 100%;
+            padding-inline: 0;
+        }
+
+        .col-form-label:empty {
+            display: none;
+        }
+
+        .mc-payment-option {
+            display: flex;
+            width: 100%;
+            margin: 0 0 0.5rem;
+        }
+
+        .mc-payment-option .form-check-input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+        }
+
+        .mc-payment-option:has(input:checked) {
+            border-color: var(--mc-primary);
+            background: var(--mc-primary-light);
+        }
+
+        .mc-payment-option:has(input:checked) .mc-payment-option__icon {
+            background: var(--mc-surface);
+            border-color: var(--mc-primary-border);
+            color: var(--mc-primary);
+        }
+
+        .mc-payment-option:focus-within {
+            outline: 2px solid var(--mc-primary);
+            outline-offset: 2px;
+        }
+
+        .mc-payment-option__desc {
+            overflow-wrap: anywhere;
+        }
+    }
+
     .mc-guest-checkout__details {
         min-height: 0;
         padding: 1.75rem 1.25rem;
