@@ -16,7 +16,7 @@ body.mc-guest-checkout-layout #page-header {
             padding-inline: 0;
         }
 
-        .col-form-label:empty {
+        .femptylabel > .col-form-label {
             display: none;
         }
 

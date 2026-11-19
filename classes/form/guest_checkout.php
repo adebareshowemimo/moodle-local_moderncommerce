@@ -70,7 +70,7 @@ class guest_checkout extends \moodleform {
             ]);
         }
         if ($options) {
-            $form->addGroup($options, 'gatewaychoices', '', null, false);
+            $form->addGroup($options, 'gatewaychoices', '', '', false);
             $form->setDefault('gateway', array_key_first($methods));
         } else {
             $form->addElement('static', 'nogateways', '', s(get_string('guestcheckoutnogateways', 'local_moderncommerce')));

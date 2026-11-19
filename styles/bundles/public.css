@@ -564,7 +564,7 @@ body.mc-guest-checkout-layout #page-header {
   max-width: 100%;
   padding-inline: 0;
 }
-.mc-guest-checkout #mc-guest-payment-fields .col-form-label:empty {
+.mc-guest-checkout #mc-guest-payment-fields .femptylabel > .col-form-label {
   display: none;
 }
 .mc-guest-checkout #mc-guest-payment-fields .mc-payment-option {
