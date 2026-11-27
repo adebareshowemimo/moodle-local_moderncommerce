@@ -23,17 +23,17 @@ ModernCommerce was created by Adebare Showemimo and is maintained by [Agunfon In
 
 ## Requirements
 
-- Moodle 5.2
+- Moodle 5.2 or 5.3
 - PHP 8.3 or later
 - Composer 2
 - Moodle cron configured
 - HTTPS for production payment gateways and webhooks
 
-The Moodle component name is `local_moderncommerce`. The current plugin release is `2.6.1` (Moodle build `2026111900`).
+The Moodle component name is `local_moderncommerce`. This version is `2.6.2` (Moodle build `2026112700`).
 
 ## Installation
 
-1. Place the plugin in `local/moderncommerce` within the Moodle installation.
+1. Place the plugin in `public/local/moderncommerce` within the Moodle installation.
 2. Install production dependencies from the plugin directory:
 
    ```bash

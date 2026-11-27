@@ -52,3 +52,59 @@ jobs:
           name: moderncommerce-release
           path: releases/*.zip
           if-no-files-found: error
+
+  moodle:
+    name: Test ${{ matrix.moodle-branch }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        moodle-branch: [MOODLE_502_STABLE, MOODLE_503_STABLE]
+
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          extensions: mysqli, sodium
+          ini-values: max_input_vars=5000
+          coverage: none
+
+      - name: Install plugin dependencies and Moodle Plugin CI
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          composer create-project --no-interaction --no-progress moodlehq/moodle-plugin-ci:^4 "$RUNNER_TEMP/moodle-plugin-ci"
+          echo "$RUNNER_TEMP/moodle-plugin-ci/bin" >> "$GITHUB_PATH"
+          sudo locale-gen en_AU.UTF-8
+
+      - name: Install Moodle and ModernCommerce
+        run: >-
+          moodle-plugin-ci install
+          --db-type=mariadb
+          --db-host=127.0.0.1
+          --db-user=root
+          --db-pass=root
+          --branch="${{ matrix.moodle-branch }}"
+          --moodle="$RUNNER_TEMP/moodle"
+          --data="$RUNNER_TEMP/moodledata"
+          --plugin="$GITHUB_WORKSPACE"
+
+      - name: Run ModernCommerce PHPUnit tests
+        run: moodle-plugin-ci phpunit --fail-on-warning

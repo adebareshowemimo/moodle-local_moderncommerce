@@ -49,7 +49,7 @@ final class release_readiness_test extends advanced_testcase {
     }
 
     /**
-     * Version metadata is ready for a stable Moodle 5.2 release.
+     * Version metadata declares support for Moodle 5.2 and 5.3.
      */
     public function test_version_metadata_is_stable(): void {
         global $CFG;
@@ -59,7 +59,7 @@ final class release_readiness_test extends advanced_testcase {
 
         $this->assertSame('local_moderncommerce', $plugin->component);
         $this->assertGreaterThanOrEqual(2026042000, $plugin->requires);
-        $this->assertSame([502, 502], $plugin->supported);
+        $this->assertSame([502, 503], $plugin->supported);
         $this->assertSame(MATURITY_STABLE, $plugin->maturity);
         $this->assertStringNotContainsString('beta', strtolower($plugin->release));
     }
