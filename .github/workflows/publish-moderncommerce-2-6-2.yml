@@ -1,0 +1,114 @@
+name: Publish ModernCommerce 2.6.2
+
+on:
+  push:
+    branches: [codex/publish-moderncommerce-2.6.2]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_COMMIT: '836dca52a13c4b87be831974d46851d85cecac31'
+      RELEASE_TAG: 'v2.6.2'
+      CI_RUN: '46043686186'
+    steps:
+      - name: Check out the tested release commit
+        uses: actions/checkout@v4
+        with:
+          ref: '836dca52a13c4b87be831974d46851d85cecac31'
+          persist-credentials: false
+
+      - name: Verify CI and create the release tag
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          if ((git rev-parse HEAD) -cne $env:RELEASE_COMMIT) { throw 'Unexpected source commit' }
+          $repo = "repos/$env:GITHUB_REPOSITORY"
+          $main = gh api "$repo/git/ref/heads/main" --jq '.object.sha'
+          $ci = gh api "$repo/actions/runs/$env:CI_RUN" | ConvertFrom-Json
+          if ($main -ne $env:RELEASE_COMMIT -or $ci.head_sha -ne $main -or $ci.conclusion -ne 'success') {
+              throw 'The exact release commit has not passed CI on main'
+          }
+          gh api "$repo/git/refs" -f "ref=refs/tags/$env:RELEASE_TAG" -f "sha=$env:RELEASE_COMMIT" --jq '.ref'
+          $tag = gh api "$repo/git/ref/tags/$env:RELEASE_TAG" --jq '.object.sha'
+          if ($tag -ne $env:RELEASE_COMMIT) { throw 'Tag does not point to the release commit' }
+
+      - name: Set up PHP and Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+
+      - name: Build and verify the installation ZIP
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          if (git status --porcelain) { throw 'Expected a clean checkout' }
+          $source = Get-Content version.php -Raw
+          if (-not $source.Contains("->release   = '2.6.2';") -or
+              -not $source.Contains('->version   = 2026112701;') -or
+              -not $source.Contains('->supported = [502, 503];')) { throw 'Unexpected release metadata' }
+          $out = Join-Path $env:RUNNER_TEMP 'moderncommerce-release'
+          ./scripts/git-package.ps1 -Version '2.6.2' -OutputDirectory $out
+          $zip = Join-Path $out 'moderncommerce-v2.6.2.zip'
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [IO.Compression.ZipFile]::OpenRead($zip)
+          try {
+              if ($archive.Entries | Where-Object { -not $_.FullName.StartsWith('moderncommerce/') -or $_.FullName.Contains([char]92) }) {
+                  throw 'Unexpected archive paths'
+              }
+              $version = $archive.GetEntry('moderncommerce/version.php')
+              if (-not $version -or -not $archive.GetEntry('moderncommerce/vendor/autoload.php')) {
+                  throw 'Required files missing from archive'
+              }
+              $stream = $version.Open()
+              try {
+                  if ((Get-FileHash -InputStream $stream).Hash -ne (Get-FileHash version.php).Hash) {
+                      throw 'Packaged metadata differs from tagged source'
+                  }
+              } finally { $stream.Dispose() }
+          } finally { $archive.Dispose() }
+          $hash = (Get-FileHash $zip).Hash.ToLowerInvariant()
+          "RELEASE_ZIP=$zip" >> $env:GITHUB_ENV
+          "RELEASE_DIGEST=$hash" >> $env:GITHUB_ENV
+
+      - name: Keep the verified installation ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: moderncommerce-v2.6.2-release
+          path: ${{ env.RELEASE_ZIP }}
+          if-no-files-found: error
+
+      - name: Publish the verified package
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $notes = @(
+              'ModernCommerce now declares support for Moodle 5.3 while retaining Moodle 5.2 support.'
+              ''
+              'Fixes loading Moodle completion and grade libraries when calculating program progress.'
+              ''
+              'The Moodle 5.2 and 5.3 installation and PHPUnit jobs passed. PHP 8.3 or later is required.'
+              ''
+              'Moodle plugin build: 2026112701.'
+              ''
+              "ZIP SHA-256: $env:RELEASE_DIGEST"
+          )
+          $notes | gh release create $env:RELEASE_TAG $env:RELEASE_ZIP --verify-tag --title 'ModernCommerce 2.6.2' --notes-file -
+          $release = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RELEASE_TAG" | ConvertFrom-Json
+          $asset = $release.assets | Where-Object name -eq 'moderncommerce-v2.6.2.zip'
+          if ($release.draft -or $asset.digest -ne "sha256:$env:RELEASE_DIGEST") { throw 'Published asset did not verify' }
+          $release.html_url
