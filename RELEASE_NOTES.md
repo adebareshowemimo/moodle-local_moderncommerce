@@ -2,10 +2,11 @@
 
 ## ModernCommerce 2.6.2
 
-Moodle build `2026112700`. Supports Moodle 5.2 and 5.3 and requires PHP 8.3 or later.
+Moodle build `2026112701`. Supports Moodle 5.2 and 5.3 and requires PHP 8.3 or later.
 
 - Adds Moodle 5.3 to the plugin compatibility declaration.
 - Adds automated installation and PHPUnit coverage for Moodle 5.2 and 5.3.
+- Fixes loading the Moodle completion and grade libraries when calculating program progress.
 
 ## ModernCommerce 2.5.5
 

@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_moderncommerce';
-$plugin->version   = 2026112700;
+$plugin->version   = 2026112701;
 // Minimum Moodle version is 5.2.
 $plugin->requires  = 2026042000;
 $plugin->supported = [502, 503];

@@ -334,19 +334,20 @@ final class guest_checkout_service_test extends advanced_testcase {
             '/local/moderncommerce/set_password.php?token=',
             password_service::legacy_target(password_service::inspect($token)['user'])
         );
-        core_login_generate_password_reset(\core_user::get_user($record->userid));
+        $reset = core_login_generate_password_reset(\core_user::get_user($record->userid));
         $CFG->passwordreuselimit = 3;
         set_user_preference('auth_forcepasswordchange', 1, $record->userid);
         $this->setUser();
         $_POST['sesskey'] = sesskey();
         try {
-            $user = password_service::save($token, 'Commerce-Finish!946', 'Commerce-Finish!946');
+            $user = password_service::save($reset->token, 'Commerce-Finish!946', 'Commerce-Finish!946');
         } finally {
             unset($_POST['sesskey']);
         }
         $this->assertTrue(validate_internal_user_password($user, 'Commerce-Finish!946'));
         $this->assertSame(0, $DB->count_records('user_password_resets', ['userid' => $user->id]));
         $this->assertSame('invalid', password_service::inspect($token)['state']);
+        $this->assertSame('invalid', password_service::inspect($reset->token)['state']);
         $this->assertEmpty(get_user_preferences('auth_forcepasswordchange', null, $user));
         $this->assertEmpty($USER->id);
         $second = core_login_generate_password_reset($user);
@@ -491,6 +492,7 @@ final class guest_checkout_service_test extends advanced_testcase {
         $this->assertFalse(guest::enabled());
         $this->assertTrue(\local_moderncommerce\services\guest_access_service::available($token));
         $this->assertSame(1, $DB->count_records('user_password_resets', ['userid' => $record->userid]));
+        $original = $DB->get_field('user_password_resets', 'token', ['userid' => $record->userid], MUST_EXIST);
         $_POST['sesskey'] = sesskey();
         try {
             \local_moderncommerce\services\guest_access_service::request($token);
@@ -498,14 +500,24 @@ final class guest_checkout_service_test extends advanced_testcase {
             unset($_POST['sesskey']);
         }
         $this->assertSame($before + 1, count($sink->get_messages()));
-        $this->assertSame(2, $DB->count_records('user_password_resets', ['userid' => $record->userid]));
+        $renewed = $DB->get_field_select(
+            'user_password_resets',
+            'token',
+            'userid = :userid AND token <> :original',
+            ['userid' => $record->userid, 'original' => $original],
+            MUST_EXIST
+        );
+        $this->assertSame('valid', password_service::inspect($renewed)['state']);
         $this->assertFalse(\local_moderncommerce\services\guest_access_service::available($token));
         $this->assertSame($userid, $USER->id);
         $this->assertSame(AUTH_PASSWORD_NOT_CACHED, $DB->get_field('user', 'password', ['id' => $record->userid]));
         $messages = $sink->get_messages();
         $mail = end($messages);
         $this->assertSame($record->email, $mail->to);
-        $this->assertStringContainsString('/local/moderncommerce/set_password.php?token=', quoted_printable_decode($mail->body));
+        $this->assertStringContainsString(
+            '/local/moderncommerce/set_password.php?token=' . $renewed,
+            quoted_printable_decode($mail->body)
+        );
         $this->assertStringNotContainsString('guest_access.php?token=' . $token, quoted_printable_decode($mail->body));
         $sink->close();
     }
